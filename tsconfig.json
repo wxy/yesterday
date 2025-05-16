@@ -1,0 +1,34 @@
+{
+    "compilerOptions": {
+      "target": "ES2020",
+      "module": "NodeNext",  // 或 ES2020
+      "lib": ["ES2020", "DOM"],
+      "strict": true,
+      "moduleResolution": "NodeNext",
+      "outDir": "./dist",
+      "rootDir": "./src",  // 明确指定源代码根目录
+      "types": ["chrome", "node"],  // 声明文件
+      "allowSyntheticDefaultImports": true,
+      "esModuleInterop": true,  // 增加对模块导入的兼容性
+      "typeRoots": [
+        "./node_modules/@types",
+        "./src/types"
+      ],
+      "declaration": true,  // 生成声明文件
+      "sourceMap": true,  // 添加源映射以便调试
+      "inlineSources": true,  // 内联源映射
+      "skipLibCheck": true,  // 跳过库文件检查
+      "forceConsistentCasingInFileNames": true,  // 强制文件名一致性
+      "resolveJsonModule": true,  // 允许导入JSON文件(如配置)
+      "baseUrl": ".",
+      "paths": {
+        "@/*": ["src/*"],
+        "@lib/*": ["src/lib/*"],
+        "@types/*": ["src/types/*"]
+      },
+      "experimentalDecorators": true, // 启用实验性装饰器
+      "emitDecoratorMetadata": true // 启用装饰器的元数据生成
+    },
+    "include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.tsx", "src/**/*.js"],  // 扩展包含文件类型
+    "exclude": ["node_modules", "dist"]  // 明确排除目录
+  }

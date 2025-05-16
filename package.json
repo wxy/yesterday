@@ -1,0 +1,56 @@
+{
+  "name": "chrome-extension-scaffold",
+  "version": "1.0.0",
+  "description": "Chrome扩展开发脚手架",
+  "type": "module",
+  "scripts": {
+    "build": "webpack --config webpack/webpack.prod.cjs",
+    "build:dev": "webpack --config webpack/webpack.dev.cjs",
+    "dev": "webpack --config webpack/webpack.dev.cjs --watch",
+    "clean": "rimraf dist",
+    "lint": "eslint --ext .ts,.js src/",
+    "package": "npm run build && cd dist && zip -r ../extension.zip *",
+    "package:dev": "npm run build:dev && cd dist && zip -r ../extension-dev.zip *",
+    "translate": "node scripts/i18n-translate.js",
+    "new": "node scripts/new-project.js"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.250",
+    "@types/node": "^22.15.17",
+    "@typescript-eslint/eslint-plugin": "^6.19.0",
+    "@typescript-eslint/parser": "^6.19.0",
+    "clean-webpack-plugin": "^4.0.0",
+    "copy-webpack-plugin": "^13.0.0",
+    "css-loader": "^7.1.2",
+    "eslint": "^8.56.0",
+    "html-webpack-plugin": "^5.6.0",
+    "mini-css-extract-plugin": "^2.9.0",
+    "rimraf": "^5.0.5",
+    "style-loader": "^4.0.0",
+    "ts-loader": "^9.5.1",
+    "typescript": "^5.3.3",
+    "webpack": "^5.89.0",
+    "webpack-cli": "^5.1.4",
+    "webpack-merge": "^5.10.0"
+  },
+  "dependencies": {
+    "chalk": "^5.4.1",
+    "child_process": "^1.0.2",
+    "fs-extra": "^11.3.0",
+    "inquirer": "^12.6.0",
+    "ora": "^8.2.0",
+    "path": "^0.12.7",
+    "webextension-polyfill": "^0.10.0",
+    "axios": "^1.6.0",
+    "dotenv": "^16.4.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "main": ".eslintrc.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "author": "",
+  "license": "ISC"
+}
