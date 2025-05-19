@@ -5,9 +5,9 @@
   "version": "0.1.0",
   "description": "__MSG_appDescription__",
   "icons": {
-    "16": "assets/images/logo-16.png",
-    "48": "assets/images/logo-48.png",
-    "128": "assets/images/logo-128.png"
+    "16": "assets/icons/logo-16.png",
+    "48": "assets/icons/logo-48.png",
+    "128": "assets/icons/logo-128.png"
   },
   "permissions": [],
   "background": {
@@ -16,9 +16,10 @@
   },
   "action": {
     "default_icon": {
-      "16": "assets/images/logo-16.png",
-      "48": "assets/images/logo-48.png"
-    }
+      "16": "assets/icons/logo-16.png",
+      "48": "assets/icons/logo-48.png"
+    },
+    "default_popup": "popup/popup.html"
   },
   "content_scripts": [
     {
@@ -40,7 +41,7 @@
       "resources": [
         "content/*",
         "content/assets/styles/*.css",
-        "assets/images/*",
+        "assets/icons/*",
         "docs/*"
       ],
       "matches": [
@@ -49,7 +50,7 @@
     }
   ],
   "options_ui": {
-    "page": "options/index.html",
+    "page": "options/options.html",
     "open_in_tab": true
   }
 }

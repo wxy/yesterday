@@ -1,5 +1,6 @@
 import { BaseStorageAdapter } from './base-adapter.js';
 import { StorageKey, StorageItemOptions } from '../storage-types.js';
+import { _Error } from '../../i18n/i18n.js';
 
 /**
  * Chrome存储类型
@@ -16,6 +17,25 @@ export interface ChromeStorageOptions {
   compressLargeObjects?: boolean;
   /** 压缩阀值 (字节) */
   compressionThreshold?: number;
+}
+
+/**
+ * 判断当前环境是否为 Service Worker
+ */
+const isServiceWorker = typeof window === 'undefined' && typeof self !== 'undefined';
+
+/**
+ * 获取 chrome.storage.local 或 chrome.storage.sync，自动降级
+ */
+function getChromeStorageArea(type: 'local' | 'sync') {
+  if (typeof chrome !== 'undefined' && chrome.storage) {
+    if (type === 'sync' && chrome.storage.sync) {
+      return chrome.storage.sync;
+    }
+    // 默认或降级
+    return chrome.storage.local;
+  }
+  throw new _Error('chrome_storage_unavailable', 'chrome.storage 不可用');
 }
 
 /**
@@ -39,12 +59,13 @@ export class ChromeStorageAdapter extends BaseStorageAdapter {
     this.compressionThreshold = options.compressionThreshold || 8192; // 8KB
     
     // 获取对应的存储区域
-    if (this.storageType === 'sync') {
-      this.storage = chrome.storage.sync;
-    } else if (this.storageType === 'session') {
+    if (this.storageType === 'session') {
+      if (isServiceWorker) {
+        throw new _Error('session_storage_unavailable_in_sw', 'session storage 在 Service Worker 环境中不可用');
+      }
       this.storage = chrome.storage.session;
     } else {
-      this.storage = chrome.storage.local;
+      this.storage = getChromeStorageArea(this.storageType);
     }
   }
   

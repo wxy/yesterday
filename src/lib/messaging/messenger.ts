@@ -64,7 +64,11 @@ export class Messenger {
   }
   
   private setupListeners(): void {
-    chrome.runtime.onMessage.addListener(this.handleIncomingMessage.bind(this));
+    try {
+      chrome.runtime.onMessage.addListener(this.handleIncomingMessage.bind(this));
+    } catch (error) {
+      logger.error('注册 onMessage 监听器失败:', error);
+    }
   }
   
   private handleIncomingMessage(
@@ -202,7 +206,6 @@ export class Messenger {
     await this.ensureInitialized();
 
     const { tabId, timeout = 30000, target } = options;
-    
     const message: Message<T> = {
       type,
       payload,
@@ -211,42 +214,51 @@ export class Messenger {
       target,
       timestamp: Date.now()
     };
-    
+
     logger.debug(`发送消息: ${type}`, payload);
-    
+
     const timeoutPromise = new Promise<never>((_, reject) => {
       setTimeout(() => {
         reject(new MessageTimeoutError(type, timeout));
       }, timeout);
     });
-    
+
     const sendPromise = new Promise<R>((resolve, reject) => {
       try {
         if (tabId) {
-          chrome.tabs.sendMessage(tabId, message, response => {
-            if (chrome.runtime.lastError) {
-              reject(new Error(chrome.runtime.lastError.message));
-            } else {
-              resolve(response as R);
-            }
-          });
+          if (typeof chrome !== 'undefined' && chrome.tabs && chrome.tabs.sendMessage) {
+            chrome.tabs.sendMessage(tabId, message, response => {
+              if (chrome.runtime.lastError) {
+                reject(new Error(chrome.runtime.lastError.message));
+              } else {
+                resolve(response as R);
+              }
+            });
+          } else {
+            reject(new Error('chrome.tabs.sendMessage 不可用'));
+          }
         } else {
-          chrome.runtime.sendMessage(message, response => {
-            if (chrome.runtime.lastError) {
-              reject(new Error(chrome.runtime.lastError.message));
-            } else {
-              resolve(response as R);
-            }
-          });
+          if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+            chrome.runtime.sendMessage(message, response => {
+              if (chrome.runtime.lastError) {
+                reject(new Error(chrome.runtime.lastError.message));
+              } else {
+                resolve(response as R);
+              }
+            });
+          } else {
+            reject(new Error('chrome.runtime.sendMessage 不可用'));
+          }
         }
       } catch (error) {
+        logger.error(`发送消息 "${type}" 失败:`, error);
         reject(error);
       }
     });
-    
+
     return Promise.race([sendPromise, timeoutPromise]);
   }
-  
+
   public async sendWithoutResponse<T = any>(
     type: string, 
     payload?: T, 
@@ -255,7 +267,6 @@ export class Messenger {
     await this.ensureInitialized();
 
     const { tabId, target } = options;
-    
     const message: Message<T> = {
       type,
       payload,
@@ -264,14 +275,24 @@ export class Messenger {
       target,
       timestamp: Date.now()
     };
-    
+
     logger.debug(`发送消息(无响应): ${type}`, payload);
-    
+
+    // 健壮性判断，防止 context invalidated
+    if (typeof chrome === 'undefined' || !chrome.runtime || !chrome.runtime.sendMessage) {
+      logger.warn('chrome.runtime.sendMessage 不可用，消息未发送', { type, payload });
+      return;
+    }
+
     try {
       if (tabId) {
-        chrome.tabs.sendMessage(tabId, message);
+        if (typeof chrome !== 'undefined' && chrome.tabs && chrome.tabs.sendMessage) {
+          chrome.tabs.sendMessage(tabId, message);
+        }
       } else {
-        chrome.runtime.sendMessage(message);
+        if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+          chrome.runtime.sendMessage(message);
+        }
       }
     } catch (error) {
       logger.error(`发送消息 "${type}" 失败:`, error);

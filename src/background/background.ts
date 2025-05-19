@@ -74,6 +74,79 @@ chrome.runtime.onInstalled.addListener(async (details) => {
   }
 });
 
+// 监听 content script 发送的页面访问记录消息
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message && message.type === 'PAGE_VISIT_RECORD' && (message.data || message.payload)) {
+    const data = message.data || message.payload;
+    logger.info('[内容捕获] 收到访问记录', { url: data.url, from: sender?.tab?.url });
+    handlePageVisitRecord(data);
+  }
+  // 支持 popup 查询访问记录
+  if (message && message.type === 'GET_VISITS' && (message.dayId || (message.payload && message.payload.dayId))) {
+    // 兼容 payload 结构
+    const dayId = message.dayId || (message.payload && message.payload.dayId);
+    getVisitsByDay(dayId).then(data => {
+      sendResponse({ visits: data });
+    }).catch(err => {
+      sendResponse({ visits: [], error: err?.message || String(err) });
+    });
+    return true; // 必须返回true，保持异步通道
+  }
+});
+
+const VISIT_KEEP_DAYS = 7; // 默认保留天数
+
+/**
+ * 处理页面访问记录，按日期归档存储
+ */
+async function handlePageVisitRecord(data: any) {
+  try {
+    // 以访问起始时间为准，生成 dayId
+    const date = new Date(data.visitStartTime);
+    const dayId = date.toISOString().slice(0, 10); // YYYY-MM-DD
+    const key = `visits_${dayId}`;
+    // 读取当天已有记录
+    const visits: any[] = (await storage.get<any[]>(key)) || [];
+    visits.push(data);
+    await storage.set(key, visits);
+    logger.info(`[内容捕获] 已存储访问记录`, { url: data.url, dayId });
+    // 自动清理过期数据
+    await cleanupOldVisits();
+  } catch (err) {
+    logger.error('存储页面访问记录失败', err);
+  }
+}
+
+/**
+ * 获取指定日期的访问记录
+ */
+async function getVisitsByDay(dayId: string) {
+  const key = `visits_${dayId}`;
+  return (await storage.get<any[]>(key)) || [];
+}
+
+/**
+ * 清理过期访问数据，只保留最近 VISIT_KEEP_DAYS 天
+ */
+async function cleanupOldVisits() {
+  try {
+    const allKeys: string[] = await storage.keys();
+    const visitKeys = allKeys.filter(k => k.startsWith('visits_'));
+    // 提取所有日期
+    const days = visitKeys.map(k => k.replace('visits_', ''));
+    // 按日期排序，保留最新 N 天
+    const sortedDays = days.sort().reverse();
+    const keepDays = sortedDays.slice(0, VISIT_KEEP_DAYS);
+    const removeDays = sortedDays.slice(VISIT_KEEP_DAYS);
+    for (const day of removeDays) {
+      await storage.remove(`visits_${day}`);
+      logger.info(`[内容捕获] 已清理过期访问数据`, { day });
+    }
+  } catch (err) {
+    logger.error('清理过期访问数据失败', err);
+  }
+}
+
 // 启动初始化流程
 initializeSubsystems().then(() => {
   logger.info('后台脚本初始化完成，扩展已准备就绪');

@@ -4,6 +4,7 @@ import { ChromeStorageAdapter } from './adapters/chrome-storage.js';
 import { WebStorageAdapter } from './adapters/local-storage.js';
 import { MemoryStorageAdapter } from './adapters/memory-storage.js';
 import { IndexedDBAdapter } from './adapters/indexed-db.js';
+import { _Error } from '../i18n/i18n.js';
 
 /**
  * 存储后端类型
@@ -128,13 +129,13 @@ export class StorageStrategy {
         case 'custom':
           const customAdapter = this.getBackendOptions(type)?.adapter;
           if (!customAdapter) {
-            throw new Error('未提供自定义存储适配器实例');
+            throw new _Error('storage_strategy_no_custom_adapter', '未提供自定义存储适配器实例');
           }
           adapter = customAdapter;
           break;
           
         default:
-          throw new Error(`不支持的存储后端类型: ${type}`);
+          throw new _Error('storage_strategy_unsupported_backend', '不支持的存储后端类型: {0}', type);
       }
       
       // 验证适配器可用性
@@ -204,13 +205,13 @@ export class StorageStrategy {
         case 'custom':
           const customAdapter = this.getBackendOptions(type)?.adapter;
           if (!customAdapter) {
-            throw new Error('未提供自定义存储适配器实例');
+            throw new _Error('storage_strategy_no_custom_adapter', '未提供自定义存储适配器实例');
           }
           adapter = customAdapter;
           break;
           
         default:
-          throw new Error(`不支持的存储后端类型: ${type}`);
+          throw new _Error('storage_strategy_unsupported_backend', '不支持的存储后端类型: {0}', type);
       }
       
       // 检查适配器是否可用

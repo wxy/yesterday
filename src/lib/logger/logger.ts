@@ -190,25 +190,40 @@ export class Logger {
    */
   debug(...args: any[]): void {
     if (!this.shouldLog(LogLevel.DEBUG)) return;
+    // debug 不做本地化
     console.debug(...this.format(args));
   }
 
   info(...args: any[]): void {
     if (!this.shouldLog(LogLevel.INFO)) return;
+    // info 不做本地化，直接输出
     console.info(...this.format(args));
   }
 
   warn(...args: any[]): void {
     if (!this.shouldLog(LogLevel.WARN)) return;
+    if (args.length > 0 && typeof args[0] === 'string') {
+      args[0] = _(args[0], args[0], ...args.slice(1));
+    }
     console.warn(...this.format(args));
   }
 
   error(...args: any[]): void {
     if (!this.shouldLog(LogLevel.ERROR)) return;
+    // 支持 logger.error(new _Error(...)) 或 logger.error('msg_id', ...args)
+    if (args.length > 0) {
+      if (args[0] instanceof Error && 'messageId' in args[0]) {
+        // _Error 实例，直接用 message
+        args[0] = args[0].message;
+      } else if (typeof args[0] === 'string') {
+        args[0] = _(args[0], args[0], ...args.slice(1));
+      }
+    }
     console.error(...this.format(args));
   }
 
   log(...args: any[]): void {
+    // log 不做本地化
     this.info(...args);
   }
 

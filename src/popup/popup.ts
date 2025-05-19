@@ -16,53 +16,98 @@ const openOptionsLink = document.getElementById('openOptions') as HTMLAnchorElem
 const openHelpLink = document.getElementById('openHelp') as HTMLAnchorElement;
 const versionInfoEl = document.getElementById('versionInfo') as HTMLElement;
 
+// 新增：显示访问数据按钮和展示区域
+const showTodayVisitsBtn = document.getElementById('showTodayVisitsBtn') as HTMLButtonElement;
+const showYesterdayVisitsBtn = document.getElementById('showYesterdayVisitsBtn') as HTMLButtonElement;
+const visitsRawData = document.getElementById('visitsRawData') as HTMLElement;
+
+function getDayId(offset = 0) {
+  const d = new Date();
+  d.setDate(d.getDate() + offset);
+  return d.toISOString().slice(0, 10);
+}
+
+showTodayVisitsBtn.addEventListener('click', async () => {
+  const dayId = getDayId(0);
+  const visits = await getVisits(dayId);
+  visitsRawData.textContent = JSON.stringify(visits, null, 2) || '无数据';
+});
+
+showYesterdayVisitsBtn.addEventListener('click', async () => {
+  const dayId = getDayId(-1);
+  const visits = await getVisits(dayId);
+  visitsRawData.textContent = JSON.stringify(visits, null, 2) || '无数据';
+});
+
+async function getVisits(dayId: string) {
+  try {
+    // 兼容你的消息系统，payload 作为第二参数
+    const resp = await messenger.send('GET_VISITS', { dayId });
+    return resp && resp.visits ? resp.visits : [];
+  } catch (e) {
+    logger.error('获取访问数据失败', e);
+    return [];
+  }
+}
+
+// 统计存储用量（简单统计所有键值的序列化长度总和）
+async function getStorageUsage() {
+  try {
+    const keys = await storage.keys();
+    if (!keys.length) return 0;
+    const all = await storage.getMany(keys);
+    let total = 0;
+    for (const v of Object.values(all)) {
+      if (typeof v === 'string') {
+        total += v.length;
+      } else if (typeof v === 'object' && v !== null) {
+        total += JSON.stringify(v).length;
+      }
+    }
+    return total;
+  } catch {
+    return 0;
+  }
+}
+
 // 加载当前状态
 async function loadStatus() {
   try {
     logger.debug('正在加载扩展状态');
-    
     // 获取存储使用情况
-    const usage = await chrome.storage.local.getBytesInUse(null);
+    const usage = await getStorageUsage();
     const usageFormatted = formatBytes(usage);
     storageUsageValueEl.textContent = usageFormatted;
-    
     // 获取上次同步时间
     const lastSyncData = await storage.get('lastSync');
     if (lastSyncData) {
       const lastSyncDate = new Date(lastSyncData as number);
       lastSyncValueEl.textContent = lastSyncDate.toLocaleString();
     }
-    
     // 获取版本
     const manifest = chrome.runtime.getManifest();
     versionInfoEl.textContent = `版本：${manifest.version}`;
-    
-    // 检查扩展状态
-    const status = await messenger.send('getStatus');
-    statusValueEl.textContent = status ? status : '正常';
+    // 检查扩展状态（用自定义消息系统）
+    let status = '正常';
+    try {
+      const statusResp = await messenger.send('getStatus');
+      if (statusResp && statusResp.status) status = statusResp.status;
+    } catch {}
+    statusValueEl.textContent = status;
     if (status === 'error') {
       statusValueEl.style.color = '#d93025';
     }
-    
     logger.debug('状态加载完成');
   } catch (error) {
     logger.error('加载状态失败', error);
     statusValueEl.textContent = '加载失败';
-    statusValueEl.style.color = '#d93025';
   }
 }
 
-// 格式化字节数
-function formatBytes(bytes: number, decimals = 2) {
-  if (bytes === 0) return '0 Bytes';
-  
-  const k = 1024;
-  const dm = decimals < 0 ? 0 : decimals;
-  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-  
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+function formatBytes(bytes: number) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / 1024 / 1024).toFixed(1) + ' MB';
 }
 
 // 执行主要操作
@@ -176,6 +221,9 @@ function openHelp() {
 // 初始化弹出窗口
 async function initPopup() {
   try {
+    // 初始化本地化（异步，不阻塞主流程）
+    i18n.init();
+
     // 设置国际化
     document.title = i18n.getMessage('popupTitle') || '扩展弹出窗口';
     
@@ -188,6 +236,16 @@ async function initPopup() {
     clearDataButton.addEventListener('click', clearData);
     openOptionsLink.addEventListener('click', openOptions);
     openHelpLink.addEventListener('click', openHelp);
+    showTodayVisitsBtn.addEventListener('click', async () => {
+      const dayId = getDayId(0);
+      const visits = await getVisits(dayId);
+      visitsRawData.textContent = JSON.stringify(visits, null, 2) || '无数据';
+    });
+    showYesterdayVisitsBtn.addEventListener('click', async () => {
+      const dayId = getDayId(-1);
+      const visits = await getVisits(dayId);
+      visitsRawData.textContent = JSON.stringify(visits, null, 2) || '无数据';
+    });
     
     logger.debug('弹出窗口初始化完成');
   } catch (error) {

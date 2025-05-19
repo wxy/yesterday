@@ -7,11 +7,52 @@
 
 // 为避免与 logger 循环依赖，直接使用 console 打印
 
+// 本地化消息类型
+interface LocaleMessages {
+  [key: string]: { message: string; description?: string };
+}
+
 export class I18n {
   private static instance: I18n;
-  private loadedMessages: Record<string, {message: string, description?: string}> = {};
+  private loadedMessages: LocaleMessages = {};
+  private fallbackMessages: LocaleMessages = {};
   private forcedLocale: string | null = null;
   private hasInitialized: boolean = false;
+  private defaultLocale: string = 'en';
+
+  // 构造函数不再做异步操作
+  constructor() {}
+
+  /**
+   * 尝试从 manifest.json 读取 default_locale 字段，自动设置 defaultLocale
+   */
+  private async initDefaultLocaleFromManifest(): Promise<string> {
+    if (typeof fetch === 'undefined') return this.defaultLocale;
+    try {
+      // manifest.json 路径适配 popup/background/content script
+      const manifestPaths = [
+        '/manifest.json',
+        '../manifest.json',
+        '../../manifest.json',
+        '/src/manifest.json',
+        '../src/manifest.json',
+      ];
+      for (const path of manifestPaths) {
+        try {
+          const res = await fetch(path).catch(() => null);
+          if (res && res.ok) {
+            const manifest = await res.json().catch(() => null);
+            if (manifest && manifest.default_locale) {
+              this.defaultLocale = manifest.default_locale;
+              console.debug(`[i18n-utils] Loaded default_locale from manifest.json: ${this.defaultLocale}`);
+              return this.defaultLocale;
+            }
+          }
+        } catch {}
+      }
+    } catch {}
+    return this.defaultLocale;
+  }
 
   /**
    * 获取单例实例
@@ -24,170 +65,145 @@ export class I18n {
   }
 
   /**
-   * 初始化国际化系统
-   * 适用于所有环境，包括无DOM环境（如后台脚本）
-   * 只加载消息，不应用到DOM
+   * 检测浏览器默认语言
+   */
+  private detectBrowserLocale(): string {
+    if (typeof navigator !== 'undefined' && navigator.language) {
+      return navigator.language.replace('-', '_');
+    }
+    return this.defaultLocale;
+  }
+
+  /**
+   * 加载指定 locale 的 messages.json
+   */
+  private async loadMessages(locale: string): Promise<LocaleMessages | null> {
+    if (typeof fetch === 'undefined') return null;
+    try {
+      const response = await fetch(`../_locales/${locale}/messages.json`).catch(() => null);
+      if (!response || !response.ok) return null;
+      return await response.json().catch(() => null);
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * 初始化国际化系统，支持 fallback 到默认语言
    */
   public async init(): Promise<void> {
-    // 如果已经初始化过，不再重复执行
     if (this.hasInitialized) {
       console.debug('[i18n-utils] I18n already initialized, skipping');
       return;
     }
-    
-    // 标记为已初始化
     this.hasInitialized = true;
-    
     try {
-      // 从 Chrome API 获取首选语言
+      // Chrome API 环境直接交给浏览器
       if (typeof chrome !== 'undefined' && chrome.i18n) {
-        // Chrome扩展环境中的国际化已由浏览器处理
         console.debug('[i18n-utils] Using Chrome API for localization');
         return;
       }
-      
-      // 非扩展环境、测试环境或强制本地化场景
-      // 可以从配置或存储获取首选语言
-      this.forcedLocale = 'en';
-      
-      // 加载消息文件
-      if (typeof fetch !== 'undefined') {
-        try {
-          const response = await fetch(`../_locales/${this.forcedLocale}/messages.json`);
-          
-          if (!response.ok) {
-            throw new Error(`Unable to load language file: ${response.status}`);
-          }
-          
-          this.loadedMessages = await response.json();
-          console.log(`[i18n-utils] Loaded ${Object.keys(this.loadedMessages).length} localization messages`);
-        } catch (error) {
-          console.error('[i18n-utils] Failed to load localization file:', error);
-          this.forcedLocale = null;
+      // 先确保 defaultLocale 与 manifest.json 保持一致
+      await this.initDefaultLocaleFromManifest();
+      // 检测 locale
+      this.forcedLocale = this.forcedLocale || this.detectBrowserLocale();
+      // 优先加载 forcedLocale
+      const main = await this.loadMessages(this.forcedLocale);
+      if (main) {
+        this.loadedMessages = main;
+        console.log(`[i18n-utils] Loaded ${Object.keys(main).length} messages for ${this.forcedLocale}`);
+      } else {
+        this.loadedMessages = {};
+        console.warn(`[i18n-utils] Failed to load locale ${this.forcedLocale}, fallback to default`);
+      }
+      // fallback 加载默认语言
+      if (this.forcedLocale !== this.defaultLocale) {
+        const fallback = await this.loadMessages(this.defaultLocale);
+        if (fallback) {
+          this.fallbackMessages = fallback;
         }
       }
     } catch (error) {
-      console.error('[i18n-utils] Initialization error:', error);
-      // 即使出错也维持已初始化状态，避免重复尝试
+      // 只打印简单错误信息，避免 context invalidated 报错影响主流程
+      const msg = (typeof error === 'object' && error && 'message' in error) ? (error as any).message : String(error);
+      console.warn('[i18n-utils] Initialization error:', msg);
     }
   }
 
   /**
    * 初始化本地化工具并应用到页面
-   * 集成了初始化和应用到页面两个步骤
-   * 该方法可以安全地多次调用，只会执行一次初始化和应用
    */
   public async apply(): Promise<void> {
-    // 如果已经初始化过，不再重复执行
     if (this.hasInitialized) {
       console.debug('[i18n-utils] I18n already initialized, skipping');
       return;
     }
-    
     this.hasInitialized = true;
-    
-    // 获取 URL 查询参数中的本地化设置
     try {
-      const urlParams = new URLSearchParams(window.location.search);
-      this.forcedLocale = urlParams.get('locale')?.replace('-', '_') ?? null;
-      
-      if (this.forcedLocale) {
-        console.log(`[i18n-utils] Using locale from URL: ${this.forcedLocale}`);
-        const response = await fetch(`../_locales/${this.forcedLocale}/messages.json`);
-        
-        if (!response.ok) {
-          throw new Error(`Unable to load specified language file: ${response.status}`);
-        }
-        
-        this.loadedMessages = await response.json();
-        console.log(`[i18n-utils] Loaded ${Object.keys(this.loadedMessages).length} localization messages`);
-      }
+      // URL locale 优先
+      const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+      const urlLocale = urlParams?.get('locale')?.replace('-', '_') ?? null;
+      if (urlLocale) this.forcedLocale = urlLocale;
+      await this.init();
     } catch (error) {
       console.error('[i18n-utils] Failed to load localization file:', error);
       this.forcedLocale = null;
     }
-    
-    // 如果DOM已就绪，立即应用本地化
     if (typeof document !== 'undefined') {
       if (document.readyState === 'loading') {
-        // DOM仍在加载，等待完成后应用
         document.addEventListener('DOMContentLoaded', () => this.applyToPage());
       } else {
-        // DOM已就绪，立即应用
         this.applyToPage();
       }
     }
   }
 
   /**
-   * 获取本地化字符串
+   * 获取本地化字符串，优先 loadedMessages，其次 fallbackMessages
    */
   public getMessage(messageId: string, defaultValue?: string): string {
-    // 强制本地化
-    if (this.forcedLocale && this.loadedMessages[messageId]) {
+    if (this.loadedMessages[messageId] && typeof this.loadedMessages[messageId].message === 'string') {
       return this.loadedMessages[messageId].message;
     }
-    
-    // Chrome API本地化
-    if (typeof chrome !== 'undefined' && chrome.i18n) {
-      const message = chrome.i18n.getMessage(messageId);
-      if (message) return message;
+    if (
+      this.fallbackMessages &&
+      this.fallbackMessages[messageId] &&
+      typeof this.fallbackMessages[messageId].message === 'string'
+    ) {
+      return this.fallbackMessages[messageId].message;
     }
-    
-    // 后备值
+    // 已移除 chrome.i18n.getMessage 分支，避免 context invalidated 问题
     return defaultValue || messageId;
   }
 
   /**
-   * 格式化消息，处理参数替换
-   * @param messageId 消息ID
-   * @param defaultMessage 默认消息字符串
-   * @param args 替换参数
-   * @returns 格式化后的消息
+   * 格式化消息，支持 {0}、{name} 占位符
    */
   public formatMessage(messageId: string, defaultMessage: string, ...args: any[]): string {
-    // 获取基本消息字符串
     const message = this.getMessage(messageId, defaultMessage);
-    
-    // 处理替换参数
-    let replacementArgs: any[] = [];
-    
-    // 如果有参数
-    if (args.length > 0) {
-      // 检查第一个参数是否为数组
-      if (args.length === 1 && Array.isArray(args[0])) {
-        // 如果是数组，使用数组内容作为替换参数
-        replacementArgs = args[0];
-      } else {
-        // 否则使用所有参数作为替换参数
-        replacementArgs = args;
+    if (!args.length) return message;
+    let result = message;
+    // 支持对象参数 {name: value}
+    if (args.length === 1 && typeof args[0] === 'object' && !Array.isArray(args[0])) {
+      const obj = args[0];
+      Object.keys(obj).forEach(key => {
+        result = result.replace(new RegExp('\\{' + key + '\\}', 'g'), String(obj[key]));
+      });
+    } else {
+      // 支持 {0} {1} ...
+      const arr = args.length === 1 && Array.isArray(args[0]) ? args[0] : args;
+      for (let i = 0; i < arr.length; i++) {
+        result = result.replace(new RegExp('\\{' + i + '\\}', 'g'), String(arr[i] ?? ''));
       }
     }
-    
-    // 如果没有替换参数，直接返回消息
-    if (replacementArgs.length === 0) {
-      return message;
-    }
-    
-    // 替换所有 {0}, {1}, {2} 等占位符
-    let result = message;
-    for (let i = 0; i < replacementArgs.length; i++) {
-      // 确保参数是字符串
-      const argString = String(replacementArgs[i] ?? '');
-      result = result.replace(new RegExp('\\{' + i + '\\}', 'g'), argString);
-    }
-    
     return result;
   }
 
   /**
    * 对DOM元素应用本地化
-   * 该方法安全地处理多次调用
    */
   public applyToPage(): void {
     if (typeof document === 'undefined') return;
-    
-    // 只要DOM就绪，就可以应用本地化
     // 处理页面标题
     const titleElement = document.querySelector('title[data-i18n]');
     if (titleElement) {
@@ -196,7 +212,6 @@ export class I18n {
         document.title = this.getMessage(key, document.title);
       }
     }
-    
     // 处理所有带data-i18n的元素
     const i18nElements = document.querySelectorAll('[data-i18n]');
     i18nElements.forEach(element => {
@@ -204,27 +219,33 @@ export class I18n {
       if (key) {
         const translated = this.getMessage(key);
         if (translated) {
-          this.setElementContent(element, translated);
+          // 支持 data-i18n-attr 指定属性
+          const attr = element.getAttribute('data-i18n-attr');
+          if (attr) {
+            element.setAttribute(attr, translated);
+          } else {
+            this.setElementContent(element, translated);
+          }
         }
       }
     });
-    
     console.debug('[i18n-utils] Applied localization to page');
   }
 
-  /** 
-   * 设置元素内容方法保持不变
+  /**
+   * 设置元素内容，支持更多属性
    */
   private setElementContent(element: Element, message: string): void {
     switch (element.tagName) {
-      case 'INPUT':
+      case 'INPUT': {
         const inputElem = element as HTMLInputElement;
-        if (['submit', 'button'].includes(inputElem.type)) {
+        if (["submit", "button"].includes(inputElem.type)) {
           inputElem.value = message;
         } else {
           inputElem.placeholder = message;
         }
         break;
+      }
       case 'OPTION':
         (element as HTMLOptionElement).text = message;
         break;
@@ -234,6 +255,8 @@ export class I18n {
       default:
         if (element.hasAttribute('placeholder')) {
           element.setAttribute('placeholder', message);
+        } else if (element.hasAttribute('aria-label')) {
+          element.setAttribute('aria-label', message);
         } else {
           element.textContent = message;
         }

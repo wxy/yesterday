@@ -178,5 +178,69 @@
   "appDescription": {
     "message": "A Chrome Extension built with TypeScript",
     "description": "用于manifest.json中"
+  },
+  "storage_strategy_no_custom_adapter": {
+    "message": "未提供自定义存储适配器实例",
+    "description": "从TS提取 (_Error): lib/storage/storage-strategy.ts"
+  },
+  "storage_strategy_unsupported_backend": {
+    "message": "不支持的存储后端类型: {0}",
+    "description": "从TS提取 (_Error): lib/storage/storage-strategy.ts"
+  },
+  "storage_adapter_unavailable": {
+    "message": "存储适配器不可用",
+    "description": "从TS提取 (_Error): lib/storage/storage-manager.ts"
+  },
+  "storage_adapter_unavailable_with_name": {
+    "message": "存储适配器不可用: {0}",
+    "description": "从TS提取 (_Error): lib/storage/storage-manager.ts"
+  },
+  "storage_manager_no_strategy": {
+    "message": "当前存储管理器未使用策略模式，无法切换后端",
+    "description": "从TS提取 (_Error): lib/storage/storage-manager.ts"
+  },
+  "indexeddb_unavailable": {
+    "message": "indexedDB 不可用",
+    "description": "从TS提取 (_Error): lib/storage/adapters/indexed-db.ts"
+  },
+  "indexeddb_open_failed": {
+    "message": "无法打开IndexedDB数据库",
+    "description": "从TS提取 (_Error): lib/storage/adapters/indexed-db.ts"
+  },
+  "indexeddb_init_failed": {
+    "message": "初始化IndexedDB时出错",
+    "description": "从TS提取 (_Error): lib/storage/adapters/indexed-db.ts"
+  },
+  "indexeddb_set_failed": {
+    "message": "设置IndexedDB项失败: {0}",
+    "description": "从TS提取 (_Error): lib/storage/adapters/indexed-db.ts"
+  },
+  "indexeddb_get_failed": {
+    "message": "获取IndexedDB项失败: {0}",
+    "description": "从TS提取 (_Error): lib/storage/adapters/indexed-db.ts"
+  },
+  "indexeddb_remove_failed": {
+    "message": "删除IndexedDB项失败: {0}",
+    "description": "从TS提取 (_Error): lib/storage/adapters/indexed-db.ts"
+  },
+  "indexeddb_clear_failed": {
+    "message": "清空IndexedDB存储失败",
+    "description": "从TS提取 (_Error): lib/storage/adapters/indexed-db.ts"
+  },
+  "indexeddb_keys_failed": {
+    "message": "获取IndexedDB键失败",
+    "description": "从TS提取 (_Error): lib/storage/adapters/indexed-db.ts"
+  },
+  "indexeddb_has_failed": {
+    "message": "检查IndexedDB键失败: {0}",
+    "description": "从TS提取 (_Error): lib/storage/adapters/indexed-db.ts"
+  },
+  "chrome_storage_unavailable": {
+    "message": "chrome.storage 不可用",
+    "description": "从TS提取 (_Error): lib/storage/adapters/chrome-storage.ts"
+  },
+  "session_storage_unavailable_in_sw": {
+    "message": "session storage 在 Service Worker 环境中不可用",
+    "description": "从TS提取 (_Error): lib/storage/adapters/chrome-storage.ts"
   }
 }

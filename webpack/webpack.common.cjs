@@ -40,6 +40,14 @@ module.exports = {
     new CleanWebpackPlugin({
       cleanStaleWebpackAssets: false,
     }),
+    new I18nPlugin({
+      srcDir: path.resolve(__dirname, '..', 'src'),
+      outputDir: path.resolve(__dirname, '..', 'dist', '_locales'),
+      tempOutputDir: path.resolve(__dirname, '..', 'src', '_locales'),
+      defaultLang: 'zh_CN',
+      patterns: ['**/*.ts', '**/*.tsx', '**/*.html', '**/*.htm'],
+      exclude: ['node_modules', 'dist', '_locales', '.git', 'webpack']
+    }),
     new CopyPlugin({
       patterns: [
         {
@@ -55,31 +63,27 @@ module.exports = {
           to: path.resolve(__dirname, '..', 'dist', 'assets'),
           noErrorOnMissing: true,
         },
+        {
+          from: path.resolve(__dirname, '..', 'src', '_locales'),
+          to: path.resolve(__dirname, '..', 'dist', '_locales')
+        },
       ],
     }),
     new HtmlWebpackPlugin({
       template: path.resolve(__dirname, '..', 'src', 'popup', 'popup.html'),
-      filename: 'popup.html',
+      filename: 'popup/popup.html',
       chunks: ['popup'],
       cache: false,
     }),
     new HtmlWebpackPlugin({
       template: path.resolve(__dirname, '..', 'src', 'options', 'options.html'),
-      filename: 'options.html',
+      filename: 'options/options.html',
       chunks: ['options'],
       cache: false,
     }),
-    new I18nPlugin({
-      srcDir: path.resolve(__dirname, '..', 'src'),
-      outputDir: path.resolve(__dirname, '..', 'dist', '_locales'),
-      tempOutputDir: path.resolve(__dirname, '..', 'src', '_locales'),
-      defaultLang: 'zh_CN',
-      patterns: ['**/*.ts', '**/*.tsx', '**/*.html', '**/*.htm'],
-      exclude: ['node_modules', 'dist', '_locales', '.git', 'webpack']
-    }),
   ],
   output: {
-    filename: '[name].js',
+    filename: '[name]/[name].js',
     path: path.resolve(__dirname, '..', 'dist'),
     clean: true,
   },

@@ -12,6 +12,7 @@ import {
 } from "./storage-types.js";
 import { JsonSerializer } from "./serializers/json-serializer.js";
 import { StorageStrategy, StorageBackendType } from "./storage-strategy.js";
+import { _Error } from "../i18n/i18n.js";
 
 /**
  * 存储管理器 - 提供统一的存储接口
@@ -92,12 +93,19 @@ export class StorageManager {
 
       // 确保适配器可用
       if (!this.adapter) {
-        throw new Error("存储适配器不可用");
+        throw new _Error(
+          "storage_adapter_unavailable",
+          "存储适配器不可用"
+        );
       }
 
       const isAvailable = await this.adapter.isAvailable();
       if (!isAvailable) {
-        throw new Error(`存储适配器不可用: ${this.adapter.constructor.name}`);
+        throw new _Error(
+          "storage_adapter_unavailable_with_name",
+          "存储适配器不可用: {0}",
+          this.adapter.constructor.name
+        );
       }
 
       this.initialized = true;
@@ -122,7 +130,10 @@ export class StorageManager {
    */
   async switchBackend(backendType: StorageBackendType): Promise<boolean> {
     if (!this.strategy) {
-      throw new Error("当前存储管理器未使用策略模式，无法切换后端");
+      throw new _Error(
+        "storage_manager_no_strategy",
+        "当前存储管理器未使用策略模式，无法切换后端"
+      );
     }
 
     try {

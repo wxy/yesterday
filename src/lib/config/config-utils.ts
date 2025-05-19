@@ -1,5 +1,8 @@
 import { ConfigUI } from './config-types.js';
 import { configs, ConfigSchema } from './configs.js';
+import { Logger } from '../logger/logger.js';
+
+const logger = new Logger('ConfigUtils');
 
 /**
  * 从配置定义中提取默认配置
@@ -56,8 +59,8 @@ export function validateConfigs(): void {
   // 检查路径格式
   const invalidPaths = Object.keys(configs).filter(path => !path.includes('.'));
   if (invalidPaths.length > 0) {
-    console.warn('发现无效的配置路径格式:', invalidPaths);
-    console.warn('配置路径应使用点分隔符，例如: "section.key"');
+    logger.warn('config_invalid_path_format', '发现无效的配置路径格式: {0}', invalidPaths.join(','));
+    logger.warn('config_path_should_use_dot', '配置路径应使用点分隔符，例如: "section.key"');
   }
   
   // 检查路径分组
@@ -84,12 +87,12 @@ export function validateConfigs(): void {
     // 检查选择类控件的选项
     if ((ui.type === 'select' || ui.type === 'radio') && 
         (!('options' in ui) || !ui.options || ui.options.length === 0)) {
-      console.warn(`配置项 "${path}" 的选项列表为空`);
+      logger.warn('config_option_list_empty', '配置项 "{0}" 的选项列表为空', path);
     }
   }
   
   if (missingUIFields.length > 0) {
-    console.warn('发现缺少UI字段的配置项:', missingUIFields);
+    logger.warn('config_missing_ui_fields', '发现缺少UI字段的配置项: {0}', missingUIFields.join(','));
   }
   
   // 输出总览

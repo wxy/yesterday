@@ -5,12 +5,22 @@
 import { BaseStorageAdapter } from './base-adapter.js';
 import { StorageKey, StorageAdapter } from '../storage-types.js';
 import { Logger } from '../../logger/logger.js';
+import { _Error } from '../../i18n/i18n.js';
 
 interface IndexedDBOptions {
   dbName?: string;
   storeName?: string;
   version?: number;
 }
+
+// 获取全局 indexedDB 对象，兼容 window/self/globalThis
+const getIndexedDB = () => {
+  if (typeof indexedDB !== 'undefined') return indexedDB;
+  if (typeof window !== 'undefined' && window.indexedDB) return window.indexedDB;
+  if (typeof self !== 'undefined' && self.indexedDB) return self.indexedDB;
+  if (typeof globalThis !== 'undefined' && globalThis.indexedDB) return globalThis.indexedDB;
+  throw new _Error('indexeddb_unavailable', 'indexedDB 不可用');
+};
 
 export class IndexedDBAdapter extends BaseStorageAdapter implements StorageAdapter {
   private dbName: string;
@@ -37,7 +47,8 @@ export class IndexedDBAdapter extends BaseStorageAdapter implements StorageAdapt
     return new Promise<boolean>((resolve) => {
       try {
         // 检查IndexedDB是否存在
-        if (!window.indexedDB) {
+        const indexedDB = getIndexedDB();
+        if (!indexedDB) {
           this.logger.warn('IndexedDB在当前环境不可用');
           resolve(false);
           return;
@@ -79,11 +90,12 @@ export class IndexedDBAdapter extends BaseStorageAdapter implements StorageAdapt
 
     this.dbReadyPromise = new Promise<IDBDatabase>((resolve, reject) => {
       try {
+        const indexedDB = getIndexedDB();
         const request = indexedDB.open(this.dbName, this.version);
 
         request.onerror = (event) => {
           this.logger.error('打开IndexedDB失败', (event.target as any).error);
-          reject(new Error('无法打开IndexedDB数据库'));
+          reject(new _Error('indexeddb_open_failed', '无法打开IndexedDB数据库'));
         };
 
         request.onupgradeneeded = (event) => {
@@ -103,7 +115,7 @@ export class IndexedDBAdapter extends BaseStorageAdapter implements StorageAdapt
         };
       } catch (error) {
         this.logger.error('初始化IndexedDB时出错', error);
-        reject(error);
+        reject(new _Error('indexeddb_init_failed', '初始化IndexedDB时出错'));
       }
     });
 
@@ -137,12 +149,12 @@ export class IndexedDBAdapter extends BaseStorageAdapter implements StorageAdapt
         };
 
         request.onerror = (event) => {
-          this.logger.error(`设置IndexedDB项失败: ${key}`, (event.target as any).error);
-          reject(new Error(`设置IndexedDB项失败: ${key}`));
+          this.logger.error(`设置IndexedDB项失败: {0}`, key, (event.target as any).error);
+          reject(new _Error('indexeddb_set_failed', '设置IndexedDB项失败: {0}', key));
         };
       } catch (error) {
-        this.logger.error(`设置IndexedDB项失败: ${key}`, error);
-        reject(error);
+        this.logger.error(`设置IndexedDB项失败: {0}`, key, error);
+        reject(new _Error('indexeddb_set_failed', '设置IndexedDB项失败: {0}', key));
       }
     });
   }
@@ -162,12 +174,12 @@ export class IndexedDBAdapter extends BaseStorageAdapter implements StorageAdapt
         };
 
         request.onerror = (event) => {
-          this.logger.error(`获取IndexedDB项失败: ${key}`, (event.target as any).error);
-          reject(new Error(`获取IndexedDB项失败: ${key}`));
+          this.logger.error(`获取IndexedDB项失败: {0}`, key, (event.target as any).error);
+          reject(new _Error('indexeddb_get_failed', '获取IndexedDB项失败: {0}', key));
         };
       } catch (error) {
-        this.logger.error(`获取IndexedDB项失败: ${key}`, error);
-        reject(error);
+        this.logger.error(`获取IndexedDB项失败: {0}`, key, error);
+        reject(new _Error('indexeddb_get_failed', '获取IndexedDB项失败: {0}', key));
       }
     });
   }
@@ -188,12 +200,12 @@ export class IndexedDBAdapter extends BaseStorageAdapter implements StorageAdapt
         };
 
         request.onerror = (event) => {
-          this.logger.error(`删除IndexedDB项失败: ${key}`, (event.target as any).error);
-          reject(new Error(`删除IndexedDB项失败: ${key}`));
+          this.logger.error(`删除IndexedDB项失败: {0}`, key, (event.target as any).error);
+          reject(new _Error('indexeddb_remove_failed', '删除IndexedDB项失败: {0}', key));
         };
       } catch (error) {
-        this.logger.error(`删除IndexedDB项失败: ${key}`, error);
-        reject(error);
+        this.logger.error(`删除IndexedDB项失败: {0}`, key, error);
+        reject(new _Error('indexeddb_remove_failed', '删除IndexedDB项失败: {0}', key));
       }
     });
   }
@@ -214,11 +226,11 @@ export class IndexedDBAdapter extends BaseStorageAdapter implements StorageAdapt
 
         request.onerror = (event) => {
           this.logger.error('清空IndexedDB存储失败', (event.target as any).error);
-          reject(new Error('清空IndexedDB存储失败'));
+          reject(new _Error('indexeddb_clear_failed', '清空IndexedDB存储失败'));
         };
       } catch (error) {
         this.logger.error('清空IndexedDB存储失败', error);
-        reject(error);
+        reject(new _Error('indexeddb_clear_failed', '清空IndexedDB存储失败'));
       }
     });
   }
@@ -238,11 +250,11 @@ export class IndexedDBAdapter extends BaseStorageAdapter implements StorageAdapt
 
         request.onerror = (event) => {
           this.logger.error('获取IndexedDB键失败', (event.target as any).error);
-          reject(new Error('获取IndexedDB键失败'));
+          reject(new _Error('indexeddb_keys_failed', '获取IndexedDB键失败'));
         };
       } catch (error) {
         this.logger.error('获取IndexedDB键失败', error);
-        reject(error);
+        reject(new _Error('indexeddb_keys_failed', '获取IndexedDB键失败'));
       }
     });
   }
@@ -262,12 +274,12 @@ export class IndexedDBAdapter extends BaseStorageAdapter implements StorageAdapt
         };
 
         request.onerror = (event) => {
-          this.logger.error(`检查IndexedDB键失败: ${key}`, (event.target as any).error);
-          reject(new Error(`检查IndexedDB键失败: ${key}`));
+          this.logger.error('检查IndexedDB键失败: {0}', key, (event.target as any).error);
+          reject(new _Error('indexeddb_has_failed', '检查IndexedDB键失败: {0}', key));
         };
       } catch (error) {
-        this.logger.error(`检查IndexedDB键失败: ${key}`, error);
-        reject(error);
+        this.logger.error('检查IndexedDB键失败: {0}', key, error);
+        reject(new _Error('indexeddb_has_failed', '检查IndexedDB键失败: {0}', key));
       }
     });
   }
