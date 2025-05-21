@@ -238,6 +238,101 @@ export class ConfigUIRenderer {
           metadata as ConfigUI.RadioUIMetadata,
           value
         );
+      case "password":
+        return this.createPasswordInput(
+          path,
+          metadata as ConfigUI.PasswordUIMetadata,
+          value
+        );
+      case "group": {
+        const groupMeta = metadata as any;
+        const container = document.createElement("fieldset");
+        container.className = "option-group option-group-card" + (path.split(".").length > 1 ? " option-group-nested" : "");
+        if (groupMeta.label) {
+          const legend = document.createElement("legend");
+          legend.className = "option-group-legend";
+          legend.textContent = groupMeta.label;
+          container.appendChild(legend);
+        }
+        if (groupMeta.description) {
+          const desc = document.createElement("div");
+          desc.className = "option-group-description";
+          desc.textContent = groupMeta.description;
+          container.appendChild(desc);
+        }
+        const rowList: HTMLElement[] = [];
+        const fieldMetas = Array.isArray(groupMeta.fields) ? groupMeta.fields : [];
+        // group 内采用两栏式布局（label+控件），但 fieldset 外不再有 label
+        for (let i = 0; i < fieldMetas.length; i++) {
+          const field = fieldMetas[i];
+          const fieldPath = path ? `${path}.${field.key}` : field.key;
+          const fieldValue = value ? value[field.key] : undefined;
+          const fieldMeta = { ...field, section: groupMeta.section || "", order: field.order };
+          const row = document.createElement("div");
+          row.className = "option-row option-row-group-field option-row-group-flex";
+          // group 内显示 label+控件
+          if (fieldMeta.label) {
+            const label = document.createElement("div");
+            label.className = "option-label option-label-group";
+            label.textContent = fieldMeta.label;
+            row.appendChild(label);
+          }
+          const control = document.createElement("div");
+          control.className = "option-control option-control-group";
+          const input = this.createControl(fieldPath, fieldMeta, fieldValue);
+          control.appendChild(input);
+          // 字段自身 description
+          if (fieldMeta.description) {
+            const description = document.createElement("div");
+            description.className = "option-description option-description-group";
+            description.textContent = fieldMeta.description;
+            control.appendChild(description);
+          }
+          row.appendChild(control);
+          // 条件联动：初始显示/隐藏
+          if (fieldMeta.condition) {
+            const visible = this.evaluateCondition(fieldMeta.condition, { ...value, ...{ [path]: value } });
+            row.style.display = visible ? '' : 'none';
+          }
+          container.appendChild(row);
+          rowList.push(row);
+        }
+        // 事件联动：只要任一字段变动，重新评估所有字段的显示/隐藏
+        container.addEventListener('input', () => {
+          // 收集当前 group 内所有字段的值
+          const groupInputs = container.querySelectorAll('[data-config-path^="' + path + '."]');
+          const newGroupValue: any = {};
+          groupInputs.forEach((el: any) => {
+            const p = el.getAttribute("data-config-path");
+            if (p) {
+              const k = p.slice(path.length + 1);
+              if (el instanceof HTMLInputElement) {
+                if (el.type === 'checkbox') {
+                  newGroupValue[k] = el.checked;
+                } else if (el.type === 'radio') {
+                  if (el.checked) newGroupValue[k] = el.value;
+                } else {
+                  newGroupValue[k] = el.value;
+                }
+              } else if (el instanceof HTMLSelectElement) {
+                newGroupValue[k] = el.value;
+              } else if (el instanceof HTMLTextAreaElement) {
+                newGroupValue[k] = el.value;
+              }
+            }
+          });
+          rowList.forEach((rowEl, idx) => {
+            const meta = fieldMetas[idx];
+            if (meta && meta.condition) {
+              const visible = this.evaluateCondition(meta.condition, { ...newGroupValue, ...{ [path]: newGroupValue } });
+              (rowEl as HTMLElement).style.display = visible ? '' : 'none';
+            } else {
+              (rowEl as HTMLElement).style.display = '';
+            }
+          });
+        });
+        return container;
+      }
       default:
         this.logger.warn(`未知的控件类型: ${(metadata as any).type}`);
         const fallback = document.createElement("div");
@@ -394,6 +489,23 @@ export class ConfigUIRenderer {
     }
 
     return container;
+  }
+
+  /**
+   * 创建密码输入框
+   */
+  private createPasswordInput(
+    path: string,
+    metadata: ConfigUI.PasswordUIMetadata,
+    value: string
+  ): HTMLInputElement {
+    const input = document.createElement("input");
+    input.type = "password";
+    input.id = `config-${path.replace(/\./g, "-")}`;
+    input.setAttribute("data-config-path", path);
+    if (metadata.placeholder) input.placeholder = metadata.placeholder;
+    input.value = value || "";
+    return input;
   }
 
   /**

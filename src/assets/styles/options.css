@@ -1,0 +1,79 @@
+/* 选项页 group 分组美化样式 */
+
+.option-group-card {
+  border: 1.5px solid #e0e4ea;
+  border-radius: 10px;
+  background: #f8fafd;
+  box-shadow: 0 2px 8px 0 rgba(60, 80, 120, 0.04);
+  margin: 18px 0 24px 0;
+  padding: 18px 22px 14px 22px;
+  position: relative;
+  min-width: 0;
+  transition: box-shadow 0.2s;
+}
+.option-group-card:hover {
+  box-shadow: 0 4px 16px 0 rgba(60, 80, 120, 0.10);
+}
+.option-group-nested {
+  margin-left: 24px;
+  background: #f3f6fa;
+  border-color: #d2d8e6;
+}
+.option-group-legend {
+  font-size: 1.13em;
+  font-weight: 600;
+  color: #2a3550;
+  margin-bottom: 6px;
+  padding: 0 6px;
+  letter-spacing: 0.01em;
+}
+.option-group-description {
+  color: #6b7a99;
+  font-size: 0.98em;
+  margin-bottom: 10px;
+  margin-top: -2px;
+  padding-left: 2px;
+}
+.option-row-group-field {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 8px;
+  gap: 10px;
+}
+.option-row-group-flex {
+  flex-wrap: wrap;
+}
+.option-label-group {
+  min-width: 110px;
+  max-width: 180px;
+  font-weight: 500;
+  color: #3a4666;
+  padding-top: 2px;
+  flex-shrink: 0;
+  text-align: right;
+  margin-right: 8px;
+}
+.option-control-group {
+  flex: 1 1 0%;
+  min-width: 0;
+}
+.option-description-group {
+  color: #8a98b8;
+  font-size: 0.93em;
+  margin-top: 2px;
+  margin-bottom: 0;
+}
+@media (max-width: 600px) {
+  .option-group-card {
+    padding: 10px 6px 8px 6px;
+  }
+  .option-row-group-field {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .option-label-group {
+    text-align: left;
+    margin-bottom: 2px;
+    margin-right: 0;
+  }
+}

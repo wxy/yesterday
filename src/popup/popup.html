@@ -142,7 +142,23 @@
     <div class="action-section">
       <button id="showTodayVisitsBtn" class="secondary">查看今日访问数据</button>
       <button id="showYesterdayVisitsBtn" class="secondary">查看昨日访问数据</button>
-      <pre id="visitsRawData" style="max-height:200px;overflow:auto;background:#f8f9fa;border-radius:4px;padding:8px;margin-top:8px;font-size:12px;"></pre>
+      <div style="display: flex; gap: 8px; align-items: flex-start;">
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:600;font-size:13px;margin-bottom:2px;">访问数据</div>
+          <pre id="visitsRawData" style="max-height:200px;overflow:auto;background:#f8f9fa;border-radius:4px;padding:8px;margin-top:2px;font-size:12px;"></pre>
+        </div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:600;font-size:13px;margin-bottom:2px;">AI 分析结果</div>
+          <pre id="aiAnalysisRawData" style="max-height:200px;overflow:auto;background:#f3f7fa;border-radius:4px;padding:8px;margin-top:2px;font-size:12px;"></pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI 对话测试区域 -->
+    <div class="action-section" id="aiTestSection">
+      <textarea id="aiTestInput" placeholder="输入你的问题（如：你好，介绍一下你自己）" style="width:100%;min-height:48px;margin:8px 0 4px 0;"></textarea>
+      <button id="aiTestBtn" style="margin-bottom:6px;">AI 对话测试</button>
+      <pre id="aiTestResult" style="background:#f8f9fa;border-radius:4px;padding:8px;font-size:13px;min-height:32px;margin-top:4px;white-space:pre-wrap;"></pre>
     </div>
     
     <div class="footer">
@@ -150,7 +166,5 @@
       <a href="#" id="openHelp">帮助</a>
     </div>
   </div>
-  
-  <script src="popup.js"></script>
 </body>
 </html>

@@ -19,15 +19,14 @@ export function getDefaultConfig(): ConfigSchema {
 }
 
 /**
- * 从配置定义中提取UI元数据
+ * 从配置定义中提取UI元数据（保留 group 类型结构，不递归扁平化 fields）
  */
 export function getConfigUIMetadata(): Record<string, ConfigUI.UIMetadata> {
   const metadata: Record<string, ConfigUI.UIMetadata> = {};
-  
   for (const path in configs) {
-    metadata[path] = configs[path].ui;
+    // 只保留顶层配置项，group 类型直接输出 group 元数据
+    metadata[path] = { ...configs[path].ui, path };
   }
-  
   return metadata;
 }
 

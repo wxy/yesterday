@@ -230,6 +230,34 @@ export const configs: Record<string, ConfigDefinitionItem> = {
       converter: (seconds: number) => seconds * 1000, // 转换为毫秒
       reverter: (ms: number) => Math.floor(ms / 1000) // 毫秒转换为秒
     } as ConfigUI.NumberUIMetadata
+  },
+
+  // ===== AI 设置 =====
+  'aiServiceConfig': {
+    type: Object as unknown as () => {
+      serviceId: string;
+      model?: string;
+      url?: string;
+      apiKey?: string;
+      [key: string]: any;
+    },
+    default: { serviceId: 'ollama' },
+    ui: {
+      type: 'group',
+      label: 'AI 服务配置',
+      description: '配置 AI 服务类型、模型、API 地址等。\n\n如选择 Ollama 本地，仅需选择服务类型，模型名称、API 地址、API Key 可留空。',
+      section: 'AI 设置',
+      fields: [
+        { key: 'serviceId', type: 'select', label: '服务类型', options: [
+          { value: 'ollama', label: 'Ollama 本地' },
+          { value: 'openai', label: 'OpenAI' },
+          { value: 'other', label: '其它' }
+        ] },
+        { key: 'model', type: 'text', label: '模型名称', description: '如 llama2, gpt-3.5-turbo 等', condition: "aiServiceConfig.serviceId !== 'ollama'" },
+        { key: 'url', type: 'text', label: 'API 地址', description: '自定义服务地址（如本地或企业 API）', condition: "aiServiceConfig.serviceId !== 'ollama'" },
+        { key: 'apiKey', type: 'password', label: 'API Key', description: '如需鉴权请填写', condition: "aiServiceConfig.serviceId !== 'ollama'" }
+      ]
+    } as any // 兼容 group 类型
   }
 };
 

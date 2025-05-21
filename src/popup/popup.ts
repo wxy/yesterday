@@ -2,6 +2,7 @@ import { Logger } from '../lib/logger/logger.js';
 import { storage } from '../lib/storage/index.js';
 import { i18n } from '../lib/i18n/i18n.js';
 import { messenger } from '../lib/messaging/messenger.js';
+import '../lib/ai/ollama-service.js';
 
 const logger = new Logger('Popup');
 
@@ -20,24 +21,13 @@ const versionInfoEl = document.getElementById('versionInfo') as HTMLElement;
 const showTodayVisitsBtn = document.getElementById('showTodayVisitsBtn') as HTMLButtonElement;
 const showYesterdayVisitsBtn = document.getElementById('showYesterdayVisitsBtn') as HTMLButtonElement;
 const visitsRawData = document.getElementById('visitsRawData') as HTMLElement;
+const aiAnalysisRawData = document.getElementById('aiAnalysisRawData') as HTMLElement;
 
 function getDayId(offset = 0) {
   const d = new Date();
   d.setDate(d.getDate() + offset);
   return d.toISOString().slice(0, 10);
 }
-
-showTodayVisitsBtn.addEventListener('click', async () => {
-  const dayId = getDayId(0);
-  const visits = await getVisits(dayId);
-  visitsRawData.textContent = JSON.stringify(visits, null, 2) || '无数据';
-});
-
-showYesterdayVisitsBtn.addEventListener('click', async () => {
-  const dayId = getDayId(-1);
-  const visits = await getVisits(dayId);
-  visitsRawData.textContent = JSON.stringify(visits, null, 2) || '无数据';
-});
 
 async function getVisits(dayId: string) {
   try {
@@ -49,6 +39,44 @@ async function getVisits(dayId: string) {
     return [];
   }
 }
+
+async function getAiAnalysis(dayId: string) {
+  try {
+    // 兼容你的消息系统，payload 作为第二参数
+    const key = `ai_analysis_${dayId}`;
+    // 直接用 storage.get 也可，但保持一致用 messenger
+    const resp = await messenger.send('GET_AI_ANALYSIS', { dayId });
+    return resp && resp.analysis ? resp.analysis : [];
+  } catch (e) {
+    logger.error('获取AI分析结果失败', e);
+    return [];
+  }
+}
+
+// 重写按钮事件，合并展示
+showTodayVisitsBtn.addEventListener('click', async () => {
+  const dayId = getDayId(0);
+  visitsRawData.textContent = '加载中...';
+  aiAnalysisRawData.textContent = '加载中...';
+  const [visits, analysis] = await Promise.all([
+    getVisits(dayId),
+    getAiAnalysis(dayId)
+  ]);
+  visitsRawData.textContent = JSON.stringify(visits, null, 2) || '无数据';
+  aiAnalysisRawData.textContent = JSON.stringify(analysis, null, 2) || '无数据';
+});
+
+showYesterdayVisitsBtn.addEventListener('click', async () => {
+  const dayId = getDayId(-1);
+  visitsRawData.textContent = '加载中...';
+  aiAnalysisRawData.textContent = '加载中...';
+  const [visits, analysis] = await Promise.all([
+    getVisits(dayId),
+    getAiAnalysis(dayId)
+  ]);
+  visitsRawData.textContent = JSON.stringify(visits, null, 2) || '无数据';
+  aiAnalysisRawData.textContent = JSON.stringify(analysis, null, 2) || '无数据';
+});
 
 // 统计存储用量（简单统计所有键值的序列化长度总和）
 async function getStorageUsage() {
@@ -218,6 +246,53 @@ function openHelp() {
   chrome.tabs.create({ url: 'https://github.com/yourusername/your-extension/wiki' });
 }
 
+// ====== AI 对话测试区域事件绑定 ======
+document.addEventListener('DOMContentLoaded', () => {
+  const aiTestBtn = document.getElementById('aiTestBtn') as HTMLButtonElement;
+  const aiTestInput = document.getElementById('aiTestInput') as HTMLTextAreaElement;
+  const aiTestResult = document.getElementById('aiTestResult') as HTMLElement;
+
+  if (aiTestBtn && aiTestInput && aiTestResult) {
+    aiTestBtn.addEventListener('click', async () => {
+      aiTestBtn.disabled = true;
+      aiTestBtn.textContent = '请求中...';
+      aiTestResult.textContent = '';
+      try {
+        const userInput = aiTestInput.value.trim();
+        if (!userInput) {
+          aiTestResult.textContent = '请输入内容';
+          return;
+        }
+        // 通过后台代理 AI 请求
+        const resp = await messenger.send('AI_CHAT_REQUEST', {
+          __aiProxy: true,
+          messages: [
+            { role: 'user', content: userInput }
+          ]
+        });
+        if (resp.success) {
+          aiTestResult.textContent = resp.data.text || '[无返回内容]';
+        } else {
+          let msg = resp.error || '[请求失败]';
+          if (resp.fullResponse) {
+            msg += '\n--- 响应内容 ---\n' + resp.fullResponse;
+          }
+          aiTestResult.textContent = '请求失败：' + msg;
+        }
+      } catch (e: any) {
+        let msg = e?.message || e;
+        if (e && typeof e === 'object' && (e.fullResponse || e.responseText)) {
+          msg += '\n--- 响应内容 ---\n' + (e.fullResponse || e.responseText);
+        }
+        aiTestResult.textContent = '请求失败：' + msg;
+      } finally {
+        aiTestBtn.disabled = false;
+        aiTestBtn.textContent = 'AI 对话测试';
+      }
+    });
+  }
+});
+
 // 初始化弹出窗口
 async function initPopup() {
   try {
@@ -238,15 +313,27 @@ async function initPopup() {
     openHelpLink.addEventListener('click', openHelp);
     showTodayVisitsBtn.addEventListener('click', async () => {
       const dayId = getDayId(0);
-      const visits = await getVisits(dayId);
+      visitsRawData.textContent = '加载中...';
+      aiAnalysisRawData.textContent = '加载中...';
+      const [visits, analysis] = await Promise.all([
+        getVisits(dayId),
+        getAiAnalysis(dayId)
+      ]);
       visitsRawData.textContent = JSON.stringify(visits, null, 2) || '无数据';
+      aiAnalysisRawData.textContent = JSON.stringify(analysis, null, 2) || '无数据';
     });
     showYesterdayVisitsBtn.addEventListener('click', async () => {
       const dayId = getDayId(-1);
-      const visits = await getVisits(dayId);
+      visitsRawData.textContent = '加载中...';
+      aiAnalysisRawData.textContent = '加载中...';
+      const [visits, analysis] = await Promise.all([
+        getVisits(dayId),
+        getAiAnalysis(dayId)
+      ]);
       visitsRawData.textContent = JSON.stringify(visits, null, 2) || '无数据';
+      aiAnalysisRawData.textContent = JSON.stringify(analysis, null, 2) || '无数据';
     });
-    
+
     logger.debug('弹出窗口初始化完成');
   } catch (error) {
     logger.error('初始化弹出窗口失败', error);

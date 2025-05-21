@@ -3,7 +3,7 @@
  */
 export namespace ConfigUI {
   // UI控件类型
-  export type ControlType = 'checkbox' | 'select' | 'number' | 'text' | 'color' | 'radio';
+  export type ControlType = 'checkbox' | 'select' | 'number' | 'text' | 'color' | 'radio' | 'group' | 'password';
   
   // 基础UI元数据
   export interface BaseUIMetadata {
@@ -57,6 +57,18 @@ export namespace ConfigUI {
     options: Array<{ value: string; label: string }>;
     inline?: boolean; // 是否内联显示
   }
+
+  // group 分组表单特定属性
+  export interface GroupUIMetadata extends BaseUIMetadata {
+    type: 'group';
+    fields: Array<any>; // 字段数组，递归支持 group
+  }
+
+  // 密码输入框特定属性
+  export interface PasswordUIMetadata extends BaseUIMetadata {
+    type: 'password';
+    placeholder?: string;
+  }
   
   // 所有UI元数据类型的联合
   export type UIMetadata = 
@@ -65,7 +77,9 @@ export namespace ConfigUI {
     | NumberUIMetadata 
     | TextUIMetadata
     | ColorUIMetadata
-    | RadioUIMetadata;
+    | RadioUIMetadata
+    | GroupUIMetadata
+    | PasswordUIMetadata;
   
   // 配置项类型（值+UI元数据）
   export interface ConfigItem<T> {
