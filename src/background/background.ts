@@ -122,6 +122,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     handlePageVisitRecord(visitRecord);
     // 2. 调用统一 AI 接口
     const analyzeStart = Date.now();
+    onProcessingStart(); // 新增：AI 分析开始，切换图标动画
     chat([
       { role: 'system', content: '请对以下网页内容进行简要总结和主题提取。' },
       { role: 'user', content: message.content }
@@ -147,16 +148,125 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         storage.set(key, arr);
       });
       sendResponse({ ok: true, aiContent: aiResult.aiResult, response: data, analyzeDuration });
+      onProcessingEnd(); // 新增：AI 分析结束，恢复图标
+      setTip(true); // 分析成功后显示“有提示”
     })
     .catch((e: any) => {
       logger.error('[AI] fetch 异常', e);
       // 失败时也更新访问记录，便于 UI 反馈
       updateVisitAiResult(message.url, visitStartTime, `AI 分析失败：${e?.message || e}`, 0);
       sendResponse({ ok: false, error: e?.message || e });
+      onProcessingEnd(); // 新增：AI 分析失败也恢复图标
+      setTip(true); // 分析失败也显示“有提示”
     });
     return true; // 异步响应
   }
+  if (message && message.type === 'CLEAR_ICON_STATUS') {
+    hasTip = false;
+    hasReport = false;
+    hasError = false;
+    processingCount = 0;
+    updateIcon();
+    sendResponse && sendResponse({ ok: true });
+    return;
+  }
 });
+
+// 图标状态变量
+let processingCount = 0;
+let hasTip = false;
+let hasReport = false;
+let hasError = false;
+let processingInterval: any = null; // 修正类型为 any 以兼容 setInterval
+let processingFrame = 0;
+const processingFrames = [
+  { "16": "../assets/icons/logo-default-16.png", "48": "../assets/icons/logo-default-48.png" },
+  { "16": "../assets/icons/logo-blink-16.png", "48": "../assets/icons/logo-blink-48.png" }
+];
+
+function updateIcon() {
+  if (hasError) {
+    chrome.action.setIcon({
+      path: { "16": "../assets/icons/logo-warn-16.png", "48": "../assets/icons/logo-warn-48.png" }
+    });
+    stopProcessingAnimation();
+    return;
+  }
+  if (processingCount > 0) {
+    startProcessingAnimation();
+    return;
+  }
+  if (hasTip) {
+    chrome.action.setIcon({
+      path: { "16": "../assets/icons/logo-tips-16.png", "48": "../assets/icons/logo-tips-48.png" }
+    });
+    stopProcessingAnimation();
+    return;
+  }
+  if (hasReport) {
+    chrome.action.setIcon({
+      path: { "16": "../assets/icons/logo-report-16.png", "48": "../assets/icons/logo-report-48.png" }
+    });
+    stopProcessingAnimation();
+    return;
+  }
+  chrome.action.setIcon({
+    path: { "16": "../assets/icons/logo-default-16.png", "48": "../assets/icons/logo-default-48.png" }
+  });
+  stopProcessingAnimation();
+}
+
+function startProcessingAnimation() {
+  if (processingInterval !== null) return;
+  processingInterval = setInterval(() => {
+    chrome.action.setIcon({ path: processingFrames[processingFrame % processingFrames.length] });
+    processingFrame++;
+  }, 400);
+}
+
+function stopProcessingAnimation() {
+  if (processingInterval !== null) {
+    clearInterval(processingInterval);
+    processingInterval = null;
+    processingFrame = 0;
+  }
+}
+
+export function onProcessingStart() {
+  processingCount++;
+  updateIcon();
+}
+
+export function onProcessingEnd() {
+  processingCount = Math.max(0, processingCount - 1);
+  updateIcon();
+}
+
+export function setTip(flag: boolean) {
+  hasTip = flag;
+  updateIcon();
+}
+
+export function setReport(flag: boolean) {
+  hasReport = flag;
+  updateIcon();
+}
+
+export function setError(flag: boolean) {
+  hasError = flag;
+  updateIcon();
+}
+
+chrome.action.onClicked.addListener(() => {
+  hasTip = false;
+  hasReport = false;
+  hasError = false;
+  processingCount = 0;
+  updateIcon();
+});
+
+// 可选：初始化时刷新一次图标
+updateIcon();
 
 const VISIT_KEEP_DAYS = 7; // 默认保留天数
 

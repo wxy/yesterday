@@ -5,9 +5,9 @@
   "version": "0.1.0",
   "description": "__MSG_appDescription__",
   "icons": {
-    "16": "assets/icons/logo-16.png",
-    "48": "assets/icons/logo-48.png",
-    "128": "assets/icons/logo-128.png"
+    "16": "assets/icons/logo-default-16.png",
+    "48": "assets/icons/logo-default-48.png",
+    "128": "assets/icons/logo-default.png"
   },
   "permissions": [
     "storage",
@@ -21,8 +21,8 @@
   },
   "action": {
     "default_icon": {
-      "16": "assets/icons/logo-16.png",
-      "48": "assets/icons/logo-48.png"
+      "16": "assets/icons/logo-default-16.png",
+      "48": "assets/icons/logo-default-48.png"
     },
     "default_popup": "popup/popup.html"
   },

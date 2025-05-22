@@ -311,6 +311,9 @@ function openHelp() {
 
 // ====== AI 对话测试区域事件绑定 ======
 document.addEventListener('DOMContentLoaded', () => {
+  // 打开弹窗时自动清除图标状态
+  chrome.runtime.sendMessage({ type: 'CLEAR_ICON_STATUS' });
+
   const aiTestBtn = document.getElementById('aiTestBtn') as HTMLButtonElement;
   const aiTestInput = document.getElementById('aiTestInput') as HTMLTextAreaElement;
   const aiTestResult = document.getElementById('aiTestResult') as HTMLElement;
