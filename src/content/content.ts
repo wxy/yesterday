@@ -30,3 +30,37 @@ window.addEventListener('beforeunload', () => {
     chrome.runtime.sendMessage({ type: 'PAGE_VISIT_RECORD', payload: pageInfo });
   }
 });
+
+// 内容脚本：采集页面内容并通过后台进行本地 Ollama AI 分析
+(function() {
+  function getPageContent() {
+    const title = document.title;
+    const body = document.body ? document.body.innerText.slice(0, 2000) : '';
+    return `${title}\n${body}`;
+  }
+
+  async function main() {
+    try {
+      console.log('[Yesterday] main 启动');
+      const pageContent = getPageContent();
+      console.log('[Yesterday] 页面内容采集:', pageContent.slice(0, 200));
+      chrome.runtime.sendMessage({
+        type: 'AI_ANALYZE_REQUEST',
+        content: pageContent,
+        url: location.href,
+        title: document.title
+      }, (resp) => {
+        console.log('[Yesterday] AI 分析结果:', resp);
+        // 可在此处处理 resp.aiContent
+      });
+    } catch (err) {
+      console.error('[Yesterday] main 执行异常:', err);
+    }
+  }
+
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    setTimeout(main, 1000);
+  } else {
+    window.addEventListener('DOMContentLoaded', () => setTimeout(main, 1000));
+  }
+})();

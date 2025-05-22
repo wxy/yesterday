@@ -67,6 +67,10 @@ module.exports = {
           from: path.resolve(__dirname, '..', 'src', '_locales'),
           to: path.resolve(__dirname, '..', 'dist', '_locales')
         },
+        {
+          from: path.resolve(__dirname, '..', 'src', 'dnr-rules.json'),
+          to: path.resolve(__dirname, '..', 'dist', 'dnr-rules.json')
+        },
       ],
     }),
     new HtmlWebpackPlugin({

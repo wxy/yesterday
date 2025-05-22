@@ -9,7 +9,12 @@
     "48": "assets/icons/logo-48.png",
     "128": "assets/icons/logo-128.png"
   },
-  "permissions": [],
+  "permissions": [
+    "storage",
+    "tabs",
+    "scripting",
+    "declarativeNetRequestWithHostAccess"
+  ],
   "background": {
     "service_worker": "background/background.js",
     "type": "module"
@@ -49,6 +54,18 @@
       ]
     }
   ],
+  "declarative_net_request": {
+    "rule_resources": [
+      {
+        "id": "ollama-origin",
+        "enabled": true,
+        "path": "dnr-rules.json"
+      }
+    ]
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'; connect-src *"
+  },
   "options_ui": {
     "page": "options/options.html",
     "open_in_tab": true

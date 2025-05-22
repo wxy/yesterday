@@ -1,0 +1,17 @@
+[
+  {
+    "id": 1,
+    "priority": 1,
+    "action": {
+      "type": "modifyHeaders",
+      "requestHeaders": [
+        { "header": "origin", "operation": "remove" },
+        { "header": "referer", "operation": "remove" }
+      ]
+    },
+    "condition": {
+      "urlFilter": "http://localhost:11434/",
+      "resourceTypes": ["xmlhttprequest", "websocket", "main_frame", "sub_frame"]
+    }
+  }
+]
