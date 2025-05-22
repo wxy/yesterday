@@ -13,8 +13,7 @@ import { config } from '../lib/config/index.js';
 // 修改消息系统导入方式 - 使用默认导出
 import messageBus, { setupMessageHandlers } from '../lib/messaging/index.js';
 import { messenger } from '../lib/messaging/messenger.js';
-import { chat as aiChat } from '../lib/ai/ai-client.js';
-import '../lib/ai/ollama-service.js';
+import { chat, AiChatResponse } from '../lib/ai/ai.js'; // 统一入口
 
 // 初始化日志系统（Logger 可能不需要显式初始化，创建实例即可）
 const logger = new Logger('background');
@@ -99,59 +98,47 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message && (message.type === 'AI_CHAT_REQUEST' || (message.payload && message.payload.__aiProxy))) {
     // 兼容 payload 结构
     const payload = message.payload || message;
-    aiChat(payload.messages, payload.options || {})
-      .then(resp => {
+    chat(payload.messages, payload.options || {})
+      .then((resp: any) => {
         sendResponse({ success: true, data: resp });
       })
-      .catch(err => {
+      .catch((err: any) => {
         sendResponse({ success: false, error: err?.message || String(err), fullResponse: err?.fullResponse || err?.responseText });
       });
     return true; // 异步响应
   }
-  // ========== AI_ANALYZE_REQUEST：后台代理本地 Ollama AI 分析 ==========
+  // ========== AI_ANALYZE_REQUEST：后台代理本地 AI 分析 ==========
   if (message && message.type === 'AI_ANALYZE_REQUEST' && message.content) {
-    // 1. 记录原始访问内容
+    // 1. 记录原始访问内容，aiResult 初始为“正在进行 AI 分析”
+    const visitStartTime = Date.now();
     const visitRecord = {
       url: message.url,
       title: message.title,
       mainContent: message.content,
-      visitStartTime: Date.now(),
-      from: sender?.tab?.url || undefined
+      visitStartTime,
+      from: sender?.tab?.url || undefined,
+      aiResult: '正在进行 AI 分析',
     };
     handlePageVisitRecord(visitRecord);
-    // 2. 调用 Ollama
-    fetch('http://localhost:11434/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'llama3.1',
-        messages: [
-          { role: 'system', content: '请对以下网页内容进行简要总结和主题提取。' },
-          { role: 'user', content: message.content }
-        ]
-      })
-    })
-    .then(async resp => {
-      const text = await resp.text();
-      let data;
-      try {
-        data = text ? JSON.parse(text) : null;
-      } catch (e) {
-        logger.error('[Ollama] 响应非 JSON', { status: resp.status, text });
-        throw new Error('Ollama 响应非 JSON: ' + text);
-      }
-      if (!resp.ok) {
-        logger.error('[Ollama] 响应失败', { status: resp.status, data });
-        throw new Error('Ollama 响应失败: ' + (data?.error || resp.status));
-      }
+    // 2. 调用统一 AI 接口
+    const analyzeStart = Date.now();
+    chat([
+      { role: 'system', content: '请对以下网页内容进行简要总结和主题提取。' },
+      { role: 'user', content: message.content }
+    ]).then((data: AiChatResponse) => {
+      const analyzeEnd = Date.now();
+      const analyzeDuration = analyzeEnd - analyzeStart;
       // 3. 记录 AI 分析结果
       const aiResult = {
         url: message.url,
         title: message.title,
-        aiResult: data.choices?.[0]?.message?.content || data,
-        timestamp: Date.now()
+        aiResult: data.text || data,
+        timestamp: Date.now(),
+        analyzeDuration,
       };
-      // 直接存储
+      // 3.1 更新访问记录的 aiResult 字段和 analyzeDuration
+      updateVisitAiResult(message.url, visitStartTime, typeof data === 'string' ? data : data.text, analyzeDuration);
+      // 3.2 存储分析结果
       const dayId = new Date().toISOString().slice(0, 10);
       const key = `ai_analysis_${dayId}`;
       storage.get<any[]>(key).then((list) => {
@@ -159,10 +146,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         arr.push(aiResult);
         storage.set(key, arr);
       });
-      sendResponse({ ok: true, aiContent: aiResult.aiResult, response: data });
+      sendResponse({ ok: true, aiContent: aiResult.aiResult, response: data, analyzeDuration });
     })
-    .catch(e => {
-      logger.error('[Ollama] fetch 异常', e);
+    .catch((e: any) => {
+      logger.error('[AI] fetch 异常', e);
+      // 失败时也更新访问记录，便于 UI 反馈
+      updateVisitAiResult(message.url, visitStartTime, `AI 分析失败：${e?.message || e}`, 0);
       sendResponse({ ok: false, error: e?.message || e });
     });
     return true; // 异步响应
@@ -182,15 +171,49 @@ async function handlePageVisitRecord(data: any) {
     const key = `visits_${dayId}`;
     // 读取当天已有记录
     const visits: any[] = (await storage.get<any[]>(key)) || [];
-    visits.push(data);
-    await storage.set(key, visits);
-    logger.info(`[内容捕获] 已存储访问记录`, { url: data.url, dayId });
+    // 去重：同一 url+visitStartTime 不重复
+    if (!visits.some(v => v.url === data.url && v.visitStartTime === data.visitStartTime)) {
+      visits.push(data);
+      await storage.set(key, visits);
+      logger.info(`[内容捕获] 已存储访问记录`, { url: data.url, dayId });
+    } else {
+      logger.info(`[内容捕获] 跳过重复访问记录`, { url: data.url, dayId });
+    }
     // 自动清理过期数据
     await cleanupOldVisits();
   } catch (err) {
     logger.error('存储页面访问记录失败', err);
   }
 }
+
+/**
+ * 更新访问记录的 aiResult 字段和 analyzeDuration
+ */
+async function updateVisitAiResult(url: string, visitStartTime: number, aiResult: string, analyzeDuration: number) {
+  try {
+    const date = new Date(visitStartTime);
+    const dayId = date.toISOString().slice(0, 10);
+    const key = `visits_${dayId}`;
+    const visits: any[] = (await storage.get<any[]>(key)) || [];
+    let updated = false;
+    for (const v of visits) {
+      if (v.url === url && v.visitStartTime === visitStartTime) {
+        v.aiResult = aiResult;
+        v.analyzeDuration = analyzeDuration;
+        updated = true;
+        break;
+      }
+    }
+    if (updated) {
+      await storage.set(key, visits);
+      logger.info(`[AI] 已更新访问记录的 aiResult`, { url, dayId });
+    }
+  } catch (err) {
+    logger.error('更新访问记录 aiResult 失败', err);
+  }
+}
+
+// UI 展示 analyzeDuration 时建议：`${(analyzeDuration/1000).toFixed(1)} 秒`，分析失败为 0。
 
 /**
  * 获取指定日期的访问记录
@@ -227,11 +250,11 @@ messenger.on('AI_CHAT_REQUEST', async (msg) => {
   console.log('[BG] AI_CHAT_REQUEST handler called', msg);
   const payload = msg.payload || msg;
   try {
-    console.log('[BG] 调用 aiChat 前', payload);
-    const resp = await aiChat(payload.messages, payload.options || {});
-    console.log('[BG] aiChat 返回', resp);
+    console.log('[BG] 调用 chat 前', payload);
+    const resp: AiChatResponse = await chat(payload.messages, payload.options || {});
+    console.log('[BG] chat 返回', resp);
     return { success: true, data: resp };
-  } catch (err) {
+  } catch (err: any) {
     let errorMsg = '';
     let fullResponse = '';
     if (err && typeof err === 'object') {
@@ -240,7 +263,7 @@ messenger.on('AI_CHAT_REQUEST', async (msg) => {
     } else {
       errorMsg = String(err);
     }
-    console.error('[BG] aiChat 异常', errorMsg, fullResponse, err);
+    console.error('[BG] chat 异常', errorMsg, fullResponse, err);
     return { success: false, error: errorMsg, fullResponse };
   }
 });
@@ -259,7 +282,7 @@ messenger.on('GET_VISITS', async (msg) => {
   return { visits };
 });
 
-// 注册 PAGE_AI_ANALYSIS 消息处理器，记录分析结果
+// 注册 PAGE_AI_ANALYSIS 消息处理器，记录分析结果（去重）
 messenger.on('PAGE_AI_ANALYSIS', async (msg) => {
   const { url, title, aiResult, timestamp } = msg.payload || msg;
   if (!url || !aiResult) return { success: false };
@@ -267,9 +290,14 @@ messenger.on('PAGE_AI_ANALYSIS', async (msg) => {
   const dayId = new Date(timestamp || Date.now()).toISOString().slice(0, 10);
   const key = `ai_analysis_${dayId}`;
   const list = (await storage.get<any[]>(key)) || [];
-  list.push({ url, title, aiResult, timestamp });
-  await storage.set(key, list);
-  return { success: true };
+  // 去重：同一 url+timestamp 不重复
+  if (!list.some(item => item.url === url && item.timestamp === timestamp)) {
+    list.push({ url, title, aiResult, timestamp });
+    await storage.set(key, list);
+    return { success: true };
+  } else {
+    return { success: true, skipped: true };
+  }
 });
 
 // 注册 GET_AI_ANALYSIS 消息处理器，支持 popup 查询指定日期的 AI 分析结果
@@ -279,6 +307,11 @@ messenger.on('GET_AI_ANALYSIS', async (msg) => {
   const key = `ai_analysis_${dayId}`;
   const analysis = (await storage.get<any[]>(key)) || [];
   return { analysis };
+});
+
+// 清除数据通知，避免 message port closed 报错
+messenger.on('dataCleared', async () => {
+  return { ok: true };
 });
 
 // ====== Ollama CORS/Origin 测试 ======

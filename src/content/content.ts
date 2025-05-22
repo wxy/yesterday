@@ -27,7 +27,15 @@ window.addEventListener('beforeunload', () => {
   pageInfo.visitEndTime = visitEndTime;
   // 直接用 chrome.runtime.sendMessage，避免依赖自定义消息库
   if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
-    chrome.runtime.sendMessage({ type: 'PAGE_VISIT_RECORD', payload: pageInfo });
+    try {
+      chrome.runtime.sendMessage({ type: 'PAGE_VISIT_RECORD', payload: pageInfo });
+    } catch (e) {
+      if (e && String(e).includes('Extension context invalidated')) {
+        // 静默屏蔽
+      } else {
+        throw e;
+      }
+    }
   }
 });
 

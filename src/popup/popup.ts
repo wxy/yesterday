@@ -20,8 +20,39 @@ const versionInfoEl = document.getElementById('versionInfo') as HTMLElement;
 // 新增：显示访问数据按钮和展示区域
 const showTodayVisitsBtn = document.getElementById('showTodayVisitsBtn') as HTMLButtonElement;
 const showYesterdayVisitsBtn = document.getElementById('showYesterdayVisitsBtn') as HTMLButtonElement;
-const visitsRawData = document.getElementById('visitsRawData') as HTMLElement;
-const aiAnalysisRawData = document.getElementById('aiAnalysisRawData') as HTMLElement;
+
+// 合并访问数据和分析结果为一组，按时间排序
+function mergeVisitsAndAnalysis(visits: any[], analysis: any[]) {
+  // 用 url+title 做粗略关联（如有更精确的唯一标识可替换）
+  const analysisMap = new Map<string, any>();
+  for (const a of analysis) {
+    const key = `${a.url}||${a.title}`;
+    analysisMap.set(key, a);
+  }
+  return visits.map(v => {
+    const key = `${v.url}||${v.title}`;
+    return {
+      ...v,
+      aiResult: analysisMap.get(key)?.aiResult || '',
+      analyzeDuration: analysisMap.get(key)?.analyzeDuration || 0
+    };
+  });
+}
+
+// 新增：合并展示区域
+const mergedDataArea = document.createElement('pre');
+mergedDataArea.id = 'mergedDataArea';
+mergedDataArea.style.maxHeight = '300px';
+mergedDataArea.style.overflow = 'auto';
+mergedDataArea.style.background = '#f8f9fa';
+mergedDataArea.style.borderRadius = '4px';
+mergedDataArea.style.padding = '8px';
+mergedDataArea.style.marginTop = '2px';
+mergedDataArea.style.fontSize = '12px';
+const parent = showYesterdayVisitsBtn.parentElement;
+if (parent) {
+  parent.parentElement?.insertBefore(mergedDataArea, parent.nextSibling);
+}
 
 function getDayId(offset = 0) {
   const d = new Date();
@@ -53,29 +84,62 @@ async function getAiAnalysis(dayId: string) {
   }
 }
 
-// 重写按钮事件，合并展示
-showTodayVisitsBtn.addEventListener('click', async () => {
-  const dayId = getDayId(0);
-  visitsRawData.textContent = '加载中...';
-  aiAnalysisRawData.textContent = '加载中...';
+function showAnalyzeDuration(analyzeDuration: number) {
+  if (typeof analyzeDuration !== 'number' || analyzeDuration <= 0) return '';
+  return `<span style='color:#888;font-size:11px;'>(分析用时 ${(analyzeDuration / 1000).toFixed(1)} 秒)</span>`;
+}
+
+async function showMergedData(dayId: string) {
+  mergedDataArea.innerHTML = '<div style="color:#888;padding:8px;">加载中...</div>';
   const [visits, analysis] = await Promise.all([
     getVisits(dayId),
     getAiAnalysis(dayId)
   ]);
-  visitsRawData.textContent = JSON.stringify(visits, null, 2) || '无数据';
-  aiAnalysisRawData.textContent = JSON.stringify(analysis, null, 2) || '无数据';
+  const merged = mergeVisitsAndAnalysis(visits, analysis);
+  if (!merged.length) {
+    mergedDataArea.innerHTML = '<div style="color:#888;padding:8px;">无数据</div>';
+    return;
+  }
+  mergedDataArea.innerHTML = merged.map((item, idx) => {
+    let aiContent = '';
+    let durationStr = '';
+    if (item.aiResult && item.aiResult.startsWith('AI 分析失败')) {
+      aiContent = `<span style='color:#e53935;'>${item.aiResult.replace(/\n/g, '<br>')}</span>`;
+    } else if (item.aiResult && item.aiResult !== '正在进行 AI 分析' && item.aiResult !== '') {
+      aiContent = item.aiResult.replace(/\n/g, '<br>');
+      // 只有分析完成且有用时才显示
+      if (item.analyzeDuration && item.analyzeDuration > 0) {
+        durationStr = showAnalyzeDuration(item.analyzeDuration);
+      } else {
+        durationStr = '';
+      }
+    } else if (item.aiResult === '正在进行 AI 分析' || item.aiResult === '') {
+      aiContent = `<span style='color:#1a73e8;'>正在进行 AI 分析</span>`;
+    } else {
+      aiContent = `<span style='color:#aaa;'>[无分析结果]</span>`;
+    }
+    const aiBox = `<div style='max-height:80px;overflow:auto;background:#f3f7fa;border-radius:4px;padding:6px 8px;margin-top:4px;font-size:12px;border:1px solid #e0e4ea;'>${aiContent} </div>`;
+    return `
+      <div style='border:1px solid #e0e4ea;border-radius:6px;padding:8px 10px;margin-bottom:8px;background:#fff;box-shadow:0 1px 2px 0 #f2f3f5;'>
+        <div style='font-weight:600;font-size:14px;'>#${idx + 1} ${item.title || ''}</div>
+        <div style='color:#888;font-size:12px;'>${item.visitStartTime ? new Date(item.visitStartTime).toLocaleString() : ''}</div>
+        <div style='color:#1a73e8;font-size:12px;word-break:break-all;'>${item.url || ''}</div>
+        <div style='font-size:12px;color:#555;'>AI 分析${durationStr}：</div>
+        ${aiBox}
+      </div>
+    `;
+  }).join('');
+}
+
+// 修改按钮事件，合并展示
+showTodayVisitsBtn.addEventListener('click', async () => {
+  const dayId = getDayId(0);
+  await showMergedData(dayId);
 });
 
 showYesterdayVisitsBtn.addEventListener('click', async () => {
   const dayId = getDayId(-1);
-  visitsRawData.textContent = '加载中...';
-  aiAnalysisRawData.textContent = '加载中...';
-  const [visits, analysis] = await Promise.all([
-    getVisits(dayId),
-    getAiAnalysis(dayId)
-  ]);
-  visitsRawData.textContent = JSON.stringify(visits, null, 2) || '无数据';
-  aiAnalysisRawData.textContent = JSON.stringify(analysis, null, 2) || '无数据';
+  await showMergedData(dayId);
 });
 
 // 统计存储用量（简单统计所有键值的序列化长度总和）
@@ -121,10 +185,6 @@ async function loadStatus() {
       const statusResp = await messenger.send('getStatus');
       if (statusResp && statusResp.status) status = statusResp.status;
     } catch {}
-    statusValueEl.textContent = status;
-    if (status === 'error') {
-      statusValueEl.style.color = '#d93025';
-    }
     logger.debug('状态加载完成');
   } catch (error) {
     logger.error('加载状态失败', error);
@@ -223,6 +283,9 @@ async function clearData() {
         clearDataButton.disabled = false;
       }, 1500);
       
+      // 清空展示区域
+      mergedDataArea.textContent = '';
+      
       // 刷新状态
       await loadStatus();
     } catch (error) {
@@ -313,25 +376,11 @@ async function initPopup() {
     openHelpLink.addEventListener('click', openHelp);
     showTodayVisitsBtn.addEventListener('click', async () => {
       const dayId = getDayId(0);
-      visitsRawData.textContent = '加载中...';
-      aiAnalysisRawData.textContent = '加载中...';
-      const [visits, analysis] = await Promise.all([
-        getVisits(dayId),
-        getAiAnalysis(dayId)
-      ]);
-      visitsRawData.textContent = JSON.stringify(visits, null, 2) || '无数据';
-      aiAnalysisRawData.textContent = JSON.stringify(analysis, null, 2) || '无数据';
+      await showMergedData(dayId);
     });
     showYesterdayVisitsBtn.addEventListener('click', async () => {
       const dayId = getDayId(-1);
-      visitsRawData.textContent = '加载中...';
-      aiAnalysisRawData.textContent = '加载中...';
-      const [visits, analysis] = await Promise.all([
-        getVisits(dayId),
-        getAiAnalysis(dayId)
-      ]);
-      visitsRawData.textContent = JSON.stringify(visits, null, 2) || '无数据';
-      aiAnalysisRawData.textContent = JSON.stringify(analysis, null, 2) || '无数据';
+      await showMergedData(dayId);
     });
 
     logger.debug('弹出窗口初始化完成');
