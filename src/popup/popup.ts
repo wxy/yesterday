@@ -264,38 +264,36 @@ async function syncData() {
 }
 
 // 清除数据
-async function clearData() {
+clearDataButton.addEventListener('click', async () => {
   if (confirm('确定要清除所有本地数据吗？此操作无法撤销。')) {
-    try {
-      logger.info('清除本地数据');
-      clearDataButton.disabled = true;
-      
-      // 清除存储数据
-      await storage.clear();
-      
-      // 通知后台
-      await messenger.send('dataCleared');
-      
-      // 更新UI
-      clearDataButton.textContent = '已清除';
-      setTimeout(() => {
-        clearDataButton.textContent = '清除数据';
-        clearDataButton.disabled = false;
-      }, 1500);
-      
-      // 清空展示区域
-      mergedDataArea.textContent = '';
-      
-      // 刷新状态
-      await loadStatus();
-    } catch (error) {
-      logger.error('清除数据失败', error);
-      clearDataButton.textContent = '清除失败';
-      setTimeout(() => {
-        clearDataButton.textContent = '清除数据';
-        clearDataButton.disabled = false;
-      }, 1500);
-    }
+    await clearData();
+  }
+});
+
+async function clearData() {
+  try {
+    logger.info('清除本地数据');
+    clearDataButton.disabled = true;
+    // 清除存储数据
+    await storage.clear();
+    // 通知后台
+    await messenger.send('dataCleared');
+    // 清空展示区域
+    mergedDataArea.innerHTML = '<div style="color:#888;padding:8px;">无数据</div>';
+    // 刷新状态
+    await loadStatus();
+    clearDataButton.textContent = '已清除';
+    setTimeout(() => {
+      clearDataButton.textContent = '清除数据';
+      clearDataButton.disabled = false;
+    }, 1500);
+  } catch (error) {
+    logger.error('清除数据失败', error);
+    clearDataButton.textContent = '清除失败';
+    setTimeout(() => {
+      clearDataButton.textContent = '清除数据';
+      clearDataButton.disabled = false;
+    }, 1500);
   }
 }
 
@@ -311,8 +309,8 @@ function openHelp() {
 
 // ====== AI 对话测试区域事件绑定 ======
 document.addEventListener('DOMContentLoaded', () => {
-  // 打开弹窗时自动清除图标状态
-  chrome.runtime.sendMessage({ type: 'CLEAR_ICON_STATUS' });
+  // 打开弹窗时自动清除图标状态（已迁移为 messenger.send）
+  messenger.send('CLEAR_ICON_STATUS');
 
   const aiTestBtn = document.getElementById('aiTestBtn') as HTMLButtonElement;
   const aiTestInput = document.getElementById('aiTestInput') as HTMLTextAreaElement;
@@ -374,7 +372,11 @@ async function initPopup() {
     // 添加事件监听器
     actionButton.addEventListener('click', performAction);
     syncButton.addEventListener('click', syncData);
-    clearDataButton.addEventListener('click', clearData);
+    clearDataButton.addEventListener('click', async () => {
+      if (confirm('确定要清除所有本地数据吗？此操作无法撤销。')) {
+        await clearData();
+      }
+    });
     openOptionsLink.addEventListener('click', openOptions);
     openHelpLink.addEventListener('click', openHelp);
     showTodayVisitsBtn.addEventListener('click', async () => {
