@@ -34,25 +34,14 @@ function mergeVisitsAndAnalysis(visits: any[], analysis: any[]) {
     return {
       ...v,
       aiResult: analysisMap.get(key)?.aiResult || '',
-      analyzeDuration: analysisMap.get(key)?.analyzeDuration || 0
+      analyzeDuration: analysisMap.get(key)?.analyzeDuration || 0,
+      aiJson: analysisMap.get(key)?.aiJson || null
     };
   });
 }
 
 // 新增：合并展示区域
-const mergedDataArea = document.createElement('pre');
-mergedDataArea.id = 'mergedDataArea';
-mergedDataArea.style.maxHeight = '300px';
-mergedDataArea.style.overflow = 'auto';
-mergedDataArea.style.background = '#f8f9fa';
-mergedDataArea.style.borderRadius = '4px';
-mergedDataArea.style.padding = '8px';
-mergedDataArea.style.marginTop = '2px';
-mergedDataArea.style.fontSize = '12px';
-const parent = showYesterdayVisitsBtn.parentElement;
-if (parent) {
-  parent.parentElement?.insertBefore(mergedDataArea, parent.nextSibling);
-}
+const mergedDataArea = document.getElementById('mergedDataArea') as HTMLElement;
 
 function getDayId(offset = 0) {
   const d = new Date();
@@ -89,58 +78,146 @@ function showAnalyzeDuration(analyzeDuration: number) {
   return `<span style='color:#888;font-size:11px;'>(分析用时 ${(analyzeDuration / 1000).toFixed(1)} 秒)</span>`;
 }
 
+// 默认加载今日数据
+window.addEventListener('DOMContentLoaded', async () => {
+  await showMergedData(getDayId(0));
+});
+
 async function showMergedData(dayId: string) {
   mergedDataArea.innerHTML = '<div style="color:#888;padding:8px;">加载中...</div>';
   const [visits, analysis] = await Promise.all([
     getVisits(dayId),
     getAiAnalysis(dayId)
   ]);
-  const merged = mergeVisitsAndAnalysis(visits, analysis);
+  let merged = mergeVisitsAndAnalysis(visits, analysis);
+  // 倒序显示（最新在前）
+  merged = merged.slice().sort((a, b) => (b.visitStartTime || 0) - (a.visitStartTime || 0));
   if (!merged.length) {
     mergedDataArea.innerHTML = '<div style="color:#888;padding:8px;">无数据</div>';
     return;
   }
   mergedDataArea.innerHTML = merged.map((item, idx) => {
+    const collapsed = idx > 0;
+    const entryId = `merged-entry-${idx}`;
     let aiContent = '';
     let durationStr = '';
-    if (item.aiResult && item.aiResult.startsWith('AI 分析失败')) {
-      aiContent = `<span style='color:#e53935;'>${item.aiResult.replace(/\n/g, '<br>')}</span>`;
-    } else if (item.aiResult && item.aiResult !== '正在进行 AI 分析' && item.aiResult !== '') {
-      aiContent = item.aiResult.replace(/\n/g, '<br>');
-      // 只有分析完成且有用时才显示
-      if (item.analyzeDuration && item.analyzeDuration > 0) {
-        durationStr = showAnalyzeDuration(item.analyzeDuration);
-      } else {
-        durationStr = '';
-      }
-    } else if (item.aiResult === '正在进行 AI 分析' || item.aiResult === '') {
-      aiContent = `<span style='color:#1a73e8;'>正在进行 AI 分析</span>`;
-    } else {
-      aiContent = `<span style='color:#aaa;'>[无分析结果]</span>`;
+    const shouldNotify = item.aiJson && typeof item.aiJson === 'object' && item.aiJson.shouldNotify === true;
+    // 结构化内容友好排版，支持 key 大小写和别名，且仅有内容时才显示
+    let isStructured = false;
+    let rawText = item.aiResult;
+    let jsonObj = item.aiJson && typeof item.aiJson === 'object' && !Array.isArray(item.aiJson) ? item.aiJson : null;
+    // 如果 aiJson 不存在但 aiResult 是 JSON 字符串，也尝试 parse（增强容错，支持无引号、单引号、末尾逗号、属性值为数组等）
+    if (!jsonObj && rawText && typeof rawText === 'string' && rawText.trim().startsWith('{')) {
+      try {
+        let tryText = rawText
+          .replace(/\n/g, '')
+          .replace(/\r/g, '')
+          .replace(/\s+/g, ' ')
+          .replace(/([,{])\s*([a-zA-Z0-9_]+)\s*:/g, '$1"$2":') // 属性名加引号
+          .replace(/'/g, '"') // 单引号转双引号
+          .replace(/,\s*}/g, '}') // 末尾逗号
+          .replace(/,\s*]/g, ']');
+        jsonObj = JSON.parse(tryText);
+      } catch {}
     }
-    const aiBox = `<div style='max-height:80px;overflow:auto;background:#f3f7fa;border-radius:4px;padding:6px 8px;margin-top:4px;font-size:12px;border:1px solid #e0e4ea;'>${aiContent} </div>`;
+    if (jsonObj) {
+      // key 兼容处理
+      const keyMap = (obj: any) => {
+        const map: Record<string, string> = {
+          summary: '摘要',
+          highlights: '亮点',
+          points: '要点',
+          suggestion: '建议',
+        };
+        const result: Record<string, any> = {};
+        for (const k in obj) {
+          const lower = k.toLowerCase();
+          if (lower in map) {
+            result[map[lower]] = obj[k];
+          }
+        }
+        return result;
+      };
+      const mapped = keyMap(jsonObj);
+      let hasContent = false;
+      for (const label of ['摘要', '亮点', '要点', '建议']) {
+        const val = mapped[label];
+        if (label === '要点' && Array.isArray(val) && val.some((p: any) => typeof p === 'string' && p.trim())) {
+          aiContent += `<div style='margin-bottom:6px;'><b>${label}：</b><ul style='margin:4px 0 4px 18px;'>${val.filter((p: any) => typeof p === 'string' && p.trim()).map((p: any) => `<li>${p}</li>`).join('')}</ul></div>`;
+          hasContent = true;
+        } else if (label === '亮点' && Array.isArray(val) && val.some((p: any) => typeof p === 'string' && p.trim())) {
+          aiContent += `<div style='margin-bottom:6px;'><b>${label}：</b><ul style='margin:4px 0 4px 18px;'>${val.filter((p: any) => typeof p === 'string' && p.trim()).map((p: any) => `<li>${p}</li>`).join('')}</ul></div>`;
+          hasContent = true;
+        } else if (typeof val === 'string' && val.trim()) {
+          aiContent += `<div style='margin-bottom:6px;'><b>${label}：</b>${val}</div>`;
+          hasContent = true;
+        } else if (typeof val === 'number' && String(val).trim()) {
+          aiContent += `<div style='margin-bottom:6px;'><b>${label}：</b>${val}</div>`;
+          hasContent = true;
+        }
+      }
+      if (hasContent) {
+        isStructured = true;
+      }
+    }
+    if (!isStructured) {
+      // 非结构化或解析失败，直接显示原始文本，样式区分
+      if (item.aiResult && item.aiResult.startsWith('AI 分析失败')) {
+        aiContent = `<span style='color:#e53935;'>${item.aiResult.replace(/\n/g, '<br>')}</span>`;
+      } else if (item.aiResult && item.aiResult !== '正在进行 AI 分析' && item.aiResult !== '') {
+        aiContent = `<div style='color:#888;background:#f7f7fa;border-radius:4px;padding:6px 8px;'>${item.aiResult.replace(/\n/g, '<br>')}</div>`;
+      } else if (item.aiResult === '正在进行 AI 分析' || item.aiResult === '') {
+        aiContent = `<span style='color:#1a73e8;'>正在进行 AI 分析</span>`;
+      } else {
+        aiContent = `<span style='color:#aaa;'>[无分析结果]</span>`;
+      }
+    }
+    if (item.analyzeDuration && item.analyzeDuration > 0) {
+      durationStr = showAnalyzeDuration(item.analyzeDuration);
+    }
+    const cardStyle = [
+      'border:2px solid',
+      shouldNotify ? '#e53935' : '#e0e4ea', ';',
+      'border-radius:6px;padding:8px 10px;margin-bottom:8px;',
+      'background:',
+      shouldNotify ? 'linear-gradient(90deg,#fff3f0 0%,#ffeaea 100%)' : '#fff', ';',
+      'box-shadow:0 1px 2px 0 #f2f3f5;'
+    ].join(' ');
+    const titleLine = `<div style='font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:70%;display:inline-block;vertical-align:middle;'>${item.title || ''}</div>`;
+    const timeLine = `<div style='display:flex;justify-content:space-between;align-items:center;color:#888;font-size:12px;margin-top:2px;'>
+      <span>${item.visitStartTime ? new Date(item.visitStartTime).toLocaleString() : ''}</span>
+      <span>${durationStr}</span>
+    </div>`;
+    const urlLine = `<div style='color:#1a73e8;font-size:12px;word-break:break-all;margin-top:2px;'>${item.url || ''}</div>`;
     return `
-      <div style='border:1px solid #e0e4ea;border-radius:6px;padding:8px 10px;margin-bottom:8px;background:#fff;box-shadow:0 1px 2px 0 #f2f3f5;'>
-        <div style='font-weight:600;font-size:14px;'>#${idx + 1} ${item.title || ''}</div>
-        <div style='color:#888;font-size:12px;'>${item.visitStartTime ? new Date(item.visitStartTime).toLocaleString() : ''}</div>
-        <div style='color:#1a73e8;font-size:12px;word-break:break-all;'>${item.url || ''}</div>
-        <div style='font-size:12px;color:#555;'>AI 分析${durationStr}：</div>
-        ${aiBox}
+      <div style='${cardStyle}'>
+        <div class='merged-card-header' data-entry-id='${entryId}' style='cursor:pointer;display:flex;align-items:center;'>
+          <span style='font-weight:bold;margin-right:8px;'>#${idx + 1}</span>
+          ${titleLine}
+        </div>
+        <div id='${entryId}' style='${collapsed ? 'display:none;' : ''}margin-top:6px;'>
+          ${timeLine}
+          ${urlLine}
+          <div style='margin-top:4px;'>${aiContent}</div>
+        </div>
       </div>
     `;
   }).join('');
+
+  // 事件委托：安全处理折叠/展开
+  mergedDataArea.onclick = function(e) {
+    const target = e.target as HTMLElement;
+    const header = target.closest('.merged-card-header') as HTMLElement;
+    if (header && header.dataset.entryId) {
+      const entryId = header.dataset.entryId;
+      const contentBox = document.getElementById(entryId);
+      if (contentBox) {
+        const isCollapsed = contentBox.style.display === 'none';
+        contentBox.style.display = isCollapsed ? 'block' : 'none';
+      }
+    }
+  };
 }
-
-// 修改按钮事件，合并展示
-showTodayVisitsBtn.addEventListener('click', async () => {
-  const dayId = getDayId(0);
-  await showMergedData(dayId);
-});
-
-showYesterdayVisitsBtn.addEventListener('click', async () => {
-  const dayId = getDayId(-1);
-  await showMergedData(dayId);
-});
 
 // 统计存储用量（简单统计所有键值的序列化长度总和）
 async function getStorageUsage() {

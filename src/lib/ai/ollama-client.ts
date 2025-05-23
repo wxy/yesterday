@@ -34,17 +34,46 @@ export async function chatWithOllama({
   messages,
   model = DEFAULT_MODEL,
   url = DEFAULT_OLLAMA_URL,
-  signal
+  signal,
+  meta // 新增参数：可选的元信息
 }: {
   messages: OllamaMessage[];
   model?: string;
   url?: string;
   signal?: AbortSignal;
+  meta?: {
+    url?: string;
+    title?: string;
+    fetchTime?: string;
+    [key: string]: any;
+  };
 }): Promise<OllamaChatResponse> {
-  console.log('[ollama-client] chatWithOllama called', { messages, model, url });
+  // 如果有 meta 信息，自动拼接到 system prompt
+  let patchedMessages = messages;
+  if (meta && (meta.url || meta.title || meta.fetchTime)) {
+    const metaPrompt =
+      `【网页元信息】\n` +
+      (meta.title ? `标题: ${meta.title}\n` : '') +
+      (meta.url ? `URL: ${meta.url}\n` : '') +
+      (meta.fetchTime ? `抓取时间: ${meta.fetchTime}\n` : '') +
+      `请结合这些信息分析下方网页内容。`;
+    // 如果第一个是 system prompt，则合并，否则插入
+    if (messages.length > 0 && messages[0].role === 'system') {
+      patchedMessages = [
+        { role: 'system', content: metaPrompt + '\n' + messages[0].content },
+        ...messages.slice(1)
+      ];
+    } else {
+      patchedMessages = [
+        { role: 'system', content: metaPrompt },
+        ...messages
+      ];
+    }
+  }
+  console.log('[ollama-client] chatWithOllama called', { patchedMessages, model, url });
   const body: OllamaChatRequest = {
     model,
-    messages
+    messages: patchedMessages
   };
   const resp = await fetch(url, {
     method: 'POST',

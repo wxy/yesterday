@@ -51,7 +51,8 @@ window.addEventListener('beforeunload', () => {
     try {
       console.log('[Yesterday] main 启动');
       const pageContent = getPageContent();
-      console.log('[Yesterday] 页面内容采集:', pageContent.slice(0, 200));
+      // 只输出采集动作，不输出正文内容
+      console.log('[Yesterday] 页面内容采集');
       chrome.runtime.sendMessage({
         type: 'AI_ANALYZE_REQUEST',
         content: pageContent,

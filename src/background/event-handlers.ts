@@ -3,6 +3,7 @@
 import { chat, AiChatResponse } from '../lib/ai/ai.js';
 import { messenger } from '../lib/messaging/messenger.js';
 import { storage } from '../lib/storage/index.js';
+import { i18n } from '../lib/i18n/i18n.js';
 import {
   updateIcon,
   onProcessingStart,
@@ -51,17 +52,67 @@ function handleMessengerAiAnalyzeRequest(msg: any) {
   handlePageVisitRecord(visitRecord);
   const analyzeStart = Date.now();
   onProcessingStart();
+  // 获取当前扩展语言
+  let lang = 'zh';
+  try {
+    lang = typeof chrome !== 'undefined' && chrome.i18n && typeof chrome.i18n.getUILanguage === 'function'
+      ? chrome.i18n.getUILanguage()
+      : 'zh';
+  } catch {}
+  // 多语言结构化 prompt
+  const promptMap: Record<string, string> = {
+    zh: `你将分析如下网页内容，请用中文输出结构化 JSON 格式：\n{\n  summary: "...",\n  highlights: "..." 或 [...],\n  points: ["...", "..."],\n  suggestion: "...",\n  shouldNotify: true/false\n}\n如无法结构化输出，可降级为分条文本，但结尾请加一行“【是否建议提示用户】：是/否”。`,
+    en: `Analyze the following web content and output a structured JSON in English:\n{\n  summary: "...",\n  highlights: "..." or [...],\n  points: ["...", "..."],\n  suggestion: "...",\n  shouldNotify: true/false\n}\nIf you cannot output structured JSON, use bullet points in English and end with a line: [Should notify user]: Yes/No.`,
+    // 可扩展更多语言
+  };
+  const systemPrompt = promptMap[lang] || promptMap['zh'];
+  // 支持元信息
+  const meta = { url, title, fetchTime: new Date(visitStartTime).toLocaleString(), lang };
   return chat([
-    { role: 'system', content: '请对以下网页内容进行简要总结和主题提取。' },
+    { role: 'system', content: systemPrompt },
     { role: 'user', content }
-  ]).then((data: AiChatResponse) => {
+  ], { meta }).then((data: AiChatResponse) => {
     const analyzeEnd = Date.now();
     const analyzeDuration = analyzeEnd - analyzeStart;
-    updateVisitAiResult(url, visitStartTime, typeof data === 'string' ? data : data.text, analyzeDuration);
+    let aiText = typeof data === 'string' ? data : data.text;
+    let shouldNotify = false;
+    let aiJson: any = null;
+    // 尝试解析结构化 JSON
+    if (aiText) {
+      try {
+        // 只提取第一个 {...} 结构
+        const match = aiText.match(/\{[\s\S]*\}/);
+        if (match) {
+          aiJson = JSON.parse(match[0]);
+          if (typeof aiJson.shouldNotify === 'boolean') {
+            shouldNotify = aiJson.shouldNotify;
+          } else if (typeof aiJson.suggestion === 'string' && /建议|关注|重要|警告/.test(aiJson.suggestion)) {
+            shouldNotify = true;
+          }
+        }
+      } catch {}
+      // 降级：若无法结构化，继续用原有正则判断
+      if (aiJson === null) {
+        // 1. AI 明确建议
+        if (/【是否建议提示用户】\s*[:：]\s*是/.test(aiText)) {
+          shouldNotify = true;
+        }
+        // 2. 关键词辅助
+        else if (/强烈建议|必须注意|风险|警告|重点|重要|建议关注|值得关注/.test(aiText)) {
+          shouldNotify = true;
+        }
+        // 3. AI 明确否定
+        else if (/【是否建议提示用户】\s*[:：]\s*否|无特别建议|暂无特别建议/.test(aiText)) {
+          shouldNotify = false;
+        }
+      }
+    }
+    updateVisitAiResult(url, visitStartTime, aiText, analyzeDuration);
     const aiResult = {
       url,
       title,
-      aiResult: data.text || data,
+      aiResult: aiText,
+      aiJson,
       timestamp: Date.now(),
       analyzeDuration,
     };
@@ -72,8 +123,8 @@ function handleMessengerAiAnalyzeRequest(msg: any) {
       arr.push(aiResult);
       return storage.set(key, arr).then(() => {
         onProcessingEnd();
-        setTip(true);
-        return { ok: true, aiContent: aiResult.aiResult, response: data, analyzeDuration };
+        setTip(shouldNotify);
+        return { ok: true, aiContent: aiResult.aiResult, aiJson, response: data, analyzeDuration, shouldNotify };
       });
     });
   }).catch((e: any) => {
