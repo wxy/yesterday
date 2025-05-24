@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "default_locale": "zh_CN",
   "name": "__MSG_appName__",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "__MSG_appDescription__",
   "icons": {
     "16": "assets/icons/logo-default-16.png",
@@ -13,7 +13,8 @@
     "storage",
     "tabs",
     "scripting",
-    "declarativeNetRequestWithHostAccess"
+    "declarativeNetRequestWithHostAccess",
+    "sidePanel"
   ],
   "background": {
     "service_worker": "background/background.js",
@@ -25,6 +26,9 @@
       "48": "assets/icons/logo-default-48.png"
     },
     "default_popup": "popup/popup.html"
+  },
+  "side_panel": {
+    "default_path": "sidebar/sidebar.html"
   },
   "content_scripts": [
     {

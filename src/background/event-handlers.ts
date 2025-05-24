@@ -19,6 +19,68 @@ import {
   getVisitsByDay
 } from './visit-ai.js';
 
+// ====== 侧面板相关状态管理 ======
+let useSidePanel = false;
+
+// 初始化时从 storage 读取
+storage.get<boolean>('useSidePanel').then(val => {
+  useSidePanel = !!val;
+});
+
+function handleGetUseSidePanel() {
+  return { useSidePanel };
+}
+
+function handleSetUseSidePanel(msg: any) {
+  const val = !!(msg.payload?.useSidePanel ?? msg.useSidePanel);
+  useSidePanel = val;
+  storage.set('useSidePanel', val);
+  updateSidePanelMenu(val); // 新增：同步右键菜单勾选状态
+  // 切换时自动打开侧面板（仅支持 open，无 close 方法）
+  if (chrome && chrome.sidePanel && typeof (chrome.sidePanel as any).open === 'function' && val) {
+    (chrome.sidePanel as any).open({ windowId: undefined });
+  }
+  return { ok: true, useSidePanel: val };
+}
+
+// ========== 扩展图标点击行为优化 ==========
+if (chrome && chrome.action && chrome.sidePanel) {
+  chrome.action.onClicked.addListener(async (tab) => {
+    if (useSidePanel && typeof (chrome.sidePanel as any).getOptions === 'function') {
+      try {
+        const options = await (chrome.sidePanel as any).getOptions({ tabId: tab.id });
+        if (options && options.enabled) {
+          // 侧边栏已打开，图标上做提示，不弹窗
+          chrome.action.setBadgeText({ tabId: tab.id, text: '!' });
+          chrome.action.setBadgeBackgroundColor({ tabId: tab.id, color: '#FFA726' });
+          setTimeout(() => chrome.action.setBadgeText({ tabId: tab.id, text: '' }), 1200);
+          return;
+        }
+      } catch {}
+    }
+    // 侧边栏未打开，模拟原生弹窗行为（而不是 chrome.windows.create）
+    // 通过设置 default_popup 并移除 chrome.windows.create
+    // 这里什么都不做，交由 manifest 的 default_popup 控制
+  });
+}
+
+// 监听 tab 切换，useSidePanel=true 时自动在新 tab 打开侧面板
+if (chrome && chrome.tabs && chrome.sidePanel) {
+  chrome.tabs.onActivated.addListener(async ({ tabId }) => {
+    if (useSidePanel && typeof (chrome.sidePanel as any).open === 'function') {
+      await (chrome.sidePanel as any).open({ tabId });
+    }
+  });
+}
+
+// ========== 右键菜单：切换侧边栏显示方式 ==========
+// 已由 Chrome 原生侧边栏菜单接管，无需自定义 contextMenus 逻辑
+
+// 监听 useSidePanel 状态变化，动态更新菜单勾选
+function updateSidePanelMenu(checked: boolean) {
+  // 已由 Chrome 原生侧边栏菜单接管，无需自定义
+}
+
 // ====== messenger 消息处理函数 ======
 function handleMessengerAiChatRequest(msg: any) {
   const payload = msg.payload || msg;
@@ -37,7 +99,7 @@ function handleMessengerAiChatRequest(msg: any) {
     });
 }
 
-function handleMessengerAiAnalyzeRequest(msg: any) {
+async function handleMessengerAiAnalyzeRequest(msg: any) {
   // 兼容 content/popup 侧发起的 AI_ANALYZE_REQUEST
   const { url, title, content } = msg.payload || msg;
   if (!content) return { ok: false, error: 'No content' };
@@ -49,7 +111,7 @@ function handleMessengerAiAnalyzeRequest(msg: any) {
     visitStartTime,
     aiResult: '正在进行 AI 分析',
   };
-  handlePageVisitRecord(visitRecord);
+  handlePageVisitRecordWithNotify(visitRecord);
   const analyzeStart = Date.now();
   onProcessingStart();
   // 获取当前扩展语言
@@ -124,6 +186,7 @@ function handleMessengerAiAnalyzeRequest(msg: any) {
       return storage.set(key, arr).then(() => {
         onProcessingEnd();
         setTip(shouldNotify);
+        notifySidePanelUpdate('ai');
         return { ok: true, aiContent: aiResult.aiResult, aiJson, response: data, analyzeDuration, shouldNotify };
       });
     });
@@ -178,6 +241,25 @@ function handleMessengerClearIconStatus() {
   return { ok: true };
 }
 
+// ========== 侧面板内容主动刷新机制 ==========
+// 侧面板内容刷新：当数据库有新访问记录或AI分析结果时，主动通知侧面板页面刷新
+function notifySidePanelUpdate(type: 'visit' | 'ai') {
+  if (chrome && chrome.runtime && chrome.runtime.sendMessage) {
+    chrome.runtime.sendMessage({ type: 'SIDE_PANEL_UPDATE', payload: { updateType: type } });
+  }
+}
+
+// 包装原有处理函数，类型安全
+function handlePageVisitRecordWithNotify(record: any) {
+  handlePageVisitRecord(record);
+  notifySidePanelUpdate('visit');
+}
+async function handleMessengerAiAnalyzeRequestWithNotify(msg: any) {
+  const result = await handleMessengerAiAnalyzeRequest(msg);
+  notifySidePanelUpdate('ai');
+  return result;
+}
+
 export function registerBackgroundEventHandlers() {
   // 移除图标点击事件的清除逻辑，彻底只允许通过消息清除
   // chrome.action.onClicked.addListener(() => {
@@ -186,11 +268,14 @@ export function registerBackgroundEventHandlers() {
 
   // 统一 messenger 消息类型为大写，结构更清晰
   messenger.on('AI_CHAT_REQUEST', handleMessengerAiChatRequest);
-  messenger.on('AI_ANALYZE_REQUEST', handleMessengerAiAnalyzeRequest);
+  messenger.on('AI_ANALYZE_REQUEST', handleMessengerAiAnalyzeRequestWithNotify);
   messenger.on('GET_STATUS', handleMessengerGetStatus);
   messenger.on('GET_VISITS', handleMessengerGetVisits);
   messenger.on('PAGE_AI_ANALYSIS', handleMessengerPageAiAnalysis);
   messenger.on('GET_AI_ANALYSIS', handleMessengerGetAiAnalysis);
   messenger.on('DATA_CLEARED', handleMessengerDataCleared);
   messenger.on('CLEAR_ICON_STATUS', handleMessengerClearIconStatus);
+  messenger.on('GET_USE_SIDE_PANEL', handleGetUseSidePanel);
+  messenger.on('SET_USE_SIDE_PANEL', handleSetUseSidePanel);
+  messenger.on('PAGE_VISIT_RECORD', handlePageVisitRecordWithNotify);
 }
