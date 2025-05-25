@@ -333,6 +333,9 @@ export class ConfigUIRenderer {
         });
         return container;
       }
+      case "hidden":
+        // 隐藏字段不渲染任何控件
+        return document.createElement("span");
       default:
         this.logger.warn(`未知的控件类型: ${(metadata as any).type}`);
         const fallback = document.createElement("div");

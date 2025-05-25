@@ -22,9 +22,23 @@ export async function chat(messages: AiMessage[], options: AiChatOptions = {}): 
   }
   // 合并配置参数，优先 options
   const mergedOptions = { ...aiConfig, ...options };
-  const result = await service.chat(messages, mergedOptions);
-  console.log('[ai-client] chat result', result);
-  return result;
+
+  // 支持全局超时
+  if (mergedOptions.timeoutMs && typeof mergedOptions.timeoutMs === 'number') {
+    const controller = new AbortController();
+    mergedOptions.signal = controller.signal;
+    return Promise.race([
+      service.chat(messages, mergedOptions),
+      new Promise<AiChatResponse>((_, reject) =>
+        setTimeout(() => {
+          controller.abort();
+          reject(new Error('AI 分析超时'));
+        }, mergedOptions.timeoutMs)
+      )
+    ]);
+  } else {
+    return service.chat(messages, mergedOptions);
+  }
 }
 
 // 可扩展更多统一方法，如 complete、embedding 等

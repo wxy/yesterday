@@ -9,6 +9,10 @@ export const VISIT_KEEP_DAYS = 7;
 
 export async function handlePageVisitRecord(data: any) {
   try {
+    if (!data.visitStartTime || isNaN(new Date(data.visitStartTime).getTime())) {
+      logger.error('无效的 visitStartTime，无法存储访问记录', JSON.stringify(data));
+      return;
+    }
     const date = new Date(data.visitStartTime);
     const dayId = date.toISOString().slice(0, 10);
     const key = `visits_${dayId}`;
@@ -26,15 +30,19 @@ export async function handlePageVisitRecord(data: any) {
   }
 }
 
-export async function updateVisitAiResult(url: string, visitStartTime: number, aiResult: string, analyzeDuration: number) {
+export async function updateVisitAiResult(url: string, visitStartTime: number, aiResult: string, analyzeDuration: number, id?: string) {
   try {
+    if (!visitStartTime || isNaN(new Date(visitStartTime).getTime())) {
+      logger.error('无效的 visitStartTime，无法更新 aiResult', { url, visitStartTime });
+      return;
+    }
     const date = new Date(visitStartTime);
     const dayId = date.toISOString().slice(0, 10);
     const key = `visits_${dayId}`;
     const visits: any[] = (await storage.get<any[]>(key)) || [];
     let updated = false;
     for (const v of visits) {
-      if (v.url === url && v.visitStartTime === visitStartTime) {
+      if ((id && v.id === id) || (!id && v.url === url && v.visitStartTime === visitStartTime)) {
         v.aiResult = aiResult;
         v.analyzeDuration = analyzeDuration;
         updated = true;
@@ -43,7 +51,7 @@ export async function updateVisitAiResult(url: string, visitStartTime: number, a
     }
     if (updated) {
       await storage.set(key, visits);
-      logger.info(`[AI] 已更新访问记录的 aiResult`, { url, dayId });
+      logger.info(`[AI] 已更新访问记录的 aiResult`, { url, dayId, id });
     }
   } catch (err) {
     logger.error('更新访问记录 aiResult 失败', err);

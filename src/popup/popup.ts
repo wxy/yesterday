@@ -42,7 +42,14 @@ async function renderSingleBrief(root: HTMLElement) {
   }
   if (jsonObj) {
     const keyMap = (obj: Record<string, any>): Record<string, any> => {
-      const map: Record<string, string> = { summary: '摘要', highlights: '亮点', points: '要点', suggestion: '建议' };
+      const map: Record<string, string> = {
+        summary: '摘要',
+        highlights: '亮点',
+        highlight: '亮点',
+        points: '要点',
+        point: '要点',
+        suggestion: '建议',
+      };
       const result: Record<string, any> = {};
       for (const k in obj) {
         const lower = k.toLowerCase();
@@ -86,6 +93,30 @@ async function renderSingleBrief(root: HTMLElement) {
     <div style="color:#888;font-size:12px;margin-top:8px;">${item.title || ''}</div>
     <div style="color:#aaa;font-size:11px;">${item.url || ''} ${visitTime ? (' · ' + visitTime) : ''}</div>
   </div>`;
+}
+
+// 合并访问记录和分析结果，优先用 id 匹配，兼容 url+visitStartTime
+function mergeVisitsAndAnalysis(visits: any[], analysis: any[]) {
+  const analysisById = new Map<string, any>();
+  const analysisByUrlTime = new Map<string, any>();
+  for (const a of analysis) {
+    if (a.id) analysisById.set(a.id, a);
+    if (a.url && a.visitStartTime) analysisByUrlTime.set(`${a.url}||${a.visitStartTime}`, a);
+  }
+  return visits.map(v => {
+    let matchedAnalysis = null;
+    if (v.id && analysisById.has(v.id)) {
+      matchedAnalysis = analysisById.get(v.id);
+    } else if (v.url && v.visitStartTime && analysisByUrlTime.has(`${v.url}||${v.visitStartTime}`)) {
+      matchedAnalysis = analysisByUrlTime.get(`${v.url}||${v.visitStartTime}`);
+    }
+    return {
+      ...v,
+      aiResult: matchedAnalysis?.aiResult || '',
+      analyzeDuration: matchedAnalysis?.analyzeDuration || 0,
+      aiJson: matchedAnalysis?.aiJson || null
+    };
+  });
 }
 
 document.addEventListener('DOMContentLoaded', () => {

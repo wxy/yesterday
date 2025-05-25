@@ -3,7 +3,7 @@
  */
 export namespace ConfigUI {
   // UI控件类型
-  export type ControlType = 'checkbox' | 'select' | 'number' | 'text' | 'color' | 'radio' | 'group' | 'password';
+  export type ControlType = 'checkbox' | 'select' | 'number' | 'text' | 'color' | 'radio' | 'group' | 'password' | 'hidden';
   
   // 基础UI元数据
   export interface BaseUIMetadata {
@@ -69,7 +69,12 @@ export namespace ConfigUI {
     type: 'password';
     placeholder?: string;
   }
-  
+
+  // 隐藏控件类型（仅用于数据存储，不渲染）
+  export interface HiddenUIMetadata extends BaseUIMetadata {
+    type: 'hidden';
+  }
+
   // 所有UI元数据类型的联合
   export type UIMetadata = 
     | CheckboxUIMetadata 
@@ -79,7 +84,8 @@ export namespace ConfigUI {
     | ColorUIMetadata
     | RadioUIMetadata
     | GroupUIMetadata
-    | PasswordUIMetadata;
+    | PasswordUIMetadata
+    | HiddenUIMetadata;
   
   // 配置项类型（值+UI元数据）
   export interface ConfigItem<T> {
