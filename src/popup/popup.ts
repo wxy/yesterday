@@ -16,7 +16,8 @@ async function renderSingleBrief(root: HTMLElement) {
     return;
   }
   // 优先找 shouldNotify=true 的，找不到就用最新的
-  let item = [...analysis].reverse().find(a => a?.aiJson?.shouldNotify === true) || analysis[analysis.length - 1];
+  // 修正：直接获取和侧边栏一致的最新一条分析结果
+  let item = analysis[analysis.length - 1];
   let aiContent = '';
   let isStructured = false;
   let rawText = item.aiResult;
@@ -49,6 +50,8 @@ async function renderSingleBrief(root: HTMLElement) {
         points: '要点',
         point: '要点',
         suggestion: '建议',
+        important: '亮点', // 新增：兼容 important 字段为亮点
+        specialConcerns: '要点', // 新增：兼容 specialConcerns 字段为要点
       };
       const result: Record<string, any> = {};
       for (const k in obj) {
@@ -61,10 +64,7 @@ async function renderSingleBrief(root: HTMLElement) {
     let hasContent = false;
     for (const label of ['摘要', '亮点', '要点', '建议']) {
       const val = mapped[label];
-      if (label === '要点' && Array.isArray(val) && val.some((p: any) => typeof p === 'string' && p.trim())) {
-        aiContent += `<div style='margin-bottom:6px;'><b>${label}：</b><ul style='margin:4px 0 4px 18px;'>${val.filter((p: any) => typeof p === 'string' && p.trim()).map((p: any) => `<li>${p}</li>`).join('')}</ul></div>`;
-        hasContent = true;
-      } else if (label === '亮点' && Array.isArray(val) && val.some((p: any) => typeof p === 'string' && p.trim())) {
+      if (Array.isArray(val) && val.some((p: any) => typeof p === 'string' && p.trim())) {
         aiContent += `<div style='margin-bottom:6px;'><b>${label}：</b><ul style='margin:4px 0 4px 18px;'>${val.filter((p: any) => typeof p === 'string' && p.trim()).map((p: any) => `<li>${p}</li>`).join('')}</ul></div>`;
         hasContent = true;
       } else if (typeof val === 'string' && val.trim()) {
@@ -78,7 +78,7 @@ async function renderSingleBrief(root: HTMLElement) {
     if (hasContent) isStructured = true;
   }
   if (!isStructured) {
-    if (item.aiResult && item.aiResult !== '正在进行 AI 分析' && item.aiResult !== '') {
+    if (item.aiResult && typeof item.aiResult === 'string' && item.aiResult !== '正在进行 AI 分析' && item.aiResult !== '') {
       aiContent = `<div style='color:#888;background:#f7f7fa;border-radius:4px;padding:6px 8px;'>${item.aiResult.replace(/\n/g, '<br>')}</div>`;
     } else if (item.aiResult === '正在进行 AI 分析' || item.aiResult === '') {
       aiContent = `<span style='color:#1a73e8;'>正在进行 AI 分析</span>`;

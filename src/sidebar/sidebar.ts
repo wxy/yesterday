@@ -88,75 +88,38 @@ async function renderMergedView(root: HTMLElement, dayId: string) {
     let isStructured = false;
     let rawText = item.aiResult;
     let jsonObj: any = null;
+    // 新增：支持 aiResult 为结构化 JSON 或字符串
     if (rawText && typeof rawText === 'string' && rawText.trim().startsWith('{')) {
       try {
-        let tryText = rawText
-          .replace(/\n/g, '')
-          .replace(/\r/g, '')
-          .replace(/\s+/g, ' ')
-          .replace(/([,{])\s*([a-zA-Z0-9_]+)\s*:/g, '$1"$2":')
-          .replace(/'/g, '"')
-          .replace(/,\s*}/g, '}')
-          .replace(/,\s*]/g, ']');
-        const parsed = JSON.parse(tryText);
-        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-          jsonObj = parsed;
-        }
-      } catch {}
-    }
-    if (item.aiJson && typeof item.aiJson === 'object' && !Array.isArray(item.aiJson)) {
-      jsonObj = item.aiJson;
-    }
-    if (jsonObj) {
-      const keyMap = (obj: any) => {
-        const map: Record<string, string> = {
-          summary: '摘要',
-          highlights: '亮点',
-          highlight: '亮点',
-          points: '要点',
-          point: '要点',
-          suggestion: '建议',
-        };
-        const result: Record<string, any> = {};
-        for (const k in obj) {
-          const lower = k.toLowerCase();
-          if (lower in map) {
-            result[map[lower]] = obj[k];
-          }
-        }
-        return result;
-      };
-      const mapped = keyMap(jsonObj);
-      let hasContent = false;
-      for (const label of ['摘要', '亮点', '要点', '建议']) {
-        const val = mapped[label];
-        if (label === '要点' && Array.isArray(val) && val.some((p: any) => typeof p === 'string' && p.trim())) {
-          aiContent += `<div style='margin-bottom:6px;'><b>${label}：</b><ul style='margin:4px 0 4px 18px;'>${val.filter((p: any) => typeof p === 'string' && p.trim()).map((p: any) => `<li>${p}</li>`).join('')}</ul></div>`;
-          hasContent = true;
-        } else if (label === '亮点' && Array.isArray(val) && val.some((p: any) => typeof p === 'string' && p.trim())) {
-          aiContent += `<div style='margin-bottom:6px;'><b>${label}：</b><ul style='margin:4px 0 4px 18px;'>${val.filter((p: any) => typeof p === 'string' && p.trim()).map((p: any) => `<li>${p}</li>`).join('')}</ul></div>`;
-          hasContent = true;
-        } else if (typeof val === 'string' && val.trim()) {
-          aiContent += `<div style='margin-bottom:6px;'><b>${label}：</b>${val}</div>`;
-          hasContent = true;
-        } else if (typeof val === 'number' && String(val).trim()) {
-          aiContent += `<div style='margin-bottom:6px;'><b>${label}：</b>${val}</div>`;
-          hasContent = true;
-        }
-      }
-      if (hasContent) {
+        jsonObj = JSON.parse(rawText);
         isStructured = true;
-      }
+      } catch {}
+    } else if (rawText && typeof rawText === 'object') {
+      jsonObj = rawText;
+      isStructured = true;
     }
-    if (!isStructured) {
-      if (item.aiResult && item.aiResult !== '正在进行 AI 分析' && item.aiResult !== '') {
+    if (isStructured && jsonObj) {
+      // summary
+      aiContent = `<div style='font-weight:bold;margin-bottom:4px;'>${jsonObj.summary || ''}</div>`;
+      // highlights
+      if (jsonObj.highlights && Array.isArray(jsonObj.highlights) && jsonObj.highlights.length) {
+        aiContent += `<ul style='margin:4px 0 4px 16px;padding:0;color:#333;font-size:13px;'>${jsonObj.highlights.map((h: string) => `<li>${h}</li>`).join('')}</ul>`;
+      }
+      // specialConcerns
+      if (jsonObj.specialConcerns && Array.isArray(jsonObj.specialConcerns) && jsonObj.specialConcerns.length) {
+        aiContent += `<div style='color:#e53935;font-size:13px;margin:4px 0;'>特别关注：${jsonObj.specialConcerns.map((c: string) => c).join('，')}</div>`;
+      }
+      // 卡片样式高亮由 important 字段控制，不再直接输出“重要性”文字
+    } else if (typeof rawText === 'string') {
+      // 兼容老逻辑，仅字符串时才做字符串判断
+      if (rawText && rawText !== '正在进行 AI 分析' && rawText !== '') {
         // 新增：AI 分析失败高亮
-        if (item.aiResult.startsWith('AI 分析失败')) {
-          aiContent = `<div style='color:#e53935;background:#fff3f3;border-radius:4px;padding:6px 8px;'>${item.aiResult.replace(/\n/g, '<br>')}</div>`;
+        if (rawText.startsWith('AI 分析失败')) {
+          aiContent = `<div style='color:#e53935;background:#fff3f3;border-radius:4px;padding:6px 8px;'>${rawText.replace(/\n/g, '<br>')}</div>`;
         } else {
-          aiContent = `<div style='color:#888;background:#f7f7fa;border-radius:4px;padding:6px 8px;'>${item.aiResult.replace(/\n/g, '<br>')}</div>`;
+          aiContent = `<div style='color:#888;background:#f7f7fa;border-radius:4px;padding:6px 8px;'>${rawText.replace(/\n/g, '<br>')}</div>`;
         }
-      } else if ((item.aiResult === '正在进行 AI 分析' || item.aiResult === '') && !isStructured) {
+      } else if ((rawText === '正在进行 AI 分析' || rawText === '') && !isStructured) {
         // 只有没有分析结果时才显示分析中
         const analyzingId = `analyzing-timer-${idx}`;
         aiContent = `<span style='color:#1a73e8;' id='${analyzingId}'>正在进行 AI 分析</span>`;
@@ -196,16 +159,20 @@ async function renderMergedView(root: HTMLElement, dayId: string) {
       } else {
         aiContent = `<span style='color:#aaa;'>[无分析结果]</span>`;
       }
+    } else {
+      aiContent = `<span style='color:#aaa;'>[无分析结果]</span>`;
     }
     if (item.analyzeDuration && item.analyzeDuration > 0) {
       durationStr = showAnalyzeDuration(item.analyzeDuration);
     }
+    // 卡片样式高亮
+    const isImportant = (item.aiResult && typeof item.aiResult === 'object' && item.aiResult.important === true);
     const cardStyle = [
       'border:2px solid',
-      item.aiJson && typeof item.aiJson === 'object' && item.aiJson.shouldNotify === true ? '#FFC10A' : '#e0e4ea', ';',
+      isImportant ? '#FFC10A' : '#e0e4ea', ';',
       'border-radius:6px;padding:8px 10px;margin-bottom:8px;',
       'background:',
-      item.aiJson && typeof item.aiJson === 'object' && item.aiJson.shouldNotify === true ? 'linear-gradient(90deg,#f8f0a9 0%,#FFEB3B 100%)' : '#fff', ';',
+      isImportant ? 'linear-gradient(90deg,#f8f0a9 0%,#FFEB3B 100%)' : '#fff', ';',
       'box-shadow:0 1px 2px 0 #f2f3f5;'
     ].join(' ');
     const visitTime = item.visitStartTime ? new Date(item.visitStartTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
