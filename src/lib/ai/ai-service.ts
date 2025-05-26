@@ -12,6 +12,7 @@ export interface AiMessage {
 export interface AiChatOptions {
   model?: string;
   signal?: AbortSignal;
+  timeoutMs?: number; // 新增：支持超时
   [key: string]: any; // 允许扩展
 }
 
@@ -32,6 +33,14 @@ export interface AiService {
    */
   readonly id: string;
   readonly label: string;
+
+  /**
+   * 可选：服务可用性检测（静态方法，部分服务实现）
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // @ts-ignore
+  // 注意：TS 接口无法直接声明静态方法，此为文档提示
+  // static availability?(): Promise<{ available: boolean; reason?: string }>;
 }
 
 /**

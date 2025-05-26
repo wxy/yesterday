@@ -10,6 +10,7 @@ module.exports = {
     popup: path.resolve(__dirname, '..', 'src', 'popup', 'popup.ts'),
     options: path.resolve(__dirname, '..', 'src', 'options', 'options.ts'),
     content: path.resolve(__dirname, '..', 'src', 'content', 'content.ts'),
+    sidebar: path.resolve(__dirname, '..', 'src', 'sidebar', 'sidebar.ts'),
   },
   module: {
     rules: [
@@ -74,9 +75,15 @@ module.exports = {
       ],
     }),
     new HtmlWebpackPlugin({
+      template: path.resolve(__dirname, '..', 'src', 'sidebar', 'sidebar.html'),
+      filename: 'sidebar/sidebar.html',
+      chunks: ['sidebar'],
+      cache: false,
+    }),
+    new HtmlWebpackPlugin({
       template: path.resolve(__dirname, '..', 'src', 'popup', 'popup.html'),
       filename: 'popup/popup.html',
-      chunks: ['popup'],
+      chunks: ['popup'], // 只保留 popup
       cache: false,
     }),
     new HtmlWebpackPlugin({

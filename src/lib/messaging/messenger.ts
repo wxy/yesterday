@@ -86,7 +86,10 @@ export class Messenger {
     
     const handlers = this.handlers.get(message.type);
     if (!handlers || handlers.length === 0) {
-      logger.debug(`没有找到消息 "${message.type}" 的处理器`);
+      // 仅在 background context 下输出“没有找到消息处理器”日志，其他 context 静默忽略
+      if (this.context === 'background') {
+        logger.debug(`没有找到消息 "${message.type}" 的处理器`);
+      }
       return false;
     }
     
