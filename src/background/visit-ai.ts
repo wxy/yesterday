@@ -98,8 +98,9 @@ export async function updateVisitAiResult(
           }
         }
         if (!found) {
-          // 若不存在则新增
-          aiAnalysis.push({ id, url, visitStartTime, aiResult, analyzeDuration });
+          // 若不存在则新增，补全所有元信息
+          const v = visits.find((vv: any) => vv.id === id);
+          aiAnalysis.push({ id, url, visitStartTime, aiResult, analyzeDuration, title: v?.title, pageTitle: v?.pageTitle });
         }
         await storage.set(aiAnalysisKey, aiAnalysis);
         logger.info(`[AI] 已同步写入/更新 ai_analysis`, { aiAnalysisKey, id });

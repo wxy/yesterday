@@ -1,4 +1,5 @@
 import { messenger } from '../lib/messaging/messenger.js';
+import { renderAiCard } from '../lib/ui/ai-card-util.js';
 
 function getDayId(offset = 0) {
   const d = new Date();
@@ -15,83 +16,62 @@ async function renderSingleBrief(root: HTMLElement) {
     root.innerHTML = '<div style="color:#888;padding:16px;">暂无数据</div>';
     return;
   }
-  // 优先找 shouldNotify=true 的，找不到就用最新的
-  // 修正：直接获取和侧边栏一致的最新一条分析结果
-  let item = analysis[analysis.length - 1];
+  // 优先显示最后一个有 AI 分析结果的“重要提示”，否则显示最后一个有分析结果的普通提示
+  let itemWithNotify = analysis.slice().reverse().find((a: any) => a.shouldNotify && a.aiResult);
+  let item = itemWithNotify || analysis.slice().reverse().find((a: any) => a.aiResult);
+  if (!item) {
+    root.innerHTML = '<div style="color:#888;padding:16px;">暂无数据</div>';
+    return;
+  }
+  // 直接用该条目的 title、url、visitStartTime，保证有标题和链接
+  const displayTitle = item.title || item.pageTitle || '--';
+  const displayUrl = item.url || '';
+  const visitTime = item.visitStartTime ? new Date(item.visitStartTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
   let aiContent = '';
+  let durationStr = '';
   let isStructured = false;
   let rawText = item.aiResult;
-  let jsonObj = null;
+  let jsonObj: any = null;
   if (rawText && typeof rawText === 'string' && rawText.trim().startsWith('{')) {
     try {
-      let tryText = rawText
-        .replace(/\n/g, '')
-        .replace(/\r/g, '')
-        .replace(/\s+/g, ' ')
-        .replace(/([,{])\s*([a-zA-Z0-9_]+)\s*:/g, '$1"$2":')
-        .replace(/'/g, '"')
-        .replace(/,\s*}/g, '}')
-        .replace(/,\s*]/g, ']');
-      const parsed = JSON.parse(tryText);
-      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-        jsonObj = parsed;
-      }
+      jsonObj = JSON.parse(rawText);
+      isStructured = true;
     } catch {}
+  } else if (rawText && typeof rawText === 'object') {
+    jsonObj = rawText;
+    isStructured = true;
   }
-  if (item.aiJson && typeof item.aiJson === 'object' && !Array.isArray(item.aiJson)) {
-    jsonObj = item.aiJson;
-  }
-  if (jsonObj) {
-    const keyMap = (obj: Record<string, any>): Record<string, any> => {
-      const map: Record<string, string> = {
-        summary: '摘要',
-        highlights: '亮点',
-        highlight: '亮点',
-        points: '要点',
-        point: '要点',
-        suggestion: '建议',
-        important: '亮点', // 新增：兼容 important 字段为亮点
-        specialConcerns: '要点', // 新增：兼容 specialConcerns 字段为要点
-      };
-      const result: Record<string, any> = {};
-      for (const k in obj) {
-        const lower = k.toLowerCase();
-        if (Object.prototype.hasOwnProperty.call(map, lower)) result[map[lower]] = obj[k];
-      }
-      return result;
-    };
-    const mapped: Record<string, any> = keyMap(jsonObj);
-    let hasContent = false;
-    for (const label of ['摘要', '亮点', '要点', '建议']) {
-      const val = mapped[label];
-      if (Array.isArray(val) && val.some((p: any) => typeof p === 'string' && p.trim())) {
-        aiContent += `<div style='margin-bottom:6px;'><b>${label}：</b><ul style='margin:4px 0 4px 18px;'>${val.filter((p: any) => typeof p === 'string' && p.trim()).map((p: any) => `<li>${p}</li>`).join('')}</ul></div>`;
-        hasContent = true;
-      } else if (typeof val === 'string' && val.trim()) {
-        aiContent += `<div style='margin-bottom:6px;'><b>${label}：</b>${val}</div>`;
-        hasContent = true;
-      } else if (typeof val === 'number' && String(val).trim()) {
-        aiContent += `<div style='margin-bottom:6px;'><b>${label}：</b>${val}</div>`;
-        hasContent = true;
-      }
+  if (isStructured && jsonObj) {
+    aiContent = `<div style='font-weight:bold;margin-bottom:4px;'>${jsonObj.summary || ''}</div>`;
+    if (jsonObj.highlights && Array.isArray(jsonObj.highlights) && jsonObj.highlights.length) {
+      aiContent += `<ul style='margin:4px 0 4px 16px;padding:0;color:#333;font-size:13px;'>${jsonObj.highlights.map((h: string) => `<li>${h}</li>`).join('')}</ul>`;
     }
-    if (hasContent) isStructured = true;
-  }
-  if (!isStructured) {
-    if (item.aiResult && typeof item.aiResult === 'string' && item.aiResult !== '正在进行 AI 分析' && item.aiResult !== '') {
-      aiContent = `<div style='color:#888;background:#f7f7fa;border-radius:4px;padding:6px 8px;'>${item.aiResult.replace(/\n/g, '<br>')}</div>`;
-    } else if (item.aiResult === '正在进行 AI 分析' || item.aiResult === '') {
+    if (jsonObj.specialConcerns && Array.isArray(jsonObj.specialConcerns) && jsonObj.specialConcerns.length) {
+      aiContent += `<div style='color:#e53935;font-size:13px;margin:4px 0;'>特别关注：${jsonObj.specialConcerns.map((c: string) => c).join('，')}</div>`;
+    }
+  } else if (typeof rawText === 'string') {
+    if (rawText && rawText !== '正在进行 AI 分析' && rawText !== '') {
+      if (rawText.startsWith('AI 分析失败')) {
+        aiContent = `<div style='color:#e53935;background:#fff3f3;border-radius:4px;padding:6px 8px;'>${rawText.replace(/\n/g, '<br>')}</div>`;
+      } else {
+        aiContent = `<div style='color:#888;background:#f7f7fa;border-radius:4px;padding:6px 8px;'>${rawText.replace(/\n/g, '<br>')}</div>`;
+      }
+    } else if ((rawText === '正在进行 AI 分析' || rawText === '') && !isStructured) {
       aiContent = `<span style='color:#1a73e8;'>正在进行 AI 分析</span>`;
     } else {
       aiContent = `<span style='color:#aaa;'>[无分析结果]</span>`;
     }
+  } else {
+    aiContent = `<span style='color:#aaa;'>[无分析结果]</span>`;
   }
-  const visitTime = item.visitStartTime ? new Date(item.visitStartTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+  if (item.analyzeDuration && item.analyzeDuration > 0) {
+    durationStr = `<span style='color:#888;font-size:11px;'>(分析用时 ${(item.analyzeDuration / 1000).toFixed(1)} 秒)</span>`;
+  }
   root.innerHTML = `<div style="padding:16px;max-width:360px;">
-    <div style="font-weight:600;color:#e53935;margin-bottom:8px;">${item.aiJson?.shouldNotify ? '重要提示' : '最新分析'}</div>
+    <div style="font-weight:600;color:#e53935;margin-bottom:8px;">${itemWithNotify ? '重要提示' : '最新分析'}</div>
     <div style="font-size:14px;">${aiContent}</div>
-    <div style="color:#888;font-size:12px;margin-top:8px;">${item.title || ''}</div>
-    <div style="color:#aaa;font-size:11px;">${item.url || ''} ${visitTime ? (' · ' + visitTime) : ''}</div>
+    <div style="color:#888;font-size:12px;margin-top:8px;">${displayTitle}</div>
+    <div style="color:#aaa;font-size:11px;">${displayUrl} ${visitTime ? (' · ' + visitTime) : ''}</div>
   </div>`;
 }
 
