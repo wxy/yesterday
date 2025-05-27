@@ -10,8 +10,10 @@ export const VISIT_KEEP_DAYS = 7;
 export async function handlePageVisitRecord(data: any) {
   try {
     if (!data.visitStartTime || isNaN(new Date(data.visitStartTime).getTime())) {
-      logger.error('无效的 visitStartTime，无法存储访问记录', JSON.stringify(data));
-      return;
+      // 自动补当前时间
+      const now = Date.now();
+      data.visitStartTime = now;
+      logger.warn('visitStartTime 缺失或非法，已自动补当前时间', { id: data.id, url: data.url, visitStartTime: now });
     }
     const date = new Date(data.visitStartTime);
     const dayId = date.toISOString().slice(0, 10);
@@ -30,10 +32,19 @@ export async function handlePageVisitRecord(data: any) {
   }
 }
 
-export async function updateVisitAiResult(url: string, visitStartTime: number, aiResult: string, analyzeDuration: number, id?: string) {
+// 移除 ai_analysis 相关逻辑，所有分析结果直接写入 visits_ 表
+
+export async function updateVisitAiResult(
+  url: string,
+  visitStartTime: number,
+  aiResult: any, // 由 string 改为 any，支持对象
+  analyzeDuration: number,
+  id?: string
+) {
   try {
-    if (!visitStartTime || isNaN(new Date(visitStartTime).getTime())) {
-      logger.error('无效的 visitStartTime，无法更新 aiResult', { url, visitStartTime });
+    logger.debug('[AI调试] updateVisitAiResult called', { url, visitStartTime, id, aiResultType: typeof aiResult, aiResult });
+    if (!id) {
+      logger.error('updateVisitAiResult 缺少 id，无法唯一定位访问记录', { url, visitStartTime, aiResult });
       return;
     }
     const date = new Date(visitStartTime);
@@ -42,7 +53,8 @@ export async function updateVisitAiResult(url: string, visitStartTime: number, a
     const visits: any[] = (await storage.get<any[]>(key)) || [];
     let updated = false;
     for (const v of visits) {
-      if ((id && v.id === id) || (!id && v.url === url && v.visitStartTime === visitStartTime)) {
+      if (v.id === id) {
+        logger.debug('[AI调试] 命中访问记录，准备写入 aiResult', { v });
         v.aiResult = aiResult;
         v.analyzeDuration = analyzeDuration;
         updated = true;
@@ -50,8 +62,12 @@ export async function updateVisitAiResult(url: string, visitStartTime: number, a
       }
     }
     if (updated) {
+      logger.debug('[AI调试] 已更新 visits，准备写入 storage', { visits });
       await storage.set(key, visits);
       logger.info(`[AI] 已更新访问记录的 aiResult`, { url, dayId, id });
+      logger.info(`[AI] 分析结果内容`, { id, aiResult });
+    } else {
+      logger.warn('[AI调试] 未找到匹配的访问记录（仅按 id 匹配），aiResult 未写入', { url, visitStartTime, id });
     }
   } catch (err) {
     logger.error('更新访问记录 aiResult 失败', err);

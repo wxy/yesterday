@@ -1,8 +1,5 @@
-// filepath: src/lib/ai/ai-config.ts
-/**
- * AI 服务配置业务层封装
- * 依赖 config 的通用 get/set
- */
+// 统一的 AI 服务配置业务层封装
+// 依赖 config 的通用 get/set
 import { config } from '../config/index.js';
 
 export interface AiConfig {

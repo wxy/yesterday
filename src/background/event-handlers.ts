@@ -1,6 +1,5 @@
 // src/background/event-handlers.ts
 // 统一管理 background 的所有消息和事件监听
-import { chat, AiChatResponse } from '../lib/ai/ai.js';
 import { messenger } from '../lib/messaging/messenger.js';
 import { storage } from '../lib/storage/index.js';
 import { i18n } from '../lib/i18n/i18n.js';
@@ -19,6 +18,7 @@ import {
   updateVisitAiResult,
   getVisitsByDay
 } from './visit-ai.js';
+import { getActiveAIService } from '../lib/artificial-intelligence/index.js';
 
 // ====== 侧面板相关状态管理 ======
 let useSidePanel = false;
@@ -83,29 +83,28 @@ function updateSidePanelMenu(checked: boolean) {
 }
 
 // ====== messenger 消息处理函数 ======
-function handleMessengerAiChatRequest(msg: any) {
+async function handleMessengerAiChatRequest(msg: any) {
   const payload = msg.payload || msg;
-  return chat(payload.messages, payload.options || {})
-    .then((resp: AiChatResponse) => ({ success: true, data: resp }))
-    .catch((err: any) => {
-      let errorMsg = '';
-      let fullResponse = '';
-      if (err && typeof err === 'object') {
-        errorMsg = (err as any).message || String(err);
-        fullResponse = (err as any).fullResponse || (err as any).responseText || '';
-      } else {
-        errorMsg = String(err);
-      }
-      return { success: false, error: errorMsg, fullResponse };
-    });
+  try {
+    const aiService = await getActiveAIService();
+    if (!aiService) throw new Error('无可用 AI 服务');
+    // 兼容 chat 风格调用，拼接为 summarizePage
+    const userMsg = (payload.messages || []).find((m: any) => m.role === 'user');
+    const url = payload.options?.url || '';
+    const content = userMsg?.content || '';
+    const summary = await aiService.summarizePage(url, content);
+    return { success: true, data: summary };
+  } catch (err: any) {
+    let errorMsg = err?.message || String(err);
+    let fullResponse = err?.fullResponse || err?.responseText || '';
+    return { success: false, error: errorMsg, fullResponse };
+  }
 }
 
 async function handleMessengerAiAnalyzeRequest(msg: any) {
   // 兼容 content/popup 侧发起的 AI_ANALYZE_REQUEST
   const { url, title, content, id } = msg.payload || msg;
-  // 优先使用 payload 里的 visitStartTime，保证分析与访问记录一一对应
   const visitStartTime = msg.payload?.visitStartTime || Date.now();
-  // 主键 id，优先用 payload 传递，没有则生成
   const visitId = id || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`);
   if (!content) return { ok: false, error: 'No content' };
   const visitRecord = {
@@ -119,122 +118,27 @@ async function handleMessengerAiAnalyzeRequest(msg: any) {
   handlePageVisitRecordWithNotify(visitRecord);
   const analyzeStart = Date.now();
   onProcessingStart();
-  // 获取当前扩展语言
-  let lang = 'zh';
   try {
-    lang = typeof chrome !== 'undefined' && chrome.i18n && typeof chrome.i18n.getUILanguage === 'function'
-      ? chrome.i18n.getUILanguage()
-      : 'zh';
-  } catch {}
-  // 多语言结构化 prompt
-  const promptMap: Record<string, string> = {
-    zh: `你将分析如下网页内容，请用中文输出结构化 JSON 格式：\n{\n  summary: "...",\n  highlights: "..." 或 [...],\n  points: ["...", "..."],\n  suggestion: "...",\n  shouldNotify: true/false\n}\n如无法结构化输出，可降级为分条文本，但结尾请加一行“【是否建议提示用户】：是/否”。`,
-    en: `Analyze the following web content and output a structured JSON in English:\n{\n  summary: "...",\n  highlights: "..." or [...],\n  points: ["...", "..."],\n  suggestion: "...",\n  shouldNotify: true/false\n}\nIf you cannot output structured JSON, use bullet points in English and end with a line: [Should notify user]: Yes/No.`,
-    // 可扩展更多语言
-  };
-  const systemPrompt = promptMap[lang] || promptMap['zh'];
-  // 支持元信息
-  const meta = { id: visitId, url, title, fetchTime: new Date(visitStartTime).toLocaleString(), lang };
-  // 读取全局 AI 分析超时配置（毫秒）
-  let timeoutMs = 60000;
-  try {
-    const cfg = await config.get('advanced.requestTimeout');
-    if (typeof cfg === 'number' && !isNaN(cfg) && cfg >= 1000) {
-      timeoutMs = cfg;
-    } else {
-      console.warn('[AI分析] 配置超时值异常，已回退默认 60000ms，实际值:', cfg);
-    }
-  } catch (e) {
-    console.warn('[AI分析] 读取超时配置异常，已回退默认 60000ms', e);
-  }
-  console.log('[AI分析] 调用 chat，timeoutMs =', timeoutMs);
-  return chat([
-    { role: 'system', content: systemPrompt },
-    { role: 'user', content }
-  ], { meta, timeoutMs }) // 统一传递配置超时
-    .then((data: AiChatResponse) => {
-      const analyzeEnd = Date.now();
-      const analyzeDuration = analyzeEnd - analyzeStart;
-      let aiText = typeof data === 'string' ? data : data.text;
-      if (!aiText || aiText.trim() === '') {
-        aiText = 'AI 分析失败或无结果';
-      }
-      let shouldNotify = false;
-      let aiJson: any = null;
-      // 尝试解析结构化 JSON
-      let match: RegExpMatchArray | null = null;
-      if (aiText) {
-        // 补充：无论是否进入 try-catch，先输出正则匹配结果和原始文本
-        console.log('[AI分析] JSON 匹配前', { aiText });
-        match = aiText.match(/\{[\s\S]*\}/);
-        console.log('[AI分析] JSON 匹配结果', { match, aiText });
-        try {
-          // 只提取第一个 {...} 结构
-          if (match) {
-            aiJson = JSON.parse(match[0]);
-            if (typeof aiJson.shouldNotify === 'boolean') {
-              shouldNotify = aiJson.shouldNotify;
-            } else if (typeof aiJson.suggestion === 'string' && /建议|关注|重要|警告/.test(aiJson.suggestion)) {
-              shouldNotify = true;
-            }
-          }
-        } catch (e) {
-          // 增强日志，输出详细异常、原始片段和完整 aiText
-          console.error('[AI分析] 结构化 JSON 解析失败', {
-            error: e,
-            stack: (e instanceof Error ? e.stack : undefined),
-            match: match && match[0],
-            aiText,
-            charCodes: match && match[0] ? Array.from(match[0]).map(c => c.charCodeAt(0)) : undefined
-          });
-        }
-        // 降级：若无法结构化，继续用原有正则判断
-        if (aiJson === null) {
-          // 1. AI 明确建议
-          if (/【是否建议提示用户】\s*[:：]\s*是/.test(aiText)) {
-            shouldNotify = true;
-          }
-          // 2. 关键词辅助
-          else if (/强烈建议|必须注意|风险|警告|重点|重要|建议关注|值得关注/.test(aiText)) {
-            shouldNotify = true;
-          }
-          // 3. AI 明确否定
-          else if (/【是否建议提示用户】\s*[:：]\s*否|无特别建议|暂无特别建议/.test(aiText)) {
-            shouldNotify = false;
-          }
-        }
-      }
-      updateVisitAiResult(url, visitStartTime, aiText, analyzeDuration, visitId);
-      const aiResult = {
-        id: visitId,
-        url,
-        title,
-        visitStartTime, // 保证唯一性
-        aiResult: aiText,
-        aiJson,
-        timestamp: Date.now(),
-        analyzeDuration,
-      };
-      console.log('[AI分析] 即将写入 ai_analysis，aiResult =', aiResult);
-      const dayId = new Date().toISOString().slice(0, 10);
-      const key = `ai_analysis_${dayId}`;
-      return storage.get<any[]>(key).then((list) => {
-        const arr = Array.isArray(list) ? list : [];
-        arr.push(aiResult);
-        return storage.set(key, arr).then(() => {
-          onProcessingEnd();
-          setTip(shouldNotify);
-          notifySidePanelUpdate('ai');
-          return { ok: true, aiContent: aiResult.aiResult, aiJson, response: data, analyzeDuration, shouldNotify };
-        });
-      });
-    }).catch((e: any) => {
-      console.error('[AI分析] chat 失败', e, e?.fullResponse || e?.raw || e?.responseText || '');
-      updateVisitAiResult(url, visitStartTime, `AI 分析失败：${e?.message || e}`, 0, visitId);
-      onProcessingEnd();
-      setTip(true);
-      return { ok: false, error: e?.message || e, fullResponse: e?.fullResponse || e?.raw || e?.responseText || '' };
+    const aiService = await getActiveAIService();
+    console.info('[AI调试] 当前激活AI服务', {
+      aiServiceType: aiService?.constructor?.name,
+      aiServiceId: aiService?.id,
+      aiService: aiService
     });
+    if (!aiService) throw new Error('无可用 AI 服务');
+    const aiSummary = await aiService.summarizePage(url, content);
+    const analyzeEnd = Date.now();
+    const analyzeDuration = analyzeEnd - analyzeStart;
+    // 存储结构化结果
+    updateVisitAiResult(url, visitStartTime, aiSummary, analyzeDuration, visitId);
+    onProcessingEnd();
+    setTip(aiSummary.important);
+    return { ok: true, aiContent: aiSummary, analyzeDuration, shouldNotify: aiSummary.important };
+  } catch (e: any) {
+    onProcessingEnd();
+    setTip(true);
+    return { ok: false, error: e?.message || String(e) };
+  }
 }
 
 function handleMessengerGetStatus() {
@@ -248,27 +152,11 @@ function handleMessengerGetVisits(msg: any) {
   return storage.get<any[]>(key).then((visits) => ({ visits: visits || [] }));
 }
 
-function handleMessengerPageAiAnalysis(msg: any) {
-  const { url, title, aiResult, timestamp } = msg.payload || msg;
-  if (!url || !aiResult) return { success: false };
-  const dayId = new Date(timestamp || Date.now()).toISOString().slice(0, 10);
-  const key = `ai_analysis_${dayId}`;
-  return storage.get<any[]>(key).then((list) => {
-    const arr = Array.isArray(list) ? list : [];
-    if (!arr.some(item => item.url === url && item.timestamp === timestamp)) {
-      arr.push({ url, title, aiResult, timestamp });
-      return storage.set(key, arr).then(() => ({ success: true }));
-    } else {
-      return { success: true, skipped: true };
-    }
-  });
-}
-
 function handleMessengerGetAiAnalysis(msg: any) {
   const dayId = msg.payload?.dayId;
   if (!dayId) return { analysis: [] };
-  const key = `ai_analysis_${dayId}`;
-  return storage.get<any[]>(key).then((analysis) => ({ analysis: analysis || [] }));
+  const key = `visits_${dayId}`;
+  return storage.get<any[]>(key).then((visits) => ({ analysis: visits || [] }));
 }
 
 function handleMessengerDataCleared() {
@@ -310,7 +198,6 @@ export function registerBackgroundEventHandlers() {
   messenger.on('AI_ANALYZE_REQUEST', handleMessengerAiAnalyzeRequestWithNotify);
   messenger.on('GET_STATUS', handleMessengerGetStatus);
   messenger.on('GET_VISITS', handleMessengerGetVisits);
-  messenger.on('PAGE_AI_ANALYSIS', handleMessengerPageAiAnalysis);
   messenger.on('GET_AI_ANALYSIS', handleMessengerGetAiAnalysis);
   messenger.on('DATA_CLEARED', handleMessengerDataCleared);
   messenger.on('CLEAR_ICON_STATUS', handleMessengerClearIconStatus);

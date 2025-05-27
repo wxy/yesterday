@@ -1,0 +1,156 @@
+/* sidebar.css - 侧边栏专用样式 */
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  min-width: 320px;
+  margin: 0;
+  padding: 0;
+  color: #333;
+  background: #fff;
+}
+.container {
+  padding: 16px;
+}
+.footer {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #70757a;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid #eee;
+  align-items: center;
+}
+.footer-links {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+a {
+  color: #1a73e8;
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+.icon-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0 0 0 4px;
+  cursor: pointer;
+  vertical-align: middle;
+  line-height: 1;
+}
+#clearDataBtn {
+  padding: 6px 16px;
+  background: #e53935;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  margin: 16px 0 0 0;
+  display: block;
+  width: 100%;
+  text-align: center;
+}
+
+/* 卡片样式 */
+.merged-card {
+  border: 1px solid #e0e4ea;
+  border-radius: 6px;
+  padding: 8px 10px;
+  margin-bottom: 8px;
+  background: #fff;
+  box-shadow: 0 1px 2px 0 #f2f3f5;
+}
+.merged-card-important {
+  border-color: #FFC10A;
+  background: linear-gradient(90deg,#f8f0a9 0%,#FFEB3B 100%);
+}
+.merged-card-header {
+  cursor: pointer;
+}
+.merged-card-title-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.merged-card-title {
+  font-weight: 600;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 70%;
+}
+.merged-card-time {
+  color: #888;
+  font-size: 12px;
+  margin-left: 8px;
+  flex-shrink: 0;
+}
+.merged-card-url-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 2px;
+}
+.merged-card-url {
+  color: #1a73e8;
+  font-size: 12px;
+  word-break: break-all;
+  max-width: 70%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: inline-block;
+  text-decoration: underline;
+  vertical-align: bottom;
+}
+.merged-card-duration {
+  color: #888;
+  font-size: 11px;
+  margin-left: 8px;
+  flex-shrink: 0;
+}
+.merged-card-content {
+  margin-top: 6px;
+}
+.merged-card-ai-content {
+  margin-top: 4px;
+}
+
+/* AI 内容样式 */
+.ai-summary {
+  font-weight: bold;
+  margin-bottom: 4px;
+}
+.ai-highlights {
+  margin: 4px 0 4px 16px;
+  padding: 0;
+  color: #333;
+  font-size: 13px;
+}
+.ai-special-concerns {
+  color: #e53935;
+  font-size: 13px;
+  margin: 4px 0;
+}
+.ai-failed {
+  color: #e53935;
+  background: #fff3f3;
+  border-radius: 4px;
+  padding: 6px 8px;
+}
+.ai-plain {
+  color: #888;
+  background: #f7f7fa;
+  border-radius: 4px;
+  padding: 6px 8px;
+}
+.ai-analyzing {
+  color: #1a73e8;
+}
+.ai-empty {
+  color: #aaa;
+}

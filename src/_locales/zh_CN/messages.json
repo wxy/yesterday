@@ -242,5 +242,57 @@
   "session_storage_unavailable_in_sw": {
     "message": "session storage 在 Service Worker 环境中不可用",
     "description": "从TS提取 (_Error): lib/storage/adapters/chrome-storage.ts"
+  },
+  "ai_ollama_unavailable": {
+    "message": "Ollama 服务不可用: {0}",
+    "description": "从TS提取 (_): lib/artificial-intelligence/ollama/ollama-service.ts"
+  },
+  "ai_ollama_summarize": {
+    "message": "Ollama 正在总结页面: {0}",
+    "description": "从TS提取 (_): lib/artificial-intelligence/ollama/ollama-service.ts"
+  },
+  "ai_ollama_summarize_error": {
+    "message": "Ollama 总结失败: {0}",
+    "description": "从TS提取 (_Error): lib/artificial-intelligence/ollama/ollama-service.ts"
+  },
+  "ai_ollama_report": {
+    "message": "Ollama 正在生成日报: {0}",
+    "description": "从TS提取 (_): lib/artificial-intelligence/ollama/ollama-service.ts"
+  },
+  "ai_ollama_report_error": {
+    "message": "Ollama 日报生成失败: {0}",
+    "description": "从TS提取 (_Error): lib/artificial-intelligence/ollama/ollama-service.ts"
+  },
+  "ai_chrome_unavailable": {
+    "message": "Chrome AI 不可用: {0}",
+    "description": "从TS提取 (_): lib/artificial-intelligence/chrome-ai/chrome-ai-service.ts"
+  },
+  "ai_chrome_summarize": {
+    "message": "Chrome AI 正在总结页面: {0}",
+    "description": "从TS提取 (_): lib/artificial-intelligence/chrome-ai/chrome-ai-service.ts"
+  },
+  "ai_chrome_summarize_error": {
+    "message": "Chrome AI 总结失败: {0}",
+    "description": "从TS提取 (_Error): lib/artificial-intelligence/chrome-ai/chrome-ai-service.ts"
+  },
+  "ai_chrome_report": {
+    "message": "Chrome AI 正在生成日报: {0}",
+    "description": "从TS提取 (_): lib/artificial-intelligence/chrome-ai/chrome-ai-service.ts"
+  },
+  "ai_chrome_report_error": {
+    "message": "Chrome AI 日报生成失败: {0}",
+    "description": "从TS提取 (_Error): lib/artificial-intelligence/chrome-ai/chrome-ai-service.ts"
+  },
+  "ai_chrome_summarizer_not_found": {
+    "message": "全局 Summarizer API 不存在",
+    "description": "从TS提取 (_Error): lib/artificial-intelligence/chrome-ai/chrome-ai-service.ts"
+  },
+  "ai_chrome_summarizer_unavailable": {
+    "message": "Summarizer API 不可用",
+    "description": "从TS提取 (_Error): lib/artificial-intelligence/chrome-ai/chrome-ai-service.ts"
+  },
+  "ai_chrome_timeout": {
+    "message": "AI 分析超时",
+    "description": "从TS提取 (_Error): lib/artificial-intelligence/chrome-ai/chrome-ai-service.ts"
   }
 }
