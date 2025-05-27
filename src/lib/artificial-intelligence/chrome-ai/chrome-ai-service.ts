@@ -84,14 +84,63 @@ export class ChromeAIService extends AIBaseService {
   }
 
   async summarizePage(url: string, content: string): Promise<PageAISummary> {
+    let lang = 'zh-CN';
+    try {
+      lang = (chrome && chrome.i18n && typeof chrome.i18n.getUILanguage === 'function') ? chrome.i18n.getUILanguage() : 'zh-CN';
+    } catch {}
     this.logger.info(_('ai_chrome_summarize', 'Chrome AI 正在总结页面: {0}', url));
     try {
-      const result = await chromeAiSummarize({ url, text: content });
+      const summarizerGlobal = (typeof window !== 'undefined' ? (window as any).Summarizer : undefined) || (typeof globalThis !== 'undefined' ? (globalThis as any).Summarizer : undefined);
+      if (!summarizerGlobal || typeof summarizerGlobal.create !== 'function') {
+        throw new _Error('ai_chrome_summarizer_not_found', '全局 Summarizer API 不存在');
+      }
+      // 语言提示
+      const langHint = `请用${lang === 'zh-CN' ? '简体中文' : lang}回答。`;
+      // 1. 获取 key-points（要点）
+      const keyPointsSummarizer = await summarizerGlobal.create({
+        sharedContext: langHint,
+        type: 'key-points',
+        format: 'plain-text',
+        length: 'medium',
+      });
+      let keyPointsResult = await keyPointsSummarizer.summarize(content, { context: url });
+      // 2. 获取 tl;dr（简明摘要）
+      const tldrSummarizer = await summarizerGlobal.create({
+        sharedContext: langHint,
+        type: 'tl;dr',
+        format: 'plain-text',
+        length: 'short',
+      });
+      let tldrResult = await tldrSummarizer.summarize(content, { context: url });
+      // 3. 获取 teaser（建议/关注点）
+      let suggestion = '';
+      try {
+        const teaserSummarizer = await summarizerGlobal.create({
+          sharedContext: langHint,
+          type: 'teaser',
+          format: 'plain-text',
+          length: 'short',
+        });
+        suggestion = await teaserSummarizer.summarize(content, { context: url });
+      } catch {}
+      // highlights/points 处理 markdown 符号和换行
+      function cleanList(arr: any): string[] {
+        if (Array.isArray(arr)) {
+          return arr.map((s: string) => String(s).replace(/^([*\-•\s]+)+/, '').replace(/\r?\n/g, '').trim()).filter(Boolean);
+        } else if (typeof arr === 'string') {
+          return arr.split(/\n|•|\-/).map(s => s.replace(/^([*\-•\s]+)+/, '').replace(/\r?\n/g, '').trim()).filter(Boolean);
+        }
+        return [];
+      }
+      const summary = (typeof tldrResult === 'string' ? tldrResult : (tldrResult.summary || ''));
+      const highlights = cleanList(keyPointsResult);
+      const specialConcerns = suggestion ? [suggestion.replace(/^([*\-•\s]+)+/, '').replace(/\r?\n/g, '').trim()] : [];
+      const important = /重要|必须|必看|注意|警告|highly recommended|critical|必读|必看|alert|warning/i.test([summary, ...highlights, ...specialConcerns].join(' '));
       return {
-        summary: result.summary || '',
-        highlights: result.highlights || result.points || [],
-        specialConcerns: result.suggestion ? [result.suggestion] : [],
-        important: /重要|必须|必看|highly recommended|critical/i.test(result.summary || '')
+        summary,
+        highlights,
+        specialConcerns,
+        important
       };
     } catch (e: any) {
       throw new _Error('ai_chrome_summarize_error', 'Chrome AI 总结失败: {0}', e?.message || String(e));
