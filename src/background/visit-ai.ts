@@ -10,8 +10,10 @@ export const VISIT_KEEP_DAYS = 7;
 export async function handlePageVisitRecord(data: any) {
   try {
     if (!data.visitStartTime || isNaN(new Date(data.visitStartTime).getTime())) {
-      logger.error('无效的 visitStartTime，无法存储访问记录', JSON.stringify(data));
-      return;
+      // 自动补当前时间
+      const now = Date.now();
+      data.visitStartTime = now;
+      logger.warn('visitStartTime 缺失或非法，已自动补当前时间', { id: data.id, url: data.url, visitStartTime: now });
     }
     const date = new Date(data.visitStartTime);
     const dayId = date.toISOString().slice(0, 10);
@@ -30,27 +32,7 @@ export async function handlePageVisitRecord(data: any) {
   }
 }
 
-export async function updateAiAnalysis(id: string, aiResult: string, dayId: string) {
-  try {
-    const key = `ai_analysis_${dayId}`;
-    const analysisList: any[] = (await storage.get<any[]>(key)) || [];
-    let found = false;
-    for (const item of analysisList) {
-      if (item.id === id) {
-        item.aiResult = aiResult;
-        found = true;
-        break;
-      }
-    }
-    if (!found) {
-      analysisList.push({ id, aiResult });
-    }
-    await storage.set(key, analysisList);
-    logger.info(`[AI] 已更新 ai_analysis`, { dayId, id });
-  } catch (err) {
-    logger.error('更新 ai_analysis 失败', err);
-  }
-}
+// 移除 ai_analysis 相关逻辑，所有分析结果直接写入 visits_ 表
 
 export async function updateVisitAiResult(
   url: string,
@@ -84,29 +66,6 @@ export async function updateVisitAiResult(
       await storage.set(key, visits);
       logger.info(`[AI] 已更新访问记录的 aiResult`, { url, dayId, id });
       logger.info(`[AI] 分析结果内容`, { id, aiResult });
-      // 新增：同步写入/更新 ai_analysis_${dayId}
-      try {
-        const aiAnalysisKey = `ai_analysis_${dayId}`;
-        let aiAnalysis: any[] = (await storage.get<any[]>(aiAnalysisKey)) || [];
-        let found = false;
-        for (const a of aiAnalysis) {
-          if (a.id === id) {
-            a.aiResult = aiResult;
-            a.analyzeDuration = analyzeDuration;
-            found = true;
-            break;
-          }
-        }
-        if (!found) {
-          // 若不存在则新增，补全所有元信息
-          const v = visits.find((vv: any) => vv.id === id);
-          aiAnalysis.push({ id, url, visitStartTime, aiResult, analyzeDuration, title: v?.title, pageTitle: v?.pageTitle });
-        }
-        await storage.set(aiAnalysisKey, aiAnalysis);
-        logger.info(`[AI] 已同步写入/更新 ai_analysis`, { aiAnalysisKey, id });
-      } catch (err) {
-        logger.error('同步写入 ai_analysis 失败', { id, err });
-      }
     } else {
       logger.warn('[AI调试] 未找到匹配的访问记录（仅按 id 匹配），aiResult 未写入', { url, visitStartTime, id });
     }

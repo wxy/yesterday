@@ -152,27 +152,11 @@ function handleMessengerGetVisits(msg: any) {
   return storage.get<any[]>(key).then((visits) => ({ visits: visits || [] }));
 }
 
-function handleMessengerPageAiAnalysis(msg: any) {
-  const { url, title, aiResult, timestamp } = msg.payload || msg;
-  if (!url || !aiResult) return { success: false };
-  const dayId = new Date(timestamp || Date.now()).toISOString().slice(0, 10);
-  const key = `ai_analysis_${dayId}`;
-  return storage.get<any[]>(key).then((list) => {
-    const arr = Array.isArray(list) ? list : [];
-    if (!arr.some(item => item.url === url && item.timestamp === timestamp)) {
-      arr.push({ url, title, aiResult, timestamp });
-      return storage.set(key, arr).then(() => ({ success: true }));
-    } else {
-      return { success: true, skipped: true };
-    }
-  });
-}
-
 function handleMessengerGetAiAnalysis(msg: any) {
   const dayId = msg.payload?.dayId;
   if (!dayId) return { analysis: [] };
-  const key = `ai_analysis_${dayId}`;
-  return storage.get<any[]>(key).then((analysis) => ({ analysis: analysis || [] }));
+  const key = `visits_${dayId}`;
+  return storage.get<any[]>(key).then((visits) => ({ analysis: visits || [] }));
 }
 
 function handleMessengerDataCleared() {
@@ -214,7 +198,6 @@ export function registerBackgroundEventHandlers() {
   messenger.on('AI_ANALYZE_REQUEST', handleMessengerAiAnalyzeRequestWithNotify);
   messenger.on('GET_STATUS', handleMessengerGetStatus);
   messenger.on('GET_VISITS', handleMessengerGetVisits);
-  messenger.on('PAGE_AI_ANALYSIS', handleMessengerPageAiAnalysis);
   messenger.on('GET_AI_ANALYSIS', handleMessengerGetAiAnalysis);
   messenger.on('DATA_CLEARED', handleMessengerDataCleared);
   messenger.on('CLEAR_ICON_STATUS', handleMessengerClearIconStatus);

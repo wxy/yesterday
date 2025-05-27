@@ -13,28 +13,10 @@ function showAnalyzeDuration(analyzeDuration: number) {
   return `<span style='color:#888;font-size:11px;'>(分析用时 ${(analyzeDuration / 1000).toFixed(1)} 秒)</span>`;
 }
 
-function mergeVisitsAndAnalysis(visits: any[], analysis: any[]) {
-  // 先用 id 建立映射
-  const analysisById = new Map<string, any>();
-  const analysisByUrlTime = new Map<string, any>();
-  for (const a of analysis) {
-    if (a.id) analysisById.set(a.id, a);
-    if (a.url && a.visitStartTime) analysisByUrlTime.set(`${a.url}||${a.visitStartTime}`, a);
-  }
-  return visits.map(v => {
-    let matchedAnalysis = null;
-    if (v.id && analysisById.has(v.id)) {
-      matchedAnalysis = analysisById.get(v.id);
-    } else if (v.url && v.visitStartTime && analysisByUrlTime.has(`${v.url}||${v.visitStartTime}`)) {
-      matchedAnalysis = analysisByUrlTime.get(`${v.url}||${v.visitStartTime}`);
-    }
-    return {
-      ...v,
-      aiResult: matchedAnalysis?.aiResult || '',
-      analyzeDuration: matchedAnalysis?.analyzeDuration || 0,
-      aiJson: matchedAnalysis?.aiJson || null
-    };
-  });
+// 合并访问记录和分析结果，优先用 id 匹配，兼容 url+visitStartTime
+// 已迁移为单表，直接用 visits 作为 analysis
+function mergeVisitsAndAnalysis(visits: any[]): any[] {
+  return visits;
 }
 
 // 获取当前 AI 服务名称（带缓存）
@@ -70,11 +52,10 @@ async function getCurrentAiServiceLabel(): Promise<string> {
 
 async function renderMergedView(root: HTMLElement, dayId: string) {
   root.innerHTML = '<div style="color:#888;padding:16px;">加载中...</div>';
-  const [visits, analysis] = await Promise.all([
-    messenger.send('GET_VISITS', { dayId }).then(r => r?.visits || []).catch(() => []),
-    messenger.send('GET_AI_ANALYSIS', { dayId }).then(r => r?.analysis || []).catch(() => [])
+  const [visits] = await Promise.all([
+    messenger.send('GET_VISITS', { dayId }).then(r => r?.visits || []).catch(() => [])
   ]);
-  let merged = mergeVisitsAndAnalysis(visits, analysis);
+  let merged = mergeVisitsAndAnalysis(visits);
   merged = merged.slice().sort((a, b) => (b.visitStartTime || 0) - (a.visitStartTime || 0));
   if (!merged.length) {
     root.innerHTML = '<div style="color:#888;padding:16px;">无数据</div>';
@@ -100,14 +81,14 @@ async function renderMergedView(root: HTMLElement, dayId: string) {
     }
     if (isStructured && jsonObj) {
       // summary
-      aiContent = `<div style='font-weight:bold;margin-bottom:4px;'>${jsonObj.summary || ''}</div>`;
+      aiContent = `<div class='ai-summary'>${jsonObj.summary || ''}</div>`;
       // highlights
       if (jsonObj.highlights && Array.isArray(jsonObj.highlights) && jsonObj.highlights.length) {
-        aiContent += `<ul style='margin:4px 0 4px 16px;padding:0;color:#333;font-size:13px;'>${jsonObj.highlights.map((h: string) => `<li>${h}</li>`).join('')}</ul>`;
+        aiContent += `<ul class='ai-highlights'>${jsonObj.highlights.map((h: string) => `<li>${h}</li>`).join('')}</ul>`;
       }
       // specialConcerns
       if (jsonObj.specialConcerns && Array.isArray(jsonObj.specialConcerns) && jsonObj.specialConcerns.length) {
-        aiContent += `<div style='color:#e53935;font-size:13px;margin:4px 0;'>特别关注：${jsonObj.specialConcerns.map((c: string) => c).join('，')}</div>`;
+        aiContent += `<div class='ai-special-concerns'>特别关注：${jsonObj.specialConcerns.map((c: string) => c).join('，')}</div>`;
       }
       // 卡片样式高亮由 important 字段控制，不再直接输出“重要性”文字
     } else if (typeof rawText === 'string') {
@@ -115,14 +96,14 @@ async function renderMergedView(root: HTMLElement, dayId: string) {
       if (rawText && rawText !== '正在进行 AI 分析' && rawText !== '') {
         // 新增：AI 分析失败高亮
         if (rawText.startsWith('AI 分析失败')) {
-          aiContent = `<div style='color:#e53935;background:#fff3f3;border-radius:4px;padding:6px 8px;'>${rawText.replace(/\n/g, '<br>')}</div>`;
+          aiContent = `<div class='ai-failed'>${rawText.replace(/\n/g, '<br>')}</div>`;
         } else {
-          aiContent = `<div style='color:#888;background:#f7f7fa;border-radius:4px;padding:6px 8px;'>${rawText.replace(/\n/g, '<br>')}</div>`;
+          aiContent = `<div class='ai-plain'>${rawText.replace(/\n/g, '<br>')}</div>`;
         }
       } else if ((rawText === '正在进行 AI 分析' || rawText === '') && !isStructured) {
         // 只有没有分析结果时才显示分析中
         const analyzingId = `analyzing-timer-${idx}`;
-        aiContent = `<span style='color:#1a73e8;' id='${analyzingId}'>正在进行 AI 分析</span>`;
+        aiContent = `<span class='ai-analyzing' id='${analyzingId}'>正在进行 AI 分析</span>`;
         setTimeout(() => {
           const el = document.getElementById(analyzingId);
           if (el && item.visitStartTime) {
@@ -157,41 +138,34 @@ async function renderMergedView(root: HTMLElement, dayId: string) {
           }
         }, 0);
       } else {
-        aiContent = `<span style='color:#aaa;'>[无分析结果]</span>`;
+        aiContent = `<span class='ai-empty'>[无分析结果]</span>`;
       }
     } else {
-      aiContent = `<span style='color:#aaa;'>[无分析结果]</span>`;
+      aiContent = `<span class='ai-empty'>[无分析结果]</span>`;
     }
     if (item.analyzeDuration && item.analyzeDuration > 0) {
       durationStr = showAnalyzeDuration(item.analyzeDuration);
     }
     // 卡片样式高亮
     const isImportant = (item.aiResult && typeof item.aiResult === 'object' && item.aiResult.important === true);
-    const cardStyle = [
-      'border:2px solid',
-      isImportant ? '#FFC10A' : '#e0e4ea', ';',
-      'border-radius:6px;padding:8px 10px;margin-bottom:8px;',
-      'background:',
-      isImportant ? 'linear-gradient(90deg,#f8f0a9 0%,#FFEB3B 100%)' : '#fff', ';',
-      'box-shadow:0 1px 2px 0 #f2f3f5;'
-    ].join(' ');
+    const cardClass = isImportant ? 'merged-card merged-card-important' : 'merged-card';
     const visitTime = item.visitStartTime ? new Date(item.visitStartTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
-    const titleLine = `<div style='display:flex;justify-content:space-between;align-items:center;'>
-      <div style='font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:70%;'>${item.title || ''}</div>
-      <div style='color:#888;font-size:12px;margin-left:8px;flex-shrink:0;'>${visitTime}</div>
+    const titleLine = `<div class='merged-card-title-line'>
+      <div class='merged-card-title'>${item.title || ''}</div>
+      <div class='merged-card-time'>${visitTime}</div>
     </div>`;
-    const urlLine = `<div style='display:flex;justify-content:space-between;align-items:center;margin-top:2px;'>
-      <a href='${item.url || ''}' target='_blank' style='color:#1a73e8;font-size:12px;word-break:break-all;max-width:70%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;text-decoration:underline;vertical-align:bottom;'>${item.url || ''}</a>
-      <div style='color:#888;font-size:11px;margin-left:8px;flex-shrink:0;'>${durationStr}</div>
+    const urlLine = `<div class='merged-card-url-line'>
+      <a href='${item.url || ''}' target='_blank' class='merged-card-url'>${item.url || ''}</a>
+      <div class='merged-card-duration'>${durationStr}</div>
     </div>`;
     return `
-      <div style='${cardStyle}'>
-        <div class='merged-card-header' data-entry-id='${entryId}' style='cursor:pointer;'>
+      <div class='${cardClass}'>
+        <div class='merged-card-header' data-entry-id='${entryId}'>
           ${titleLine}
         </div>
-        <div id='${entryId}' style='${collapsed ? 'display:none;' : ''}margin-top:6px;'>
+        <div id='${entryId}' class='merged-card-content' style='${collapsed ? 'display:none;' : ''}'>
           ${urlLine}
-          <div style='margin-top:4px;'>${aiContent}</div>
+          <div class='merged-card-ai-content'>${aiContent}</div>
         </div>
       </div>
     `;

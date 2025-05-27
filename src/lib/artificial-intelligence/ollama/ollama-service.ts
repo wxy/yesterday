@@ -40,6 +40,50 @@ async function chatWithOllama({ messages, model = DEFAULT_MODEL, url = DEFAULT_O
   return await resp.json();
 }
 
+// 工具函数：本地预处理并尝试解析 JSON
+function parseJsonWithPreprocess(text: string, logger: any): any {
+  let jsonText = text.trim()
+    .replace(/^[^\{]*\{/, '{')
+    .replace(/,\s*([}\]])/g, '$1')
+    .replace(/([,{]\s*)([a-zA-Z0-9_]+)\s*:/g, '$1"$2":')
+    .replace(/\n/g, ' ')
+    .replace(/[\u200B-\u200D\uFEFF]/g, '');
+  if (jsonText.startsWith('{') && !jsonText.endsWith('}')) {
+    jsonText = jsonText + '}';
+  }
+  try {
+    if (jsonText.startsWith('{')) {
+      return JSON5.parse(jsonText);
+    }
+  } catch (e) {
+    logger?.warn('[Ollama JSON5 本地预处理解析失败]', e);
+  }
+  return null;
+}
+
+// 工具函数：AI 修复 JSON，返回修复后的字符串
+async function repairJsonWithAI(text: string, logger: any): Promise<string | null> {
+  // 本地解析失败，请求 AI 修复
+  try {
+    const fixPrompt =
+      `你刚才输出的 JSON 解析失败，请严格修复为合法 JSON 格式，只返回 JSON，不要输出其它内容。原始内容如下：\n${text}`;
+    const fixResp = await chatWithOllama({
+      messages: [
+        { role: 'system', content: '你是一个 JSON 修复助手。' },
+        { role: 'user', content: fixPrompt }
+      ]
+    });
+    let fixedJsonText = (fixResp.choices?.[0]?.message?.content || '').trim();
+    if (fixedJsonText) {
+      logger?.info('[Ollama JSON5 AI 修复成功]');
+      return fixedJsonText;
+    }
+  } catch (fixErr) {
+    logger?.warn('[Ollama JSON5 AI 修复失败]', fixErr);
+  }
+  return null;
+}
+
 export class OllamaService extends AIBaseService {
   readonly id = 'ollama';
   readonly name = 'Ollama AI';
@@ -86,43 +130,13 @@ export class OllamaService extends AIBaseService {
       });
       const text = resp.choices?.[0]?.message?.content || '';
       this.logger.debug(text);
-      // 优先尝试解析为 JSON，增强兼容性
-      let parsed: any = null;
-      let jsonText = text.trim()
-        .replace(/^[^\{]*\{/, '{') // 去除前面多余内容
-        .replace(/,\s*([}\]])/g, '$1') // 去除数组/对象结尾多余逗号
-        .replace(/([,{]\s*)([a-zA-Z0-9_]+)\s*:/g, '$1"$2":') // 未加引号的 key
-        .replace(/\n/g, ' ') // 换行转空格
-        .replace(/[\u200B-\u200D\uFEFF]/g, ''); // 去除不可见字符
-      try {
-        if (jsonText.startsWith('{')) {
-          parsed = JSON5.parse(jsonText);
-        }
-      } catch (e) {
-        this.logger.warn('[Ollama JSON5 解析失败]', e);
-        // 新增：自动请求 AI 修复 JSON
-        try {
-          const fixPrompt =
-            `你刚才输出的 JSON 解析失败，请严格修复为合法 JSON 格式，只返回 JSON，不要输出其它内容。原始内容如下：\n${text}`;
-          const fixResp = await chatWithOllama({
-            messages: [
-              { role: 'system', content: '你是一个 JSON 修复助手。' },
-              { role: 'user', content: fixPrompt }
-            ]
-          });
-          const fixedText = fixResp.choices?.[0]?.message?.content || '';
-          let fixedJsonText = fixedText.trim()
-            .replace(/^[^\{]*\{/, '{')
-            .replace(/,\s*([}\]])/g, '$1')
-            .replace(/([,{]\s*)([a-zA-Z0-9_]+)\s*:/g, '$1"$2":')
-            .replace(/\n/g, ' ')
-            .replace(/[\u200B-\u200D\uFEFF]/g, '');
-          if (fixedJsonText.startsWith('{')) {
-            parsed = JSON5.parse(fixedJsonText);
-            this.logger.info('[Ollama JSON5 修复成功]');
-          }
-        } catch (fixErr) {
-          this.logger.warn('[Ollama JSON5 修复失败]', fixErr);
+      // 先本地预处理解析
+      let parsed: any = parseJsonWithPreprocess(text, this.logger);
+      if (!parsed) {
+        // 本地失败，AI 修复
+        const aiFixed = await repairJsonWithAI(text, this.logger);
+        if (aiFixed) {
+          parsed = parseJsonWithPreprocess(aiFixed, this.logger);
         }
       }
       if (parsed && typeof parsed === 'object') {
