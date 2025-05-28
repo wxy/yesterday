@@ -314,4 +314,23 @@ export class ConfigManager<T extends Record<string, any>> {
     
     return current;
   }
+  
+  /**
+   * 强制从存储重新加载配置
+   */
+  async reload(): Promise<void> {
+    try {
+      const storedConfig = await storage.get<Partial<T>>(this.storageKey);
+      if (storedConfig) {
+        this.userConfig = storedConfig;
+        this.logger.debug('强制reload: 从存储加载配置成功');
+      } else {
+        this.userConfig = {} as Partial<T>;
+        this.logger.debug('强制reload: 未找到存储的配置，使用默认值');
+      }
+    } catch (error) {
+      this.logger.error('强制reload: 加载配置失败', error);
+      this.userConfig = {} as Partial<T>;
+    }
+  }
 }

@@ -19,6 +19,8 @@ import {
   getVisitsByDay
 } from './visit-ai.js';
 import { getActiveAIService } from '../lib/artificial-intelligence/index.js';
+import { getCurrentAiConfig } from '../lib/artificial-intelligence/ai-config.js';
+import { AIManager } from '../lib/artificial-intelligence/ai-manager.js';
 
 // ====== 侧面板相关状态管理 ======
 let useSidePanel = false;
@@ -101,46 +103,6 @@ async function handleMessengerAiChatRequest(msg: any) {
   }
 }
 
-async function handleMessengerAiAnalyzeRequest(msg: any) {
-  // 兼容 content/popup 侧发起的 AI_ANALYZE_REQUEST
-  const { url, title, content, id } = msg.payload || msg;
-  const visitStartTime = msg.payload?.visitStartTime || Date.now();
-  const visitId = id || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`);
-  if (!content) return { ok: false, error: 'No content' };
-  const visitRecord = {
-    id: visitId,
-    url,
-    title,
-    mainContent: content,
-    visitStartTime,
-    aiResult: '正在进行 AI 分析',
-  };
-  handlePageVisitRecordWithNotify(visitRecord);
-  const analyzeStart = Date.now();
-  onProcessingStart();
-  try {
-    const aiService = await getActiveAIService();
-    console.info('[AI调试] 当前激活AI服务', {
-      aiServiceType: aiService?.constructor?.name,
-      aiServiceId: aiService?.id,
-      aiService: aiService
-    });
-    if (!aiService) throw new Error('无可用 AI 服务');
-    const aiSummary = await aiService.summarizePage(url, content);
-    const analyzeEnd = Date.now();
-    const analyzeDuration = analyzeEnd - analyzeStart;
-    // 存储结构化结果
-    updateVisitAiResult(url, visitStartTime, aiSummary, analyzeDuration, visitId);
-    onProcessingEnd();
-    setTip(aiSummary.important);
-    return { ok: true, aiContent: aiSummary, analyzeDuration, shouldNotify: aiSummary.important };
-  } catch (e: any) {
-    onProcessingEnd();
-    setTip(true);
-    return { ok: false, error: e?.message || String(e) };
-  }
-}
-
 function handleMessengerGetStatus() {
   return { status: '正常' };
 }
@@ -177,14 +139,46 @@ function notifySidePanelUpdate(type: 'visit' | 'ai') {
 }
 
 // 包装原有处理函数，类型安全
-function handlePageVisitRecordWithNotify(record: any) {
-  handlePageVisitRecord(record);
+async function handlePageVisitRecordWithNotify(record: any) {
+  await handlePageVisitRecord(record); // 等待写入完成
   notifySidePanelUpdate('visit');
 }
 async function handleMessengerAiAnalyzeRequestWithNotify(msg: any) {
-  const result = await handleMessengerAiAnalyzeRequest(msg);
-  notifySidePanelUpdate('ai');
-  return result;
+  // 兼容 content/popup 侧发起的 AI_ANALYZE_REQUEST
+  const { url, title, content, id } = msg.payload || msg;
+  const visitStartTime = msg.payload?.visitStartTime || Date.now();
+  const visitId = id || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`);
+  if (!content) return { ok: false, error: 'No content' };
+  // 检查访问记录是否存在，不存在则直接返回错误，不再自动补充
+  const date = new Date(visitStartTime);
+  const dayId = date.toISOString().slice(0, 10);
+  const key = `visits_${dayId}`;
+  let visits: any[] = (await storage.get<any[]>(key)) || [];
+  if (!visits.some(v => v.id === visitId)) {
+    return { ok: false, error: 'No visit record found for AI analysis' };
+  }
+  // 分析前强制reload配置，确保读取数据库最新AI配置
+  await config.reload();
+  const allConfig: any = await config.getAll();
+  const aiConfig = allConfig && allConfig['aiServiceConfig'] ? allConfig['aiServiceConfig'] : { serviceId: 'ollama' };
+  const aiService = await AIManager.instance.getAvailableService(aiConfig.serviceId);
+  const analyzeStart = Date.now();
+  onProcessingStart();
+  try {
+    if (!aiService) throw new Error('无可用 AI 服务');
+    const aiSummary = await aiService.summarizePage(url, content);
+    const analyzeEnd = Date.now();
+    const analyzeDuration = analyzeEnd - analyzeStart;
+    await updateVisitAiResult(url, visitStartTime, aiSummary, analyzeDuration, visitId);
+    onProcessingEnd();
+    setTip(aiSummary.important);
+    notifySidePanelUpdate('ai');
+    return { ok: true, aiContent: aiSummary, analyzeDuration, shouldNotify: aiSummary.important };
+  } catch (e: any) {
+    onProcessingEnd();
+    setTip(true);
+    return { ok: false, error: e?.message || String(e) };
+  }
 }
 
 export function registerBackgroundEventHandlers() {

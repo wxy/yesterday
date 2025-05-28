@@ -9,22 +9,32 @@ export const VISIT_KEEP_DAYS = 7;
 
 export async function handlePageVisitRecord(data: any) {
   try {
-    if (!data.visitStartTime || isNaN(new Date(data.visitStartTime).getTime())) {
+    // 兼容 content-script 可能传递 { payload: {...} } 的情况
+    const record = data && data.payload && typeof data.payload === 'object' ? data.payload : data;
+    // 字段完整性校验：url、title、id 必须存在且为非空字符串
+    if (!record || typeof record.url !== 'string' || !record.url.trim() || typeof record.title !== 'string' || !record.title.trim() || typeof record.id !== 'string' || !record.id.trim()) {
+      logger.warn('[内容捕获] 拒绝插入无效访问记录，字段不全', { data });
+      return;
+    }
+    if (!('aiResult' in record)) {
+      record.aiResult = '正在进行 AI 分析';
+    }
+    if (!record.visitStartTime || isNaN(new Date(record.visitStartTime).getTime())) {
       // 自动补当前时间
       const now = Date.now();
-      data.visitStartTime = now;
-      logger.warn('visitStartTime 缺失或非法，已自动补当前时间', { id: data.id, url: data.url, visitStartTime: now });
+      record.visitStartTime = now;
+      logger.warn('visitStartTime 缺失或非法，已自动补当前时间', { id: record.id, url: record.url, visitStartTime: now });
     }
-    const date = new Date(data.visitStartTime);
+    const date = new Date(record.visitStartTime);
     const dayId = date.toISOString().slice(0, 10);
     const key = `visits_${dayId}`;
     const visits: any[] = (await storage.get<any[]>(key)) || [];
-    if (!visits.some(v => v.url === data.url && v.visitStartTime === data.visitStartTime)) {
-      visits.push(data);
+    if (!visits.some(v => v.url === record.url && v.visitStartTime === record.visitStartTime)) {
+      visits.push(record);
       await storage.set(key, visits);
-      logger.info(`[内容捕获] 已存储访问记录`, { url: data.url, dayId });
+      logger.info(`[内容捕获] 已存储访问记录`, { url: record.url, dayId, id: record.id }); // 日志中加上 id 字段
     } else {
-      logger.info(`[内容捕获] 跳过重复访问记录`, { url: data.url, dayId });
+      logger.info(`[内容捕获] 跳过重复访问记录`, { url: record.url, dayId, id: record.id }); // 日志中加上 id 字段
     }
     await cleanupOldVisits();
   } catch (err) {

@@ -12,6 +12,10 @@ async function renderSingleBrief(root: HTMLElement) {
   const dayId = getDayId(0);
   const resp = await messenger.send('GET_AI_ANALYSIS', { dayId });
   const analysis = Array.isArray(resp?.analysis) ? resp.analysis : [];
+  // 渲染后重置图标
+  if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+    try { chrome.runtime.sendMessage({ type: 'CLEAR_ICON_STATUS' }); } catch {}
+  }
   console.debug('[popup] analysis:', analysis);
   if (!analysis.length) {
     root.innerHTML = '<div style="color:#888;padding:16px;">暂无数据</div>';

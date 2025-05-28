@@ -8,12 +8,19 @@ export class AIManager {
   private services: Map<string, AIBaseService> = new Map();
   private logger = new Logger('AIManager');
   private i18n = i18n;
+  private static _lastPreferredId: string | undefined;
+  private static _lastService: AIBaseService | undefined;
 
   private constructor() {}
 
   static get instance() {
     if (!this._instance) this._instance = new AIManager();
     return this._instance;
+  }
+
+  static clearCache() {
+    this._lastPreferredId = undefined;
+    this._lastService = undefined;
   }
 
   register(service: AIBaseService) {
@@ -30,14 +37,28 @@ export class AIManager {
   }
 
   async getAvailableService(preferredId?: string): Promise<AIBaseService | undefined> {
+    // 缓存机制：如果 preferredId 没变且服务可用，直接返回上次的实例
+    if (preferredId && preferredId === AIManager._lastPreferredId && AIManager._lastService) {
+      if (await AIManager._lastService.isAvailable()) return AIManager._lastService;
+    }
     if (preferredId) {
       const svc = this.services.get(preferredId);
-      if (svc && await svc.isAvailable()) return svc;
+      if (svc && await svc.isAvailable()) {
+        AIManager._lastPreferredId = preferredId;
+        AIManager._lastService = svc;
+        return svc;
+      }
     }
     for (const svc of this.services.values()) {
-      if (await svc.isAvailable()) return svc;
+      if (await svc.isAvailable()) {
+        AIManager._lastPreferredId = svc.id;
+        AIManager._lastService = svc;
+        return svc;
+      }
     }
     this.logger.warn('ai_no_service_available', '没有可用的 AI 服务！');
+    AIManager._lastPreferredId = undefined;
+    AIManager._lastService = undefined;
     return undefined;
   }
 }

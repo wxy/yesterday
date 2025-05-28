@@ -53,20 +53,62 @@ window.addEventListener('beforeunload', () => {
   async function main() {
     try {
       console.log('[Yesterday] main 启动');
-      const pageContent = getPageContent();
-      // 只输出采集动作，不输出正文内容
-      console.log('[Yesterday] 页面内容采集');
-      chrome.runtime.sendMessage({
-        type: 'AI_ANALYZE_REQUEST',
-        content: pageContent,
+      // 生成唯一 id 和访问时间
+      const thisVisitId = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+      const thisVisitStartTime = Date.now();
+      // 先发送访问记录
+      const pageInfo = {
         url: location.href,
         title: document.title,
-        visitStartTime, // 兼容老逻辑
-        id: visitId // 新增唯一 id 字段
-      }, (resp) => {
-        console.log('[Yesterday] AI 分析结果:', resp);
-        // 可在此处处理 resp.aiContent
+        mainContent: extractMainContent(),
+        visitStartTime: thisVisitStartTime,
+        id: thisVisitId
+      };
+      // 1. 发送访问记录
+      await new Promise<void>((resolve) => {
+        if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+          try {
+            chrome.runtime.sendMessage({ type: 'PAGE_VISIT_RECORD', payload: pageInfo }, () => resolve());
+          } catch (e) { resolve(); }
+        } else {
+          resolve();
+        }
       });
+      // 2. 轮询确认访问记录已写入
+      const dayId = new Date(thisVisitStartTime).toISOString().slice(0, 10);
+      let found = false, retry = 0;
+      while (!found && retry < 10) {
+        await new Promise<void>(r => setTimeout(r, 80));
+        if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+          try {
+            await new Promise<void>((resolve) => {
+              chrome.runtime.sendMessage({ type: 'GET_VISITS', payload: { dayId } }, (resp) => {
+                if (resp && Array.isArray(resp.visits)) {
+                  found = resp.visits.some((v: any) => v.id === thisVisitId);
+                }
+                resolve();
+              });
+            });
+          } catch {}
+        }
+        retry++;
+      }
+      // 3. 发送 AI 分析请求
+      const pageContent = getPageContent();
+      if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+        try {
+          chrome.runtime.sendMessage({
+            type: 'AI_ANALYZE_REQUEST',
+            content: pageContent,
+            url: location.href,
+            title: document.title,
+            visitStartTime: thisVisitStartTime,
+            id: thisVisitId
+          }, (resp) => {
+            console.log('[Yesterday] AI 分析结果:', resp);
+          });
+        } catch (e) {}
+      }
     } catch (err) {
       console.error('[Yesterday] main 执行异常:', err);
     }

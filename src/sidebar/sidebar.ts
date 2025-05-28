@@ -55,7 +55,10 @@ async function renderMergedView(root: HTMLElement, dayId: string) {
   const [visits] = await Promise.all([
     messenger.send('GET_VISITS', { dayId }).then(r => r?.visits || []).catch(() => [])
   ]);
-  let merged = mergeVisitsAndAnalysis(visits);
+  // 过滤掉完全无 title/url 的条目，允许无 aiResult 但有 title/url 的访问记录也渲染卡片
+  let merged = mergeVisitsAndAnalysis(visits).filter(item => {
+    return !!(item && (item.title || item.url));
+  });
   merged = merged.slice().sort((a, b) => (b.visitStartTime || 0) - (a.visitStartTime || 0));
   if (!merged.length) {
     root.innerHTML = '<div style="color:#888;padding:16px;">无数据</div>';
@@ -69,7 +72,7 @@ async function renderMergedView(root: HTMLElement, dayId: string) {
     let isStructured = false;
     let rawText = item.aiResult;
     let jsonObj: any = null;
-    // 新增：支持 aiResult 为结构化 JSON 或字符串
+    // 支持 aiResult 为结构化 JSON 或字符串
     if (rawText && typeof rawText === 'string' && rawText.trim().startsWith('{')) {
       try {
         jsonObj = JSON.parse(rawText);
@@ -80,28 +83,22 @@ async function renderMergedView(root: HTMLElement, dayId: string) {
       isStructured = true;
     }
     if (isStructured && jsonObj) {
-      // summary
       aiContent = `<div class='ai-summary'>${jsonObj.summary || ''}</div>`;
-      // highlights
       if (jsonObj.highlights && Array.isArray(jsonObj.highlights) && jsonObj.highlights.length) {
         aiContent += `<ul class='ai-highlights'>${jsonObj.highlights.map((h: string) => `<li>${h}</li>`).join('')}</ul>`;
       }
-      // specialConcerns
       if (jsonObj.specialConcerns && Array.isArray(jsonObj.specialConcerns) && jsonObj.specialConcerns.length) {
         aiContent += `<div class='ai-special-concerns'>特别关注：${jsonObj.specialConcerns.map((c: string) => c).join('，')}</div>`;
       }
-      // 卡片样式高亮由 important 字段控制，不再直接输出“重要性”文字
     } else if (typeof rawText === 'string') {
-      // 兼容老逻辑，仅字符串时才做字符串判断
       if (rawText && rawText !== '正在进行 AI 分析' && rawText !== '') {
-        // 新增：AI 分析失败高亮
         if (rawText.startsWith('AI 分析失败')) {
           aiContent = `<div class='ai-failed'>${rawText.replace(/\n/g, '<br>')}</div>`;
         } else {
           aiContent = `<div class='ai-plain'>${rawText.replace(/\n/g, '<br>')}</div>`;
         }
-      } else if ((rawText === '正在进行 AI 分析' || rawText === '') && !isStructured) {
-        // 只有没有分析结果时才显示分析中
+      } else if (rawText === '正在进行 AI 分析' && !isStructured) {
+        // 只在明确为“正在进行 AI 分析”时显示分析中
         const analyzingId = `analyzing-timer-${idx}`;
         aiContent = `<span class='ai-analyzing' id='${analyzingId}'>正在进行 AI 分析</span>`;
         setTimeout(() => {
@@ -109,7 +106,6 @@ async function renderMergedView(root: HTMLElement, dayId: string) {
           if (el && item.visitStartTime) {
             let timer: any = undefined;
             const updateText = () => {
-              // 若分析结果已变为失败，立即高亮显示并终止动画
               const currentItem = merged[idx];
               if (currentItem && typeof currentItem.aiResult === 'string' && currentItem.aiResult.startsWith('AI 分析失败')) {
                 el.textContent = currentItem.aiResult;
@@ -146,7 +142,6 @@ async function renderMergedView(root: HTMLElement, dayId: string) {
     if (item.analyzeDuration && item.analyzeDuration > 0) {
       durationStr = showAnalyzeDuration(item.analyzeDuration);
     }
-    // 卡片样式高亮
     const isImportant = (item.aiResult && typeof item.aiResult === 'object' && item.aiResult.important === true);
     const cardClass = isImportant ? 'merged-card merged-card-important' : 'merged-card';
     const visitTime = item.visitStartTime ? new Date(item.visitStartTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
