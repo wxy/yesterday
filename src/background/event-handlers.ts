@@ -73,6 +73,17 @@ if (chrome && chrome.tabs && chrome.sidePanel) {
     if (useSidePanel && typeof (chrome.sidePanel as any).open === 'function') {
       await (chrome.sidePanel as any).open({ tabId });
     }
+    // 新增：切换标签页时通知侧边栏滚动到对应卡片
+    if (chrome.tabs && chrome.tabs.get) {
+      chrome.tabs.get(tabId, (tab) => {
+        if (tab && tab.url) {
+          chrome.runtime.sendMessage({
+            type: 'SCROLL_TO_VISIT',
+            payload: { url: tab.url }
+          });
+        }
+      });
+    }
   });
 }
 
@@ -139,9 +150,18 @@ function notifySidePanelUpdate(type: 'visit' | 'ai') {
 }
 
 // 包装原有处理函数，类型安全
-async function handlePageVisitRecordWithNotify(record: any) {
-  await handlePageVisitRecord(record); // 等待写入完成
+async function handlePageVisitRecordWithNotify(record: any, sender?: any) {
+  // 兼容 messenger.on 直接调用和手动调用
+  let isRefresh = false;
+  if (sender && typeof sender === 'object' && sender.extra && sender.extra.isRefresh) {
+    isRefresh = true;
+  } else if (record && typeof record === 'object' && record.isRefresh) {
+    isRefresh = true;
+  }
+  if (typeof record === 'object') record.isRefresh = isRefresh;
+  const result = await handlePageVisitRecord(record);
   notifySidePanelUpdate('visit');
+  return result;
 }
 async function handleMessengerAiAnalyzeRequestWithNotify(msg: any) {
   // 兼容 content/popup 侧发起的 AI_ANALYZE_REQUEST
@@ -154,8 +174,16 @@ async function handleMessengerAiAnalyzeRequestWithNotify(msg: any) {
   const dayId = date.toISOString().slice(0, 10);
   const key = `visits_${dayId}`;
   let visits: any[] = (await storage.get<any[]>(key)) || [];
-  if (!visits.some(v => v.id === visitId)) {
+  const visit = visits.find(v => v.id === visitId);
+  if (!visit) {
     return { ok: false, error: 'No visit record found for AI analysis' };
+  }
+  // 判断是否为刷新/重复访问
+  const isRefresh = !!visit.isRefresh;
+  const isRepeat = !isRefresh && (visit.visitCount && visit.visitCount > 1);
+  if (isRepeat) {
+    // 非刷新且为重复访问，不再分析
+    return { ok: true, skipped: true, reason: 'repeat' };
   }
   // 分析前强制reload配置，确保读取数据库最新AI配置
   await config.reload();

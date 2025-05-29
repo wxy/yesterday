@@ -1,6 +1,8 @@
 import { Logger } from '../lib/logger/logger.js';
 import { messenger } from '../lib/messaging/messenger.js';
 import { storage } from '../lib/storage/index.js';
+import { i18n } from '../lib/i18n/i18n.js';
+import { isSystemUrl } from '../lib/browser-events/system-url.js';
 
 const logger = new Logger('Sidebar');
 
@@ -168,6 +170,22 @@ async function renderMergedView(root: HTMLElement, dayId: string) {
 
   root.onclick = function(e) {
     const target = e.target as HTMLElement;
+    // 智能切换标签页：点击链接时优先激活已打开标签页，否则新开
+    if (target && target.classList.contains('merged-card-url')) {
+      e.preventDefault();
+      const url = target.getAttribute('href');
+      if (!url) return;
+      chrome.tabs.query({}, (tabs) => {
+        const found = tabs.find(tab => tab.url && tab.url.split('#')[0] === url.split('#')[0]);
+        if (found && typeof found.id === 'number' && typeof found.windowId === 'number') {
+          chrome.tabs.update(found.id, { active: true });
+          chrome.windows.update(found.windowId, { focused: true });
+        } else {
+          chrome.tabs.create({ url });
+        }
+      });
+      return;
+    }
     const header = target.closest('.merged-card-header') as HTMLElement;
     if (header && header.dataset.entryId) {
       const entryId = header.dataset.entryId;
@@ -194,7 +212,7 @@ async function clearMergedViewData(root: HTMLElement) {
     messenger.send('DATA_CLEARED'); // fire-and-forget，无需等待响应
     root.innerHTML = '<div style="color:#888;padding:16px;">无数据</div>';
   } catch (error) {
-    logger.error('清除数据失败', error);
+    logger.error('sidebar.clear_data_failed', '清除数据失败', error);
     root.innerHTML = '<div style="color:#e53935;padding:16px;">清除失败</div>';
   }
 }
@@ -251,5 +269,42 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       const dayId = new Date().toISOString().slice(0, 10);
       renderMergedView(root, dayId);
     }
+  }
+  // 新增：收到 SCROLL_TO_VISIT 消消息时滚动并展开对应卡片
+  if (msg && msg.type === 'SCROLL_TO_VISIT' && msg.payload && msg.payload.url) {
+    setTimeout(() => {
+      const url = msg.payload.url;
+      try {
+        // 查找所有卡片链接
+        const links = document.querySelectorAll('.merged-card-url');
+        let found = false;
+        links.forEach((link) => {
+          if (isSystemUrl(url)) return;
+          if (link instanceof HTMLAnchorElement && link.href.split('#')[0] === url.split('#')[0]) {
+            // 展开卡片
+            const cardContent = link.closest('.merged-card-content') as HTMLElement;
+            if (cardContent && cardContent.style.display === 'none') {
+              cardContent.style.display = 'block';
+            }
+            // 滚动到卡片
+            cardContent?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            found = true;
+          }
+        });
+        if (isSystemUrl(url)) {
+          logger.info('系统页面无需定位:', url);
+          return;
+        }
+        if (found) {
+          logger.info('已滚动到对应卡片:', url);
+        } else {
+          // 输出当前所有卡片的 url 便于排查
+          const allUrls = Array.from(links).map(link => link instanceof HTMLAnchorElement ? link.href : '').filter(Boolean);
+          logger.warn('sidebar_scroll_to_visit_not_found', '未找到对应卡片: {0}，当前卡片URL: {1}', url, allUrls.join(' | '));
+        }
+      } catch (err) {
+        logger.error('sidebar.scroll_to_visit_error', '滚动到卡片时发生错误', err);
+      }
+    }, 300); // 等待渲染完成
   }
 });

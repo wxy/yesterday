@@ -2,6 +2,7 @@
 // src/background/visit-ai.ts
 import { storage } from '../lib/storage/index.js';
 import { Logger } from '../lib/logger/logger.js';
+import { isSystemUrl } from '../lib/browser-events/system-url.js';
 
 const logger = new Logger('visit-ai');
 
@@ -14,7 +15,12 @@ export async function handlePageVisitRecord(data: any) {
     // 字段完整性校验：url、title、id 必须存在且为非空字符串
     if (!record || typeof record.url !== 'string' || !record.url.trim() || typeof record.title !== 'string' || !record.title.trim() || typeof record.id !== 'string' || !record.id.trim()) {
       logger.warn('[内容捕获] 拒绝插入无效访问记录，字段不全', { data });
-      return;
+      return { status: 'invalid' };
+    }
+    // 兜底：系统页面不记录
+    if (isSystemUrl(record.url)) {
+      logger.info('[内容捕获] 跳过系统页面', { url: record.url });
+      return { status: 'system' };
     }
     if (!('aiResult' in record)) {
       record.aiResult = '正在进行 AI 分析';
@@ -25,20 +31,51 @@ export async function handlePageVisitRecord(data: any) {
       record.visitStartTime = now;
       logger.warn('visitStartTime 缺失或非法，已自动补当前时间', { id: record.id, url: record.url, visitStartTime: now });
     }
+    const isRefresh = !!record.isRefresh;
     const date = new Date(record.visitStartTime);
     const dayId = date.toISOString().slice(0, 10);
     const key = `visits_${dayId}`;
     const visits: any[] = (await storage.get<any[]>(key)) || [];
-    if (!visits.some(v => v.url === record.url && v.visitStartTime === record.visitStartTime)) {
+    let existed = false;
+    let updated = false;
+    for (const v of visits) {
+      if (v.url === record.url) {
+        existed = true;
+        if (isRefresh) {
+          // 刷新：更新内容、时间戳、id、visitCount+1
+          v.title = record.title;
+          v.mainContent = record.mainContent;
+          v.visitStartTime = record.visitStartTime;
+          v.id = record.id;
+          v.aiResult = record.aiResult;
+          v.visitCount = (v.visitCount || 1) + 1;
+          updated = true;
+        } else {
+          // 非刷新：只递增visitCount
+          v.visitCount = (v.visitCount || 1) + 1;
+          updated = true;
+        }
+        break;
+      }
+    }
+    if (!existed) {
+      record.visitCount = 1;
       visits.push(record);
-      await storage.set(key, visits);
-      logger.info(`[内容捕获] 已存储访问记录`, { url: record.url, dayId, id: record.id }); // 日志中加上 id 字段
+      updated = true;
+      logger.info(`[内容捕获] 已存储访问记录`, { url: record.url, dayId, id: record.id });
+    } else if (isRefresh) {
+      logger.info(`[内容捕获] 刷新并更新访问记录`, { url: record.url, dayId, id: record.id });
     } else {
-      logger.info(`[内容捕获] 跳过重复访问记录`, { url: record.url, dayId, id: record.id }); // 日志中加上 id 字段
+      logger.info(`[内容捕获] 跳过重复访问记录，仅递增visitCount`, { url: record.url, dayId, id: record.id });
+    }
+    if (updated) {
+      await storage.set(key, visits);
     }
     await cleanupOldVisits();
+    return { status: existed ? (isRefresh ? 'refresh' : 'repeat') : 'new' };
   } catch (err) {
     logger.error('存储页面访问记录失败', err);
+    return { status: 'error' };
   }
 }
 
