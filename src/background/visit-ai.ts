@@ -142,3 +142,93 @@ export async function cleanupOldVisits() {
     logger.error('清理过期访问数据失败', err);
   }
 }
+
+// ===== 汇总报告相关 =====
+import { config } from '../lib/config/index.js';
+import { AIManager } from '../lib/artificial-intelligence/ai-manager.js';
+
+/**
+ * 获取指定日期的汇总报告（优先本地缓存，若无则自动触发生成）
+ */
+export async function getSummaryReport(dayId: string) {
+  const key = `summary_${dayId}`;
+  let summary = await storage.get<any>(key);
+  if (summary && summary.summary) return summary;
+  // 若无缓存，自动生成
+  summary = await generateSummaryReport(dayId, false);
+  return summary;
+}
+
+/**
+ * 生成指定日期的汇总报告（可强制刷新）
+ */
+export async function generateSummaryReport(dayId: string, force = false) {
+  const key = `summary_${dayId}`;
+  // 优先读取超时配置，保证前端和AI调用一致
+  let requestTimeout = 30000;
+  let aiConfig = { serviceId: 'ollama' };
+  let aiServiceLabel = 'AI';
+  try {
+    const allConfig = await config.getAll();
+    if (allConfig && allConfig['aiServiceConfig']) aiConfig = allConfig['aiServiceConfig'];
+    if (allConfig && allConfig['advanced.requestTimeout']) requestTimeout = allConfig['advanced.requestTimeout'];
+    aiServiceLabel = aiConfig.serviceId === 'chrome-ai' ? 'Chrome AI' : (aiConfig.serviceId === 'ollama' ? 'Ollama' : aiConfig.serviceId);
+  } catch {}
+
+  if (!force) {
+    const cached = await storage.get<any>(key);
+    // 兼容老数据结构
+    if (cached && (cached.summaries || cached.summary)) return cached;
+  }
+  // 获取访问记录
+  const visits = await getVisitsByDay(dayId);
+  // 统计部分
+  const total = visits.length;
+  const domains = Array.from(new Set(visits.map(v => {
+    try { return new URL(v.url).hostname; } catch { return ''; }
+  }).filter(Boolean)));
+  const keywords = Array.from(new Set(visits.flatMap(v => (v.title || '').split(/\s|,|，|。|\.|;|；/).filter(Boolean))));
+  const totalDuration = visits.reduce((sum, v) => sum + (v.analyzeDuration || 0), 0);
+  const stats = { total, totalDuration, domains, keywords };
+  // 转换为 PageAISummary[]
+  const pageSummaries = visits.map(v => {
+    if (typeof v.aiResult === 'object' && v.aiResult && v.aiResult.summary) return v.aiResult;
+    // 兼容字符串类型
+    return { summary: typeof v.aiResult === 'string' ? v.aiResult : '', highlights: [], important: false };
+  });
+  // 统一调用 generateDailyReport
+  let report: any = null;
+  try {
+    const aiService = await AIManager.instance.getAvailableService(aiConfig.serviceId);
+    if (aiService) {
+      report = await Promise.race([
+        aiService.generateDailyReport(dayId, pageSummaries, { timeout: requestTimeout }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('AI 汇总超时')), requestTimeout))
+      ]);
+      // 附加统计和服务名
+      report.stats = stats;
+      report.aiServiceLabel = aiServiceLabel;
+    } else {
+      // 无可用 AI 服务，降级为简单统计
+      report = {
+        date: dayId,
+        summaries: pageSummaries,
+        suggestions: [],
+        stats,
+        aiServiceLabel
+      };
+    }
+  } catch (e) {
+    // AI 失败，降级为简单统计
+    report = {
+      date: dayId,
+      summaries: pageSummaries,
+      suggestions: [],
+      stats,
+      aiServiceLabel,
+      error: (typeof e === 'object' && e && 'message' in e) ? (e as any).message : String(e)
+    };
+  }
+  await storage.set(key, report);
+  return report;
+}

@@ -16,7 +16,9 @@ import {
 import {
   handlePageVisitRecord,
   updateVisitAiResult,
-  getVisitsByDay
+  getVisitsByDay,
+  getSummaryReport,
+  generateSummaryReport
 } from './visit-ai.js';
 import { getActiveAIService } from '../lib/artificial-intelligence/index.js';
 import { getCurrentAiConfig } from '../lib/artificial-intelligence/ai-config.js';
@@ -209,6 +211,22 @@ async function handleMessengerAiAnalyzeRequestWithNotify(msg: any) {
   }
 }
 
+// ====== 汇总报告消息处理 ======
+async function handleMessengerGetSummaryReport(msg: any) {
+  const dayId = msg.payload?.dayId;
+  if (!dayId) return { summary: '' };
+  const report = await getSummaryReport(dayId);
+  return report || { summary: '' };
+}
+
+async function handleMessengerGenerateSummaryReport(msg: any) {
+  const dayId = msg.payload?.dayId;
+  const force = !!msg.payload?.force;
+  if (!dayId) return { summary: '' };
+  const report = await generateSummaryReport(dayId, force);
+  return report || { summary: '' };
+}
+
 export function registerBackgroundEventHandlers() {
   // 移除图标点击事件的清除逻辑，彻底只允许通过消息清除
   // chrome.action.onClicked.addListener(() => {
@@ -226,4 +244,6 @@ export function registerBackgroundEventHandlers() {
   messenger.on('GET_USE_SIDE_PANEL', handleGetUseSidePanel);
   messenger.on('SET_USE_SIDE_PANEL', handleSetUseSidePanel);
   messenger.on('PAGE_VISIT_RECORD', handlePageVisitRecordWithNotify);
+  messenger.on('GET_SUMMARY_REPORT', handleMessengerGetSummaryReport);
+  messenger.on('GENERATE_SUMMARY_REPORT', handleMessengerGenerateSummaryReport);
 }

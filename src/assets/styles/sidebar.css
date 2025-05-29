@@ -62,10 +62,20 @@ a:hover {
   margin-bottom: 8px;
   background: #fff;
   box-shadow: 0 1px 2px 0 #f2f3f5;
+  transition: box-shadow 0.2s, border-color 0.2s;
+}
+.merged-card:hover {
+  box-shadow: 0 2px 8px 0 #ffe08233;
+  border-color: #ffe082;
 }
 .merged-card-important {
   border-color: #FFC10A;
   background: linear-gradient(90deg,#f8f0a9 0%,#FFEB3B 100%);
+  transition: box-shadow 0.2s, border-color 0.2s;
+}
+.merged-card-important:hover {
+  box-shadow: 0 2px 12px 0 #ffc10a55;
+  border-color: #ffc10a;
 }
 .merged-card-header {
   cursor: pointer;
@@ -153,4 +163,178 @@ a:hover {
 }
 .ai-empty {
   color: #aaa;
+}
+
+/* 汇总报告卡片样式 */
+.summary-report-card {
+  /* 洞察卡片主样式 */
+  background: #fffbe8;
+  border: 1px solid #ffe082;
+  border-radius: 8px;
+  margin: 12px 0 18px 0;
+  padding: 18px 22px 16px 22px;
+  box-shadow: 0 2px 8px 0 rgba(255, 193, 7, 0.08);
+  font-size: 15px;
+  color: #5d4a00;
+  text-align: left;
+  max-width: 100%;
+  transition: box-shadow 0.2s, border-color 0.2s;
+}
+.summary-report-card:hover {
+  box-shadow: 0 4px 16px 0 rgba(255, 193, 7, 0.16);
+  border-color: #ffd54f;
+}
+.summary-report-title {
+  font-weight: bold;
+  font-size: 16px;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.summary-ai-label {
+  background: #ffe082;
+  color: #7c5c00;
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 12px;
+  margin-left: 4px;
+}
+.summary-refresh-btn {
+  margin-left: auto;
+  background: #fffde7;
+  border: 1px solid #ffe082;
+  color: #bfa100;
+  border-radius: 4px;
+  padding: 2px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+.summary-refresh-btn:hover {
+  background: #ffe082;
+  color: #7c5c00;
+}
+.summary-report-toggle {
+  cursor: pointer;
+  color: #bfa100;
+  font-size: 13px;
+  margin-left: 8px;
+  user-select: none;
+  transition: color 0.2s;
+}
+.summary-report-toggle:hover {
+  color: #7c5c00;
+}
+.summary-report-content {
+  margin-bottom: 10px;
+  line-height: 1.8;
+  color: #5d4a00;
+  font-size: 15px;
+  text-align: left;
+  word-break: break-word;
+  padding: 6px 0 6px 0;
+}
+.summary-highlights {
+  margin: 0 0 10px 0;
+  padding-left: 22px;
+  color: #7c5c00;
+  font-size: 14px;
+  text-align: left;
+}
+.summary-special-concerns {
+  color: #d84315;
+  font-weight: bold;
+  margin-top: 6px;
+  font-size: 14px;
+  text-align: left;
+}
+.summary-stats {
+  background: #fffde7;
+  border-radius: 6px;
+  padding: 10px 14px 10px 14px;
+  margin-bottom: 14px;
+  font-size: 14px;
+  color: #7c5c00;
+  line-height: 1.8;
+  text-align: left;
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  row-gap: 4px;
+  column-gap: 10px;
+}
+.summary-stats-row-label {
+  font-weight: 600;
+  color: #bfa100;
+  text-align: right;
+  padding-right: 4px;
+}
+.summary-stats-row-value {
+  text-align: left;
+  word-break: break-all;
+}
+
+/* 洞察卡片收起时内容隐藏 */
+.summary-report-collapsed .summary-report-content,
+.summary-report-collapsed .summary-highlights,
+.summary-report-collapsed .summary-special-concerns,
+.summary-report-collapsed .summary-stats {
+  display: none;
+}
+
+/* loading/empty/error 状态 */
+#summary-report-box > div {
+  font-size: 14px;
+  padding: 16px;
+  text-align: left;
+}
+#summary-report-box .error {
+  color: #e53935;
+  background: #fff3f3;
+  border-radius: 4px;
+  padding: 8px 0;
+}
+
+/* 标签页样式 */
+.sidebar-tabs-wrap {
+  display: flex;
+  justify-content: stretch;
+  background: #fffbe8;
+  border-radius: 8px 8px 0 0;
+  border-bottom: 1.5px solid #f0e6c4;
+  margin-bottom: 8px;
+  overflow: hidden;
+  margin: -16px -16px 16px -16px;
+}
+.tabs {
+  flex: 1 1 0;
+  display: flex;
+  width: 100%;
+}
+.tab {
+  flex: 1 1 0;
+  padding: 10px 0 9px 0;
+  background: none;
+  border: none;
+  outline: none;
+  font-size: 15px;
+  color: #bfa100;
+  font-weight: 500;
+  cursor: pointer;
+  border-bottom: 2.5px solid transparent;
+  border-radius: 8px 8px 0 0;
+  transition: background 0.2s, color 0.2s, border-bottom 0.2s;
+  width: 100%;
+  text-align: center;
+}
+.tab.active {
+  color: #7c5c00;
+  background: #fffde7;
+  border-bottom: 2.5px solid #ffe082;
+  font-weight: bold;
+  z-index: 1;
+}
+.tab:not(.active):hover {
+  background: #fff9c4;
+  color: #a68a00;
 }

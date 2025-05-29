@@ -15,5 +15,6 @@ export abstract class AIBaseService implements AISummaryCapability, AIReportCapa
 
   abstract isAvailable(): Promise<boolean>;
   abstract summarizePage(url: string, content: string): Promise<PageAISummary>;
-  abstract generateDailyReport(date: string, pageSummaries: PageAISummary[]): Promise<DailyAIReport>;
+  // AI 服务抽象基类，增加 generateDailyReport 可选参数 options
+  abstract generateDailyReport(date: string, pageSummaries: PageAISummary[], options?: { timeout?: number }): Promise<DailyAIReport>;
 }
