@@ -12,11 +12,9 @@ async function renderSingleBrief(root: HTMLElement) {
   const dayId = getDayId(0);
   const resp = await messenger.send('GET_AI_ANALYSIS', { dayId });
   const analysis = Array.isArray(resp?.analysis) ? resp.analysis : [];
-  // 渲染后重置图标
   if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
     try { chrome.runtime.sendMessage({ type: 'CLEAR_ICON_STATUS' }); } catch {}
   }
-  console.debug('[popup] analysis:', analysis);
   if (!analysis.length) {
     root.innerHTML = '<div style="color:#888;padding:16px;">暂无数据</div>';
     return;
@@ -26,24 +24,19 @@ async function renderSingleBrief(root: HTMLElement) {
   for (let i = analysis.length - 1; i >= 0; i--) {
     const a = analysis[i];
     const isImportant = a.aiResult && typeof a.aiResult === 'object' && a.aiResult.important === true;
-    console.debug(`[popup] 检查第${i}条 important=`, isImportant, 'aiResult=', a.aiResult);
     if (isImportant) {
       item = a;
       header = '最新重要提示';
-      console.debug('[popup] 命中重要提示:', a);
       break;
     }
     if (!item && a.aiResult) {
       item = a;
-      console.debug('[popup] 记录最新分析:', a);
     }
   }
-  console.debug('[popup] 最终 item:', item, 'header:', header);
   if (!item) {
     root.innerHTML = '<div style="color:#888;padding:16px;">暂无数据</div>';
     return;
   }
-  // 渲染内容
   const displayTitle = item.title || item.pageTitle || '--';
   const displayUrl = item.url || '';
   const visitTime = item.visitStartTime ? new Date(item.visitStartTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
@@ -76,7 +69,7 @@ async function renderSingleBrief(root: HTMLElement) {
       } else {
         aiContent = `<div class='ai-plain'>${rawText.replace(/\n/g, '<br>')}</div>`;
       }
-    } else if ((rawText === '正在进行 AI 分析' || rawText === '') && !isStructured) {
+    } else if (rawText === '正在进行 AI 分析' || rawText === '') {
       aiContent = `<span class='ai-analyzing'>正在进行 AI 分析</span>`;
     } else {
       aiContent = `<span class='ai-empty'>[无分析结果]</span>`;

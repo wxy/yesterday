@@ -56,13 +56,24 @@ window.addEventListener('beforeunload', () => {
       // 生成唯一 id 和访问时间
       const thisVisitId = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
       const thisVisitStartTime = Date.now();
+      // 判断是否为刷新
+      let isRefresh = false;
+      try {
+        if (performance && performance.getEntriesByType) {
+          const nav = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming;
+          if (nav && nav.type === 'reload') isRefresh = true;
+        } else if (performance && (performance as any).navigation) {
+          if ((performance as any).navigation.type === 1) isRefresh = true;
+        }
+      } catch {}
       // 先发送访问记录
       const pageInfo = {
         url: location.href,
         title: document.title,
         mainContent: extractMainContent(),
         visitStartTime: thisVisitStartTime,
-        id: thisVisitId
+        id: thisVisitId,
+        isRefresh // 新增
       };
       // 1. 发送访问记录
       await new Promise<void>((resolve) => {
@@ -132,13 +143,24 @@ window.addEventListener('beforeunload', () => {
     // 生成新访问id和时间
     lastVisitId = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
     lastVisitStartTime = Date.now();
+    // 判断是否为刷新
+    let isRefresh = false;
+    try {
+      if (performance && performance.getEntriesByType) {
+        const nav = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming;
+        if (nav && nav.type === 'reload') isRefresh = true;
+      } else if (performance && (performance as any).navigation) {
+        if ((performance as any).navigation.type === 1) isRefresh = true;
+      }
+    } catch {}
     // 采集访问记录
     const pageInfo = {
       url: location.href,
       title: document.title,
       mainContent: extractMainContent(),
       visitStartTime: lastVisitStartTime,
-      id: lastVisitId
+      id: lastVisitId,
+      isRefresh // 新增
     };
     if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
       try {

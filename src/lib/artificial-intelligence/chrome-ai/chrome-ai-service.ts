@@ -147,19 +147,35 @@ export class ChromeAIService extends AIBaseService {
     }
   }
 
-  async generateDailyReport(date: string, pageSummaries: PageAISummary[]): Promise<DailyAIReport> {
+  /**
+   * 生成每日洞察/日报（结构化）
+   * @param date 日期字符串（如 2024-05-29）
+   * @param pageSummaries 页面摘要数组（PageAISummary[]）
+   * @param options 可选：{ timeout: number } 超时时间（毫秒）
+   */
+  async generateDailyReport(date: string, pageSummaries: PageAISummary[], options?: { timeout?: number }): Promise<DailyAIReport> {
     this.logger.info(_('ai_chrome_report', 'Chrome AI 正在生成日报: {0}', date));
+    const timeout = options?.timeout ?? 30000;
     try {
       const summaryText = pageSummaries.map((s, i) => `页面${i + 1}: ${s.summary}`).join('\n');
-      const result = await chromeAiSummarize({ text: summaryText });
-      const suggestions = result.highlights || result.points || [];
+      // 构造 prompt，调用 chromeAiSummarize
+      const resultRaw = await Promise.race([
+        chromeAiSummarize({ text: summaryText }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('ChromeAI 洞察生成超时')), timeout))
+      ]);
+      const result = resultRaw as any;
+      // highlights/points/suggestion 合并为 suggestions
+      const suggestions: string[] = [];
+      if (Array.isArray(result.highlights)) suggestions.push(...result.highlights);
+      if (Array.isArray(result.points)) suggestions.push(...result.points);
+      if (typeof result.suggestion === 'string' && result.suggestion.trim()) suggestions.push(result.suggestion.trim());
       return {
         date,
         summaries: pageSummaries,
         suggestions
       };
     } catch (e: any) {
-      throw new _Error('ai_chrome_report_error', 'Chrome AI 日报生成失败: {0}', e?.message || String(e));
+      throw new _Error('ai_chrome_report_error', 'Chrome AI 日报/洞察生成失败: {0}', e?.message || String(e));
     }
   }
 }

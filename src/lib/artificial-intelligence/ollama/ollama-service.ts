@@ -160,26 +160,61 @@ export class OllamaService extends AIBaseService {
     }
   }
 
-  async generateDailyReport(date: string, pageSummaries: PageAISummary[]): Promise<DailyAIReport> {
+  /**
+   * 生成每日洞察/日报（结构化）
+   * @param date 日期字符串（如 2024-05-29）
+   * @param pageSummaries 页面摘要数组（PageAISummary[]）
+   * @param options 可选：{ timeout: number } 超时时间（毫秒）
+   */
+  async generateDailyReport(date: string, pageSummaries: PageAISummary[], options?: { timeout?: number }): Promise<DailyAIReport> {
     this.logger.info(_('ai_ollama_report', 'Ollama 正在生成日报: {0}', date));
+    const timeout = options?.timeout ?? 30000;
     try {
+      // 拼接结构化 prompt
+      const metaPrompt =
+        `你是一位专业的数字生活洞察分析师。请你根据下方所有网页的结构化摘要，输出如下结构化 JSON：\n` +
+        `{"summary": "整体趋势与建议（不少于80字）",\n"highlights": ["昨日亮点1", "昨日亮点2"],\n"specialConcerns": ["需特别关注的问题1"]}\n` +
+        `要求：\n- summary 字段为纯文本，内容不少于80字，包含整体趋势、建议、风险或提升空间。\n- highlights 为昨日最值得关注的3条亮点，数组，每项为完整中文句子。\n- specialConcerns 为需特别关注的问题，数组，每项为完整中文句子，无则返回空数组。\n- 所有内容均为纯文本，不要 markdown。\n- 只返回上述 JSON，不要输出其它内容。\n- 注意严格 JSON 语法，所有 key 必须加双引号。`;
       const summaryText = pageSummaries.map((s, i) => `页面${i + 1}: ${s.summary}`).join('\n');
-      const prompt = `请根据以下昨日网页摘要，生成一份简明的用户浏览日报，并给出3条有益建议：\n${summaryText}`;
-      const resp = await chatWithOllama({
-        messages: [
-          { role: 'system', content: '你是一个用户行为分析助手。' },
-          { role: 'user', content: prompt }
-        ]
-      });
-      const text = resp.choices?.[0]?.message?.content || '';
-      const suggestions = text.split(/\n+/).filter(Boolean).slice(-3);
+      const prompt = `${metaPrompt}\n\n网页摘要：\n${summaryText}`;
+      // 超时控制
+      const resp = await Promise.race([
+        chatWithOllama({
+          messages: [
+            { role: 'system', content: '你是一个数字生活洞察分析师。' },
+            { role: 'user', content: prompt }
+          ]
+        }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Ollama 洞察生成超时')), timeout))
+      ]);
+      const text = (resp as OllamaChatResponse).choices?.[0]?.message?.content || '';
+      // 尝试结构化解析
+      let parsed: any = parseJsonWithPreprocess(text, this.logger);
+      if (!parsed) {
+        const aiFixed = await repairJsonWithAI(text, this.logger);
+        if (aiFixed) {
+          parsed = parseJsonWithPreprocess(aiFixed, this.logger);
+        }
+      }
+      if (parsed && typeof parsed === 'object') {
+        // suggestions 字段为 highlights + specialConcerns 合并
+        const suggestions: string[] = [];
+        if (Array.isArray(parsed.highlights)) suggestions.push(...parsed.highlights);
+        if (Array.isArray(parsed.specialConcerns)) suggestions.push(...parsed.specialConcerns);
+        return {
+          date,
+          summaries: pageSummaries,
+          suggestions
+        };
+      }
+      // fallback 兼容老逻辑
       return {
         date,
         summaries: pageSummaries,
-        suggestions
+        suggestions: [text]
       };
     } catch (e: any) {
-      throw new _Error('ai_ollama_report_error', 'Ollama 日报生成失败: {0}', e?.message || String(e));
+      throw new _Error('ai_ollama_report_error', 'Ollama 日报/洞察生成失败: {0}', e?.message || String(e));
     }
   }
 }
