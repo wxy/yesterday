@@ -162,7 +162,37 @@ async function handlePageVisitRecordWithNotify(record: any, sender?: any) {
   }
   if (typeof record === 'object') record.isRefresh = isRefresh;
   const result = await handlePageVisitRecord(record);
+  // --- 修复 begin ---
+  // 强制刷新场景下将 isRefresh 字段写入 visit 记录并持久化
+  if (isRefresh && record.id && record.visitStartTime) {
+    const date = new Date(record.visitStartTime);
+    const dayId = date.toISOString().slice(0, 10);
+    const key = `visits_${dayId}`;
+    let visits: any[] = (await storage.get<any[]>(key)) || [];
+    const idx = visits.findIndex(v => v.id === record.id);
+    if (idx !== -1) {
+      visits[idx].isRefresh = true;
+      await storage.set(key, visits);
+      console.log('[VISIT] 刷新场景已持久化 isRefresh 字段', { id: record.id, dayId });
+      // 关键：强制同步 record.isRefresh，确保后续分析分支判断正确
+      record.isRefresh = true;
+    }
+  }
+  // --- 修复 end ---
   notifySidePanelUpdate('visit');
+  // 新增：只要 aiResult 被清空（刷新或内容变化），都自动触发 AI 分析
+  const shouldAnalyze = (result.status === 'new' || result.status === 'refresh') || (typeof record.aiResult === 'string' && record.aiResult === '');
+  if (shouldAnalyze) {
+    if (record.mainContent && record.mainContent.length > 0) {
+      await handleMessengerAiAnalyzeRequestWithNotify({
+        url: record.url,
+        title: record.title,
+        content: record.mainContent,
+        id: record.id,
+        visitStartTime: record.visitStartTime
+      });
+    }
+  }
   return result;
 }
 async function handleMessengerAiAnalyzeRequestWithNotify(msg: any) {
@@ -170,7 +200,10 @@ async function handleMessengerAiAnalyzeRequestWithNotify(msg: any) {
   const { url, title, content, id } = msg.payload || msg;
   const visitStartTime = msg.payload?.visitStartTime || Date.now();
   const visitId = id || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`);
-  if (!content) return { ok: false, error: 'No content' };
+  if (!content) {
+    console.warn('[AI_ANALYZE] 拒绝分析：无内容', { url, visitId, visitStartTime });
+    return { ok: false, error: 'No content' };
+  }
   // 检查访问记录是否存在，不存在则直接返回错误，不再自动补充
   const date = new Date(visitStartTime);
   const dayId = date.toISOString().slice(0, 10);
@@ -178,12 +211,27 @@ async function handleMessengerAiAnalyzeRequestWithNotify(msg: any) {
   let visits: any[] = (await storage.get<any[]>(key)) || [];
   const visit = visits.find(v => v.id === visitId);
   if (!visit) {
+    console.error('[AI_ANALYZE] 未找到访问记录', { url, visitId, visitStartTime, key, visitsLength: visits.length });
     return { ok: false, error: 'No visit record found for AI analysis' };
   }
   // 判断是否为刷新/重复访问
   const isRefresh = !!visit.isRefresh;
   const isRepeat = !isRefresh && (visit.visitCount && visit.visitCount > 1);
+  console.log('[AI_ANALYZE] 入口', {
+    url,
+    visitId,
+    visitStartTime,
+    contentLength: content.length,
+    isRefresh,
+    isRepeat,
+    visitCount: visit.visitCount,
+    aiResult: visit.aiResult,
+    title,
+    dayId,
+    key
+  });
   if (isRepeat) {
+    console.log('[AI_ANALYZE] 跳过重复分析', { url, visitId, visitCount: visit.visitCount });
     // 非刷新且为重复访问，不再分析
     return { ok: true, skipped: true, reason: 'repeat' };
   }
@@ -192,21 +240,32 @@ async function handleMessengerAiAnalyzeRequestWithNotify(msg: any) {
   const allConfig: any = await config.getAll();
   const aiConfig = allConfig && allConfig['aiServiceConfig'] ? allConfig['aiServiceConfig'] : { serviceId: 'ollama' };
   const aiService = await AIManager.instance.getAvailableService(aiConfig.serviceId);
+  // 获取 AI 服务标签
+  const labelMap: Record<string, string> = {
+    'ollama': 'Ollama 本地',
+    'chrome-ai': 'Chrome 内置 AI',
+    'openai': 'OpenAI',
+    'other': '其它',
+  };
+  const aiServiceLabel = labelMap[aiConfig.serviceId] || aiConfig.serviceId || 'AI';
   const analyzeStart = Date.now();
   onProcessingStart();
   try {
     if (!aiService) throw new Error('无可用 AI 服务');
+    console.log('[AI_ANALYZE] 开始分析', { url, visitId, aiServiceLabel, contentLength: content.length });
     const aiSummary = await aiService.summarizePage(url, content);
     const analyzeEnd = Date.now();
     const analyzeDuration = analyzeEnd - analyzeStart;
-    await updateVisitAiResult(url, visitStartTime, aiSummary, analyzeDuration, visitId);
+    await updateVisitAiResult(url, visitStartTime, aiSummary, analyzeDuration, visitId, aiServiceLabel); // 传递 aiServiceLabel
     onProcessingEnd();
     setTip(aiSummary.important);
     notifySidePanelUpdate('ai');
+    console.log('[AI_ANALYZE] 分析完成', { url, visitId, analyzeDuration, aiSummary });
     return { ok: true, aiContent: aiSummary, analyzeDuration, shouldNotify: aiSummary.important };
   } catch (e: any) {
     onProcessingEnd();
     setTip(true);
+    console.error('[AI_ANALYZE] 分析异常', { url, visitId, error: e?.message || String(e) });
     return { ok: false, error: e?.message || String(e) };
   }
 }

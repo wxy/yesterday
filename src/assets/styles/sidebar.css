@@ -129,6 +129,12 @@ a:hover {
 .merged-card-ai-content {
   margin-top: 4px;
 }
+.merged-card-visit-count {
+  color: #888;
+  font-size: 12px;
+  margin-left: 4px;
+  vertical-align: middle;
+}
 
 /* AI 内容样式 */
 .ai-summary {
@@ -165,9 +171,10 @@ a:hover {
   color: #aaa;
 }
 
-/* 汇总报告卡片样式 */
-.summary-report-card {
-  /* 洞察卡片主样式 */
+/* 汇总报告卡片样式（已合并为 insight-report-card） */
+
+/* 洞察报告卡片样式（与 summary-report-card 保持一致） */
+.insight-report-card {
   background: #fffbe8;
   border: 1px solid #ffe082;
   border-radius: 8px;
@@ -180,11 +187,11 @@ a:hover {
   max-width: 100%;
   transition: box-shadow 0.2s, border-color 0.2s;
 }
-.summary-report-card:hover {
+.insight-report-card:hover {
   box-shadow: 0 4px 16px 0 rgba(255, 193, 7, 0.16);
   border-color: #ffd54f;
 }
-.summary-report-title {
+.insight-report-title {
   font-weight: bold;
   font-size: 16px;
   margin-bottom: 10px;
@@ -192,7 +199,7 @@ a:hover {
   align-items: center;
   gap: 10px;
 }
-.summary-ai-label {
+.insight-ai-label {
   background: #ffe082;
   color: #7c5c00;
   border-radius: 4px;
@@ -200,7 +207,7 @@ a:hover {
   font-size: 12px;
   margin-left: 4px;
 }
-.summary-refresh-btn {
+.insight-refresh-btn {
   margin-left: auto;
   background: #fffde7;
   border: 1px solid #ffe082;
@@ -211,11 +218,11 @@ a:hover {
   cursor: pointer;
   transition: background 0.2s, color 0.2s;
 }
-.summary-refresh-btn:hover {
+.insight-refresh-btn:hover {
   background: #ffe082;
   color: #7c5c00;
 }
-.summary-report-toggle {
+.insight-report-toggle {
   cursor: pointer;
   color: #bfa100;
   font-size: 13px;
@@ -223,10 +230,10 @@ a:hover {
   user-select: none;
   transition: color 0.2s;
 }
-.summary-report-toggle:hover {
+.insight-report-toggle:hover {
   color: #7c5c00;
 }
-.summary-report-content {
+.insight-report-content {
   margin-bottom: 10px;
   line-height: 1.8;
   color: #5d4a00;
@@ -235,21 +242,21 @@ a:hover {
   word-break: break-word;
   padding: 6px 0 6px 0;
 }
-.summary-highlights {
+.insight-highlights {
   margin: 0 0 10px 0;
   padding-left: 22px;
   color: #7c5c00;
   font-size: 14px;
   text-align: left;
 }
-.summary-special-concerns {
+.insight-special-concerns {
   color: #d84315;
   font-weight: bold;
   margin-top: 6px;
   font-size: 14px;
   text-align: left;
 }
-.summary-stats {
+.insight-stats {
   background: #fffde7;
   border-radius: 6px;
   padding: 10px 14px 10px 14px;
@@ -263,23 +270,30 @@ a:hover {
   row-gap: 4px;
   column-gap: 10px;
 }
-.summary-stats-row-label {
+.insight-stats-row-label {
   font-weight: 600;
   color: #bfa100;
   text-align: right;
   padding-right: 4px;
 }
-.summary-stats-row-value {
+.insight-stats-row-value {
   text-align: left;
   word-break: break-all;
 }
-
 /* 洞察卡片收起时内容隐藏 */
-.summary-report-collapsed .summary-report-content,
-.summary-report-collapsed .summary-highlights,
-.summary-report-collapsed .summary-special-concerns,
-.summary-report-collapsed .summary-stats {
+.insight-report-collapsed .insight-report-content,
+.insight-report-collapsed .insight-highlights,
+.insight-report-collapsed .insight-special-concerns,
+.insight-report-collapsed .insight-stats {
   display: none;
+}
+
+/* 即刻洞察按钮居右 */
+.insight-generate-btn {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 0;
+  margin-left: 16px;
 }
 
 /* loading/empty/error 状态 */
@@ -337,4 +351,33 @@ a:hover {
 .tab:not(.active):hover {
   background: #fff9c4;
   color: #a68a00;
+}
+
+/* 数据卡片 AI 服务标签样式，复用洞察报告样式 */
+.merged-card-ai-label {
+  background: #ffe082;
+  color: #7c5c00;
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 12px;
+  margin: 4px;
+  display: inline-block;
+  vertical-align: middle;
+}
+.merged-card-open {
+  border: 1px solid #4caf50 !important;
+  background: linear-gradient(90deg, #e8f5e9 0%, #c8e6c9 100%) !important;
+  box-shadow: 0 2px 12px 0 #4caf5040;
+  position: relative;
+}
+.insight-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.insight-header-title {
+  font-weight: bold;
+  font-size: 16px;
+  color: #5d4a00;
 }

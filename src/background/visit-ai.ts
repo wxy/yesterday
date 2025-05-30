@@ -22,8 +22,23 @@ export async function handlePageVisitRecord(data: any) {
       logger.info('[内容捕获] 跳过系统页面', { url: record.url });
       return { status: 'system' };
     }
+    // 新增：写入 aiServiceLabel（分析中也写入，保证前端可立即显示）
     if (!('aiResult' in record)) {
       record.aiResult = '正在进行 AI 分析';
+      // 获取当前 AI 配置
+      let aiServiceLabel = 'AI';
+      try {
+        const allConfig = await import('../lib/config/index.js').then(m => m.config.getAll());
+        let aiConfig = allConfig && allConfig['aiServiceConfig'] ? allConfig['aiServiceConfig'] : { serviceId: 'ollama' };
+        const labelMap: Record<string, string> = {
+          'ollama': 'Ollama 本地',
+          'chrome-ai': 'Chrome 内置 AI',
+          'openai': 'OpenAI',
+          'other': '其它',
+        };
+        aiServiceLabel = labelMap[aiConfig.serviceId] || aiConfig.serviceId || 'AI';
+      } catch {}
+      record.aiServiceLabel = aiServiceLabel;
     }
     if (!record.visitStartTime || isNaN(new Date(record.visitStartTime).getTime())) {
       // 自动补当前时间
@@ -42,17 +57,27 @@ export async function handlePageVisitRecord(data: any) {
       if (v.url === record.url) {
         existed = true;
         if (isRefresh) {
-          // 刷新：更新内容、时间戳、id、visitCount+1
+          // 刷新：更新内容、时间戳、id、visitCount+1，并清空aiResult以触发AI分析
           v.title = record.title;
           v.mainContent = record.mainContent;
           v.visitStartTime = record.visitStartTime;
           v.id = record.id;
-          v.aiResult = record.aiResult;
+          v.aiResult = '';
           v.visitCount = (v.visitCount || 1) + 1;
           updated = true;
         } else {
-          // 非刷新：只递增visitCount
+          // 非刷新：只递增visitCount，但如果内容有变化则清空aiResult重新分析
           v.visitCount = (v.visitCount || 1) + 1;
+          if (v.title !== record.title || v.mainContent !== record.mainContent) {
+            v.title = record.title;
+            v.mainContent = record.mainContent;
+            v.aiResult = '';
+            v.aiServiceLabel = record.aiServiceLabel || 'AI';
+            v.analyzeDuration = undefined;
+            logger.info('[内容捕获] 重复访问但内容有变化，已重置分析', { url: record.url, dayId, id: record.id });
+          } else {
+            logger.info(`[内容捕获] 跳过重复访问记录，仅递增visitCount`, { url: record.url, dayId, id: record.id });
+          }
           updated = true;
         }
         break;
@@ -64,9 +89,7 @@ export async function handlePageVisitRecord(data: any) {
       updated = true;
       logger.info(`[内容捕获] 已存储访问记录`, { url: record.url, dayId, id: record.id });
     } else if (isRefresh) {
-      logger.info(`[内容捕获] 刷新并更新访问记录`, { url: record.url, dayId, id: record.id });
-    } else {
-      logger.info(`[内容捕获] 跳过重复访问记录，仅递增visitCount`, { url: record.url, dayId, id: record.id });
+      logger.info(`[内容捕获] 刷新并更新访问记录`, { url: record.url, dayId, id: record.id, mainContentLength: record.mainContent ? record.mainContent.length : 0 });
     }
     if (updated) {
       await storage.set(key, visits);
@@ -86,7 +109,8 @@ export async function updateVisitAiResult(
   visitStartTime: number,
   aiResult: any, // 由 string 改为 any，支持对象
   analyzeDuration: number,
-  id?: string
+  id?: string,
+  aiServiceLabel?: string // 新增参数，标记本次分析所用 AI 服务
 ) {
   try {
     logger.debug('[AI调试] updateVisitAiResult called', { url, visitStartTime, id, aiResultType: typeof aiResult, aiResult });
@@ -104,6 +128,7 @@ export async function updateVisitAiResult(
         logger.debug('[AI调试] 命中访问记录，准备写入 aiResult', { v });
         v.aiResult = aiResult;
         v.analyzeDuration = analyzeDuration;
+        if (aiServiceLabel) v.aiServiceLabel = aiServiceLabel; // 新增：写入 AI 服务名
         updated = true;
         break;
       }

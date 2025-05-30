@@ -116,36 +116,109 @@ function renderSidebarTabs(root: HTMLElement) {
   root.innerHTML = `
     <div class='sidebar-tabs-wrap'>
       <div class='tabs'>
-        <button id='tab-today' class='sidebar-tab tab ${currentTab === 'today' ? 'active' : ''}'>${_('sidebar.tab.today', '今日')}</button>
-        <button id='tab-yesterday' class='sidebar-tab tab ${currentTab === 'yesterday' ? 'active' : ''}'>${_('sidebar.tab.yesterday', '昨日')}</button>
+        <button id='tab-today' class='sidebar-tab tab'>${_('sidebar.tab.today', '今日')}</button>
+        <button id='tab-yesterday' class='sidebar-tab tab'>${_('sidebar.tab.yesterday', '昨日')}</button>
       </div>
     </div>
-    <div id='summary-report-box'></div>
+    <div id='insight-report-box'></div>
     <div id='merged-view-box'></div>
   `;
   const tabToday = document.getElementById('tab-today');
   const tabYesterday = document.getElementById('tab-yesterday');
+  const insightBox = document.getElementById('insight-report-box');
   const mergedBox = document.getElementById('merged-view-box');
-  const switchTab = async (tab: 'today' | 'yesterday') => {
-    currentTab = tab;
+  function setActiveTab(tab: 'today' | 'yesterday') {
     tabToday?.classList.toggle('active', tab === 'today');
     tabYesterday?.classList.toggle('active', tab === 'yesterday');
+  }
+  async function switchTab(tab: 'today' | 'yesterday') {
+    currentTab = tab;
+    setActiveTab(tab);
     const dayId = tab === 'today' ? todayId : yesterdayId;
-    renderSummaryReport(root, dayId); // 异步，不阻塞
-    if (mergedBox) await renderMergedView(mergedBox, dayId);
-  };
+    if (insightBox) renderInsightReport(insightBox, dayId, tab);
+    if (mergedBox) await renderMergedView(mergedBox, dayId, tab);
+  }
   tabToday?.addEventListener('click', () => switchTab('today'));
   tabYesterday?.addEventListener('click', () => switchTab('yesterday'));
   // 默认显示今日
-  switchTab('today');
+  setActiveTab('today');
+  if (insightBox) renderInsightReport(insightBox, todayId, 'today');
+  if (mergedBox) renderMergedView(mergedBox, todayId, 'today');
 }
 
-async function renderMergedView(root: HTMLElement, dayId: string) {
+// 洞察报告渲染（今日/昨日）
+async function renderInsightReport(box: HTMLElement, dayId: string, tab: 'today' | 'yesterday') {
+  box.innerHTML = '';
+  if (tab === 'today') {
+    // 今日默认仅显示按钮，按钮居右
+    box.innerHTML = `<div class='insight-report-card'>
+      <div class='insight-report-title'>${_('sidebar.insight.today', '今日洞察')}</div>
+      <div class='insight-generate-btn'><button id='generateTodayInsightBtn'>${_('sidebar.insight.generate', '即刻洞察')}</button></div>
+    </div>`;
+    const btn = document.getElementById('generateTodayInsightBtn');
+    if (btn) {
+      btn.onclick = async () => {
+        box.innerHTML = `<div style='color:#888;padding:12px 0;'>${_('sidebar.insight.generating', '正在生成...')}</div>`;
+        await messenger.send('GENERATE_SUMMARY_REPORT', { dayId, force: true });
+        setTimeout(() => renderInsightReport(box, dayId, tab), 1200);
+      };
+    }
+    // 不自动加载今日洞察
+    return;
+  }
+  // 昨日洞察直接加载
+  box.innerHTML = `<div style='color:#888;padding:12px 0;'>${_('sidebar.insight.loading', '昨日洞察加载中...')}</div>`;
+  messenger.send('GET_SUMMARY_REPORT', { dayId }).then((resp) => {
+    if (!resp || (!resp.summaries && !resp.summary && !resp.suggestions)) {
+      box.innerHTML = `<div style=\"color:#888;padding:12px 0;\">${_('sidebar.insight.empty', '暂无昨日洞察')}</div>`;
+      return;
+    }
+    const { summaries, suggestions, aiServiceLabel, stats, summary, highlights, specialConcerns } = resp;
+    let html = `<div class='insight-report-card'>`;
+    html += `<div class='insight-report-title'>${_('sidebar.insight.yesterday', '昨日洞察')} <span class='insight-ai-label'>${aiServiceLabel || ''}</span></div>`;
+    if (stats) {
+      html += `<div class='insight-stats'>
+        <div class='insight-stats-row-label'>${_('sidebar.insight.stats.total', '访问总数')}</div><div class='insight-stats-row-value'>${stats.total}</div>
+        <div class='insight-stats-row-label'>${_('sidebar.insight.stats.duration', '总时长')}</div><div class='insight-stats-row-value'>${(stats.totalDuration/1000/60).toFixed(1)} 分钟</div>
+        <div class='insight-stats-row-label'>${_('sidebar.insight.stats.domains', '涉及域名')}</div><div class='insight-stats-row-value'>${stats.domains && stats.domains.length ? stats.domains.join('，') : '-'}</div>
+        <div class='insight-stats-row-label'>${_('sidebar.insight.stats.keywords', '关键词')}</div><div class='insight-stats-row-value'>${stats.keywords && stats.keywords.length ? stats.keywords.slice(0, 10).join('，') : '-'}</div>
+      </div>`;
+    }
+    if (summaries && Array.isArray(summaries) && summaries.length) {
+      html += `<div class='insight-report-content'>${summaries.map(s => s.summary).join('<br>')}</div>`;
+    } else if (summary) {
+      html += `<div class='insight-report-content'>${summary}</div>`;
+    }
+    if (suggestions && Array.isArray(suggestions) && suggestions.length) {
+      html += `<ul class='insight-highlights'>${suggestions.map((s) => `<li>${s}</li>`).join('')}</ul>`;
+    } else {
+      if (highlights && Array.isArray(highlights) && highlights.length) {
+        html += `<ul class='insight-highlights'>${highlights.map((h) => `<li>${h}</li>`).join('')}</ul>`;
+      }
+      if (specialConcerns && Array.isArray(specialConcerns) && specialConcerns.length) {
+        html += `<div class='insight-special-concerns'>${_('sidebar.insight.special', '特别关注')}: ${specialConcerns.map((c) => c).join('，')}</div>`;
+      }
+    }
+    html += `</div>`;
+    box.innerHTML = html;
+  }).catch(() => {
+    box.innerHTML = `<div style='color:#e53935;padding:12px 0;'>${_('sidebar.insight.error', '昨日洞察加载失败')}</div>`;
+  });
+}
+
+// 访问数据卡片渲染，今日标签下高亮当前打开标签页
+async function renderMergedView(root: HTMLElement, dayId: string, tab: 'today' | 'yesterday') {
   root.innerHTML = '<div style="color:#888;padding:16px;">加载中...</div>';
-  const [visits] = await Promise.all([
-    messenger.send('GET_VISITS', { dayId }).then(r => r?.visits || []).catch(() => [])
+  const [visits, tabs] = await Promise.all([
+    messenger.send('GET_VISITS', { dayId }).then(r => r?.visits || []).catch(() => []),
+    (tab === 'today' && typeof chrome !== 'undefined' && chrome.tabs) ? new Promise<any[]>(resolve => {
+      chrome.tabs.query({}, resolve);
+    }) : Promise.resolve([])
   ]);
-  // 过滤掉完全无 title/url 的条目，允许无 aiResult 但有 title/url 的访问记录也渲染卡片
+  let openTabUrls: string[] = [];
+  if (tab === 'today' && Array.isArray(tabs)) {
+    openTabUrls = tabs.map(t => t.url && typeof t.url === 'string' ? t.url.split('#')[0] : '').filter(Boolean);
+  }
   let merged = mergeVisitsAndAnalysis(visits).filter(item => {
     return !!(item && (item.title || item.url));
   });
@@ -155,14 +228,18 @@ async function renderMergedView(root: HTMLElement, dayId: string) {
     return;
   }
   root.innerHTML = merged.map((item, idx) => {
-    const collapsed = idx > 0;
+    // 主动刷新（isRefresh）时，若为当前打开标签页，强制展开
+    let isActiveRefresh = false;
+    if (tab === 'today' && item.url && openTabUrls.includes(item.url.split('#')[0]) && item.isRefresh) {
+      isActiveRefresh = true;
+    }
+    const collapsed = idx > 0 && !isActiveRefresh;
     const entryId = `merged-entry-${idx}`;
     let aiContent = '';
     let durationStr = '';
     let isStructured = false;
     let rawText = item.aiResult;
     let jsonObj: any = null;
-    // 支持 aiResult 为结构化 JSON 或字符串
     if (rawText && typeof rawText === 'string' && rawText.trim().startsWith('{')) {
       try {
         jsonObj = JSON.parse(rawText);
@@ -188,7 +265,6 @@ async function renderMergedView(root: HTMLElement, dayId: string) {
           aiContent = `<div class='ai-plain'>${rawText.replace(/\n/g, '<br>')}</div>`;
         }
       } else if (rawText === '正在进行 AI 分析' && !isStructured) {
-        // 只在明确为“正在进行 AI 分析”时显示分析中
         const analyzingId = `analyzing-timer-${idx}`;
         aiContent = `<span class='ai-analyzing' id='${analyzingId}'>正在进行 AI 分析</span>`;
         setTimeout(() => {
@@ -232,8 +308,11 @@ async function renderMergedView(root: HTMLElement, dayId: string) {
     if (item.analyzeDuration && item.analyzeDuration > 0) {
       durationStr = showAnalyzeDuration(item.analyzeDuration);
     }
-    const isImportant = (item.aiResult && typeof item.aiResult === 'object' && item.aiResult.important === true);
-    const cardClass = isImportant ? 'merged-card merged-card-important' : 'merged-card';
+    // 今日标签下，若 url 在 openTabUrls 中则高亮（不再加对钩）
+    let cardClass = 'merged-card';
+    if (tab === 'today' && item.url && openTabUrls.includes(item.url.split('#')[0])) {
+      cardClass += ' merged-card-open';
+    }
     const visitTime = item.visitStartTime ? new Date(item.visitStartTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
     const titleLine = `<div class='merged-card-title-line'>
       <div class='merged-card-title'>${item.title || ''}</div>
@@ -243,6 +322,61 @@ async function renderMergedView(root: HTMLElement, dayId: string) {
       <a href='${item.url || ''}' target='_blank' class='merged-card-url'>${item.url || ''}</a>
       <div class='merged-card-duration'>${durationStr}</div>
     </div>`;
+    let aiServiceLabel = '';
+    if (item.aiServiceLabel) {
+      aiServiceLabel = item.aiServiceLabel;
+    }
+    // 访问次数标签
+    let visitCountLabel = '';
+    if (item.visitCount && item.visitCount > 1) {
+      visitCountLabel = `<span class='merged-card-visit-count'>（${item.visitCount}次）</span>`;
+    }
+    // 渲染时始终输出带唯一 id 的标签
+    let aiLabelHtml = `<span class='merged-card-ai-label' id='ai-label-${idx}'>${aiServiceLabel}${visitCountLabel}</span>`;
+    // aiContent 渲染后追加 AI 服务标签，分析中时标签在前（计时也在标签后）
+    let aiContentWithLabel = aiContent;
+    if (rawText === '正在进行 AI 分析') {
+      aiContentWithLabel = aiLabelHtml + `<span class='ai-analyzing' id='analyzing-timer-${idx}'>正在进行 AI 分析</span>`;
+      setTimeout(() => {
+        const el = document.getElementById(`analyzing-timer-${idx}`);
+        if (el && item.visitStartTime) {
+          let timer: any = undefined;
+          const updateText = () => {
+            const currentItem = merged[idx];
+            if (currentItem && currentItem.aiResult && typeof currentItem.aiResult !== 'string') {
+              renderMergedView(root, dayId, tab);
+              if (timer !== undefined) clearInterval(timer);
+              return;
+            }
+            if (currentItem && typeof currentItem.aiResult === 'string' && currentItem.aiResult.startsWith('AI 分析失败')) {
+              el.textContent = currentItem.aiResult;
+              el.style.color = '#e53935';
+              el.style.background = '#fff3f3';
+              el.style.borderRadius = '4px';
+              el.style.padding = '6px 8px';
+              if (timer !== undefined) clearInterval(timer);
+              return;
+            }
+            const now = Date.now();
+            const seconds = Math.floor((now - item.visitStartTime) / 1000);
+            if (seconds >= 60) {
+              el.textContent = `分析超时（已用时 ${seconds} 秒）`;
+              el.style.color = '#e53935';
+              if (timer !== undefined) clearInterval(timer);
+              return;
+            }
+            el.textContent = `正在进行 AI 分析（已用时 ${seconds} 秒）`;
+          };
+          updateText();
+          timer = setInterval(() => {
+            if (!document.body.contains(el)) { if (timer !== undefined) clearInterval(timer); return; }
+            updateText();
+          }, 1000);
+        }
+      }, 0);
+    } else {
+      aiContentWithLabel = aiContent + aiLabelHtml;
+    }
     return `
       <div class='${cardClass}'>
         <div class='merged-card-header' data-entry-id='${entryId}'>
@@ -250,7 +384,7 @@ async function renderMergedView(root: HTMLElement, dayId: string) {
         </div>
         <div id='${entryId}' class='merged-card-content' style='${collapsed ? 'display:none;' : ''}'>
           ${urlLine}
-          <div class='merged-card-ai-content'>${aiContent}</div>
+          <div class='merged-card-ai-content'>${aiContentWithLabel}</div>
         </div>
       </div>
     `;
@@ -258,7 +392,6 @@ async function renderMergedView(root: HTMLElement, dayId: string) {
 
   root.onclick = function(e) {
     const target = e.target as HTMLElement;
-    // 智能切换标签页：点击链接时优先激活已打开标签页，否则新开
     if (target && target.classList.contains('merged-card-url')) {
       e.preventDefault();
       const url = target.getAttribute('href');
@@ -348,50 +481,46 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
+// 消息监听：局部刷新
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg && msg.type === 'SIDE_PANEL_UPDATE') {
-    clearAiConfigCache(); // 配置/数据变更时清空缓存
-    const root = document.getElementById('sidebar-root');
-    if (root) {
-      const dayId = new Date().toISOString().slice(0, 10);
-      renderMergedView(root, dayId);
+    clearAiConfigCache();
+    const insightBox = document.getElementById('insight-report-box');
+    const mergedBox = document.getElementById('merged-view-box');
+    const dayId = new Date().toISOString().slice(0, 10);
+    const updateType = msg.payload && msg.payload.updateType;
+    if (updateType === 'ai') {
+      if (insightBox) renderInsightReport(insightBox, dayId, 'today');
+      if (mergedBox) renderMergedView(mergedBox, dayId, 'today');
+    } else if (updateType === 'visit' && mergedBox) {
+      renderMergedView(mergedBox, dayId, 'today');
+    } else {
+      if (insightBox) renderInsightReport(insightBox, dayId, 'today');
+      if (mergedBox) renderMergedView(mergedBox, dayId, 'today');
     }
   }
-  // 新增：收到 SCROLL_TO_VISIT 消消息时滚动并展开对应卡片
+  // SCROLL_TO_VISIT 消息：找不到卡片时直接忽略
   if (msg && msg.type === 'SCROLL_TO_VISIT' && msg.payload && msg.payload.url) {
     setTimeout(() => {
       const url = msg.payload.url;
       try {
-        // 查找所有卡片链接
         const links = document.querySelectorAll('.merged-card-url');
         let found = false;
         links.forEach((link) => {
           if (isSystemUrl(url)) return;
           if (link instanceof HTMLAnchorElement && link.href.split('#')[0] === url.split('#')[0]) {
-            // 展开卡片
             const cardContent = link.closest('.merged-card-content') as HTMLElement;
             if (cardContent && cardContent.style.display === 'none') {
               cardContent.style.display = 'block';
             }
-            // 滚动到卡片
             cardContent?.scrollIntoView({ behavior: 'smooth', block: 'center' });
             found = true;
           }
         });
-        if (isSystemUrl(url)) {
-          logger.info('系统页面无需定位:', url);
-          return;
-        }
-        if (found) {
-          logger.info('已滚动到对应卡片:', url);
-        } else {
-          // 输出当前所有卡片的 url 便于排查
-          const allUrls = Array.from(links).map(link => link instanceof HTMLAnchorElement ? link.href : '').filter(Boolean);
-          logger.warn('sidebar_scroll_to_visit_not_found', '未找到对应卡片: {0}，当前卡片URL: {1}', url, allUrls.join(' | '));
-        }
+        // 不再输出警告，未找到直接忽略
       } catch (err) {
-        logger.error('sidebar.scroll_to_visit_error', '滚动到卡片时发生错误', err);
+        // 忽略异常
       }
-    }, 300); // 等待渲染完成
+    }, 300);
   }
 });
