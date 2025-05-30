@@ -137,6 +137,7 @@ function renderSidebarTabs(root: HTMLElement) {
     const dayId = tab === 'today' ? todayId : yesterdayId;
     if (insightBox) renderInsightReport(insightBox, dayId, tab);
     if (mergedBox) await renderMergedView(mergedBox, dayId, tab);
+    updateOpenTabHighlight(tab); // 切换时也刷新高亮
   }
   tabToday?.addEventListener('click', () => switchTab('today'));
   tabYesterday?.addEventListener('click', () => switchTab('yesterday'));
@@ -208,6 +209,7 @@ async function renderInsightReport(box: HTMLElement, dayId: string, tab: 'today'
 
 // 访问数据卡片渲染，今日标签下高亮当前打开标签页
 async function renderMergedView(root: HTMLElement, dayId: string, tab: 'today' | 'yesterday') {
+  clearAllAnalyzingTimers(); // 渲染前清理所有分析中计时器，防止泄漏
   root.innerHTML = '<div style="color:#888;padding:16px;">加载中...</div>';
   const [visits, tabs] = await Promise.all([
     messenger.send('GET_VISITS', { dayId }).then(r => r?.visits || []).catch(() => []),
@@ -228,12 +230,8 @@ async function renderMergedView(root: HTMLElement, dayId: string, tab: 'today' |
     return;
   }
   root.innerHTML = merged.map((item, idx) => {
-    // 主动刷新（isRefresh）时，若为当前打开标签页，强制展开
-    let isActiveRefresh = false;
-    if (tab === 'today' && item.url && openTabUrls.includes(item.url.split('#')[0]) && item.isRefresh) {
-      isActiveRefresh = true;
-    }
-    const collapsed = idx > 0 && !isActiveRefresh;
+    // 今日标签下，若 url 在 openTabUrls 中则高亮（不再加对钩，也不再依赖 isRefresh）
+    const collapsed = idx > 0;
     const entryId = `merged-entry-${idx}`;
     let aiContent = '';
     let durationStr = '';
@@ -264,39 +262,20 @@ async function renderMergedView(root: HTMLElement, dayId: string, tab: 'today' |
         } else {
           aiContent = `<div class='ai-plain'>${rawText.replace(/\n/g, '<br>')}</div>`;
         }
-      } else if (rawText === '正在进行 AI 分析' && !isStructured) {
+      } else if ((rawText === '正在进行 AI 分析' || rawText === '') && !isStructured) {
+        // 统一分析中分支，始终用标签+计时器，且只在分析中时插入计时器
         const analyzingId = `analyzing-timer-${idx}`;
-        aiContent = `<span class='ai-analyzing' id='${analyzingId}'>正在进行 AI 分析</span>`;
+        let aiServiceLabel = item.aiServiceLabel || '';
+        let visitCountLabel = '';
+        if (item.visitCount && item.visitCount > 1) {
+          visitCountLabel = `<span class='merged-card-visit-count'>（${item.visitCount}次）</span>`;
+        }
+        const aiLabelHtml = `<span class='merged-card-ai-label' id='ai-label-${idx}'>${aiServiceLabel}${visitCountLabel}</span>`;
+        aiContent = `${aiLabelHtml}<span class='ai-analyzing' id='${analyzingId}'>正在进行 AI 分析</span>`;
         setTimeout(() => {
           const el = document.getElementById(analyzingId);
           if (el && item.visitStartTime) {
-            let timer: any = undefined;
-            const updateText = () => {
-              const currentItem = merged[idx];
-              if (currentItem && typeof currentItem.aiResult === 'string' && currentItem.aiResult.startsWith('AI 分析失败')) {
-                el.textContent = currentItem.aiResult;
-                el.style.color = '#e53935';
-                el.style.background = '#fff3f3';
-                el.style.borderRadius = '4px';
-                el.style.padding = '6px 8px';
-                if (timer !== undefined) clearInterval(timer);
-                return;
-              }
-              const now = Date.now();
-              const seconds = Math.floor((now - item.visitStartTime) / 1000);
-              if (seconds >= 60) {
-                el.textContent = `分析超时（已用时 ${seconds} 秒）`;
-                el.style.color = '#e53935';
-                if (timer !== undefined) clearInterval(timer);
-                return;
-              }
-              el.textContent = `正在进行 AI 分析（已用时 ${seconds} 秒）`;
-            };
-            updateText();
-            timer = setInterval(() => {
-              if (!document.body.contains(el)) { if (timer !== undefined) clearInterval(timer); return; }
-              updateText();
-            }, 1000);
+            startAnalyzingTimer({ el, item, dayId, root, tab, aiLabelHtml });
           }
         }, 0);
       } else {
@@ -308,7 +287,7 @@ async function renderMergedView(root: HTMLElement, dayId: string, tab: 'today' |
     if (item.analyzeDuration && item.analyzeDuration > 0) {
       durationStr = showAnalyzeDuration(item.analyzeDuration);
     }
-    // 今日标签下，若 url 在 openTabUrls 中则高亮（不再加对钩）
+    // 今日标签下，若 url 在 openTabUrls 中则高亮
     let cardClass = 'merged-card';
     if (tab === 'today' && item.url && openTabUrls.includes(item.url.split('#')[0])) {
       cardClass += ' merged-card-open';
@@ -322,56 +301,23 @@ async function renderMergedView(root: HTMLElement, dayId: string, tab: 'today' |
       <a href='${item.url || ''}' target='_blank' class='merged-card-url'>${item.url || ''}</a>
       <div class='merged-card-duration'>${durationStr}</div>
     </div>`;
-    let aiServiceLabel = '';
-    if (item.aiServiceLabel) {
-      aiServiceLabel = item.aiServiceLabel;
-    }
     // 访问次数标签
     let visitCountLabel = '';
     if (item.visitCount && item.visitCount > 1) {
       visitCountLabel = `<span class='merged-card-visit-count'>（${item.visitCount}次）</span>`;
     }
     // 渲染时始终输出带唯一 id 的标签
-    let aiLabelHtml = `<span class='merged-card-ai-label' id='ai-label-${idx}'>${aiServiceLabel}${visitCountLabel}</span>`;
+    let aiLabelHtml = `<span class='merged-card-ai-label' id='ai-label-${idx}'>${item.aiServiceLabel || ''}${visitCountLabel}</span>`;
     // aiContent 渲染后追加 AI 服务标签，分析中时标签在前（计时也在标签后）
-    let aiContentWithLabel = aiContent;
-    if (rawText === '正在进行 AI 分析') {
-      aiContentWithLabel = aiLabelHtml + `<span class='ai-analyzing' id='analyzing-timer-${idx}'>正在进行 AI 分析</span>`;
+    let aiContentWithLabel = '';
+    if (rawText === '正在进行 AI 分析' || rawText === '') {
+      // 分析中：标签在前，计时在后，且只允许一个 interval
+      const analyzingId = `analyzing-timer-${idx}`;
+      aiContentWithLabel = `<span id='${analyzingId}' class='ai-analyzing-wrap'>${aiLabelHtml}<span class='ai-analyzing'>正在进行 AI 分析</span></span>`;
       setTimeout(() => {
-        const el = document.getElementById(`analyzing-timer-${idx}`);
+        const el = document.getElementById(analyzingId);
         if (el && item.visitStartTime) {
-          let timer: any = undefined;
-          const updateText = () => {
-            const currentItem = merged[idx];
-            if (currentItem && currentItem.aiResult && typeof currentItem.aiResult !== 'string') {
-              renderMergedView(root, dayId, tab);
-              if (timer !== undefined) clearInterval(timer);
-              return;
-            }
-            if (currentItem && typeof currentItem.aiResult === 'string' && currentItem.aiResult.startsWith('AI 分析失败')) {
-              el.textContent = currentItem.aiResult;
-              el.style.color = '#e53935';
-              el.style.background = '#fff3f3';
-              el.style.borderRadius = '4px';
-              el.style.padding = '6px 8px';
-              if (timer !== undefined) clearInterval(timer);
-              return;
-            }
-            const now = Date.now();
-            const seconds = Math.floor((now - item.visitStartTime) / 1000);
-            if (seconds >= 60) {
-              el.textContent = `分析超时（已用时 ${seconds} 秒）`;
-              el.style.color = '#e53935';
-              if (timer !== undefined) clearInterval(timer);
-              return;
-            }
-            el.textContent = `正在进行 AI 分析（已用时 ${seconds} 秒）`;
-          };
-          updateText();
-          timer = setInterval(() => {
-            if (!document.body.contains(el)) { if (timer !== undefined) clearInterval(timer); return; }
-            updateText();
-          }, 1000);
+          startAnalyzingTimer({ el, item, dayId, root, tab, aiLabelHtml });
         }
       }, 0);
     } else {
@@ -389,6 +335,7 @@ async function renderMergedView(root: HTMLElement, dayId: string, tab: 'today' |
       </div>
     `;
   }).join('');
+  updateOpenTabHighlight(tab); // 渲染后刷新高亮
 
   root.onclick = function(e) {
     const target = e.target as HTMLElement;
@@ -417,6 +364,72 @@ async function renderMergedView(root: HTMLElement, dayId: string, tab: 'today' |
       }
     }
   };
+}
+
+// 刷新“当前打开”卡片高亮，仅更新高亮样式，不刷新全部数据
+function updateOpenTabHighlight(tab: 'today' | 'yesterday') {
+  if (tab !== 'today') return;
+  if (typeof chrome === 'undefined' || !chrome.tabs) return;
+  chrome.tabs.query({}, (tabs) => {
+    const openTabUrls = tabs.map(t => t.url && typeof t.url === 'string' ? t.url.split('#')[0] : '').filter(Boolean);
+    const cards = document.querySelectorAll('.merged-card');
+    cards.forEach(card => {
+      const urlEl = card.querySelector('.merged-card-url') as HTMLAnchorElement;
+      if (!urlEl) return;
+      const url = urlEl.getAttribute('href')?.split('#')[0] || '';
+      if (openTabUrls.includes(url)) {
+        card.classList.add('merged-card-open');
+      } else {
+        card.classList.remove('merged-card-open');
+      }
+    });
+  });
+}
+
+// 全局分析中计时器管理，防止重复 interval 泄漏
+const analyzingTimers = new Map<string, any>();
+
+function clearAllAnalyzingTimers() {
+  for (const timer of analyzingTimers.values()) {
+    clearInterval(timer);
+  }
+  analyzingTimers.clear();
+}
+
+// 工具函数：分析中计时器，确保每个 analyzing-timer 只存在一个 interval
+function startAnalyzingTimer({ el, item, dayId, root, tab, aiLabelHtml }: {
+  el: HTMLElement;
+  item: any;
+  dayId: string;
+  root: HTMLElement;
+  tab: 'today' | 'yesterday';
+  aiLabelHtml: string;
+}) {
+  const key = String(item.id);
+  if (analyzingTimers.has(key)) {
+    clearInterval(analyzingTimers.get(key));
+    analyzingTimers.delete(key);
+  }
+  let timer: any = undefined;
+  const updateTextLocal = () => {
+    const now = Date.now();
+    const seconds = Math.floor((now - item.visitStartTime) / 1000);
+    if (seconds >= 60) {
+      el.innerHTML = aiLabelHtml + `<span class='ai-failed'>分析超时（已用时 ${seconds} 秒）</span>`;
+      const failedEl = el.querySelector('.ai-failed');
+      if (failedEl) failedEl.setAttribute('style', 'color:#e53935;');
+      if (timer !== undefined) clearInterval(timer);
+      analyzingTimers.delete(key);
+      return;
+    }
+    el.innerHTML = aiLabelHtml + `<span class='ai-analyzing'>正在进行 AI 分析（已用时 ${seconds} 秒）</span>`;
+  };
+  updateTextLocal();
+  timer = setInterval(() => {
+    if (!document.body.contains(el)) { if (timer !== undefined) clearInterval(timer); analyzingTimers.delete(key); return; }
+    updateTextLocal();
+  }, 1000);
+  analyzingTimers.set(key, timer);
 }
 
 async function clearMergedViewData(root: HTMLElement) {
@@ -480,6 +493,13 @@ document.addEventListener('DOMContentLoaded', () => {
     versionInfoEl.textContent = `版本：${manifest.version}`;
   }
 });
+
+// 监听页面标签变化，及时刷新“当前打开”高亮
+if (typeof chrome !== 'undefined' && chrome.tabs) {
+  chrome.tabs.onRemoved.addListener(() => updateOpenTabHighlight('today'));
+  chrome.tabs.onUpdated.addListener(() => updateOpenTabHighlight('today'));
+  chrome.tabs.onActivated && chrome.tabs.onActivated.addListener(() => updateOpenTabHighlight('today'));
+}
 
 // 消息监听：局部刷新
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
