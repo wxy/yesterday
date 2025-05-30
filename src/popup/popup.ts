@@ -89,12 +89,6 @@ async function renderSingleBrief(root: HTMLElement) {
   </div>`;
 }
 
-// 合并访问记录和分析结果，优先用 id 匹配，兼容 url+visitStartTime
-// 已迁移为单表，直接用 browsing_visits 作为 analysis（原 visits_）
-function mergeVisitsAndAnalysis(visits: any[]): any[] {
-  return visits;
-}
-
 document.addEventListener('DOMContentLoaded', () => {
   const root = document.getElementById('mergedDataArea') as HTMLElement;
   if (root) renderSingleBrief(root);

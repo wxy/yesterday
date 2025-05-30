@@ -108,15 +108,16 @@ async function renderSummaryReport(root: HTMLElement, dayId: string) {
 }
 
 // Tab切换与主渲染（标签页样式）
+let currentTab: 'today' | 'yesterday' = 'today'; // 全局记录当前tab
 function renderSidebarTabs(root: HTMLElement) {
   const todayId = new Date().toISOString().slice(0, 10);
   const yesterday = new Date(Date.now() - 86400000);
   const yesterdayId = yesterday.toISOString().slice(0, 10);
-  let currentTab = 'today';
+  currentTab = 'today';
   root.innerHTML = `
     <div class='sidebar-tabs-wrap'>
       <div class='tabs'>
-        <button id='tab-today' class='sidebar-tab
+        <button id='tab-today' class='sidebar-tab tab'>${_('sidebar.tab.today', '今日')}</button>
         <button id='tab-yesterday' class='sidebar-tab tab'>${_('sidebar.tab.yesterday', '昨日')}</button>
       </div>
     </div>
@@ -523,16 +524,23 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     clearAiConfigCache();
     const insightBox = document.getElementById('insight-report-box');
     const mergedBox = document.getElementById('merged-view-box');
-    const dayId = new Date().toISOString().slice(0, 10);
+    // 根据当前tab刷新对应数据
+    let dayId: string;
+    if (currentTab === 'today') {
+      dayId = new Date().toISOString().slice(0, 10);
+    } else {
+      const yesterday = new Date(Date.now() - 86400000);
+      dayId = yesterday.toISOString().slice(0, 10);
+    }
     const updateType = msg.payload && msg.payload.updateType;
     if (updateType === 'ai') {
-      if (insightBox) renderInsightReport(insightBox, dayId, 'today');
-      if (mergedBox) renderMergedView(mergedBox, dayId, 'today');
+      if (insightBox) renderInsightReport(insightBox, dayId, currentTab);
+      if (mergedBox) renderMergedView(mergedBox, dayId, currentTab);
     } else if (updateType === 'visit' && mergedBox) {
-      renderMergedView(mergedBox, dayId, 'today');
+      renderMergedView(mergedBox, dayId, currentTab);
     } else {
-      if (insightBox) renderInsightReport(insightBox, dayId, 'today');
-      if (mergedBox) renderMergedView(mergedBox, dayId, 'today');
+      if (insightBox) renderInsightReport(insightBox, dayId, currentTab);
+      if (mergedBox) renderMergedView(mergedBox, dayId, currentTab);
     }
   }
   // SCROLL_TO_VISIT 消息：找不到卡片时直接忽略
