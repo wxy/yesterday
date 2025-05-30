@@ -197,3 +197,5 @@ export class ChromeStorageAdapter extends BaseStorageAdapter {
     return data as T;
   }
 }
+
+// keyPrefix 建议统一为 browsing_visits_、browsing_summary_、highlight_records_、page_snapshots_、record_logs_

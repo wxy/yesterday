@@ -35,6 +35,7 @@ export class IndexedDBAdapter extends BaseStorageAdapter implements StorageAdapt
    */
   constructor(options: IndexedDBOptions = {}) {
     super('IndexedDBAdapter');
+    // 默认 dbName: 'yesterday'，objectStore/keyPrefix 建议统一为 browsing_visits_、browsing_summary_、highlight_records_、page_snapshots_、record_logs_
     this.dbName = options.dbName || 'chrome-extension-storage';
     this.storeName = options.storeName || 'keyvalue-store';
     this.version = options.version || 1;

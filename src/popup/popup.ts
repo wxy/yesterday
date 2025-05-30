@@ -90,7 +90,7 @@ async function renderSingleBrief(root: HTMLElement) {
 }
 
 // 合并访问记录和分析结果，优先用 id 匹配，兼容 url+visitStartTime
-// 已迁移为单表，直接用 visits 作为 analysis
+// 已迁移为单表，直接用 browsing_visits 作为 analysis（原 visits_）
 function mergeVisitsAndAnalysis(visits: any[]): any[] {
   return visits;
 }

@@ -163,3 +163,5 @@ config.update({
 ### 许可证
 
 MIT
+
+<!-- 示例代码如有涉及 key 命名，建议统一为 browsing_visits_、browsing_summary_、highlight_records_、page_snapshots_、record_logs_。 -->

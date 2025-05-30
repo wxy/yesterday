@@ -42,11 +42,12 @@ export const storageConfig: StorageStrategyConfig = {
     
     // IndexedDB特定选项
     'indexed-db': {
-      dbName: 'extension-data',
+      // 统一 dbName: 'yesterday'，所有 objectStores/keyPrefix 建议统一为 browsing_visits_、browsing_summary_、highlight_records_、page_snapshots_、record_logs_
+      dbName: 'yesterday',
       version: 1,
       objectStores: [
         {
-          name: 'keyValueStore', 
+          name: 'browsing_visits', // 只保留一个主 objectStore，所有数据用 key 前缀区分
           keyPath: 'key',
           indices: [
             { name: 'updatedAt', keyPath: 'meta.updatedAt' }

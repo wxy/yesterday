@@ -165,3 +165,5 @@
 - 确定 MVP 功能集并估算开发工作量
 - 规划用户测试方案，收集早期反馈
 - 细化技术实现方案，明确架构设计
+
+// 文档如有涉及 key 命名，建议统一为 browsing_visits_、browsing_summary_、highlight_records_、page_snapshots_、record_logs_

@@ -116,7 +116,7 @@ function renderSidebarTabs(root: HTMLElement) {
   root.innerHTML = `
     <div class='sidebar-tabs-wrap'>
       <div class='tabs'>
-        <button id='tab-today' class='sidebar-tab tab'>${_('sidebar.tab.today', '今日')}</button>
+        <button id='tab-today' class='sidebar-tab
         <button id='tab-yesterday' class='sidebar-tab tab'>${_('sidebar.tab.yesterday', '昨日')}</button>
       </div>
     </div>
@@ -212,7 +212,7 @@ async function renderMergedView(root: HTMLElement, dayId: string, tab: 'today' |
   clearAllAnalyzingTimers(); // 渲染前清理所有分析中计时器，防止泄漏
   root.innerHTML = '<div style="color:#888;padding:16px;">加载中...</div>';
   const [visits, tabs] = await Promise.all([
-    messenger.send('GET_VISITS', { dayId }).then(r => r?.visits || []).catch(() => []),
+    messenger.send('GET_VISITS', { dayId }).then(r => r?.visits || []).catch(() => []), // 后台已用 browsing_visits_
     (tab === 'today' && typeof chrome !== 'undefined' && chrome.tabs) ? new Promise<any[]>(resolve => {
       chrome.tabs.query({}, resolve);
     }) : Promise.resolve([])
@@ -304,24 +304,39 @@ async function renderMergedView(root: HTMLElement, dayId: string, tab: 'today' |
     // 访问次数标签
     let visitCountLabel = '';
     if (item.visitCount && item.visitCount > 1) {
-      visitCountLabel = `<span class='merged-card-visit-count'>（${item.visitCount}次）</span>`;
+      visitCountLabel = `<span class='merged-card-visit-count'>${item.visitCount}${_('sidebar.card.times', '次')}</span>`;
     }
-    // 渲染时始终输出带唯一 id 的标签
-    let aiLabelHtml = `<span class='merged-card-ai-label' id='ai-label-${idx}'>${item.aiServiceLabel || ''}${visitCountLabel}</span>`;
-    // aiContent 渲染后追加 AI 服务标签，分析中时标签在前（计时也在标签后）
+    // AI服务标签
+    let aiLabelHtml = '';
+    if (item.aiServiceLabel) {
+      aiLabelHtml = `<span class='merged-card-ai-label'>${item.aiServiceLabel}</span>`;
+    }
+    // 分析用时标签（精简，仅数字+单位）
+    let analyzeDurationLabel = '';
+    if (item.analyzeDuration && item.analyzeDuration > 0) {
+      analyzeDurationLabel = `<span class='merged-card-analyze-duration'>${(item.analyzeDuration / 1000).toFixed(1)}s</span>`;
+    }
+    // 标签区（并列展示）
+    let cardTagsLine = '';
+    if (aiLabelHtml || visitCountLabel || analyzeDurationLabel) {
+      cardTagsLine = `<div class='merged-card-tags-line'>${aiLabelHtml}${visitCountLabel}${analyzeDurationLabel}</div>`;
+    }
+    // aiContent 渲染后不再追加 cardTagsLine，分析中时标签区和计时器只在底部渲染
     let aiContentWithLabel = '';
+    let showTags = true;
     if (rawText === '正在进行 AI 分析' || rawText === '') {
-      // 分析中：标签在前，计时在后，且只允许一个 interval
+      // 分析中：只渲染计时器内容，不渲染标签区
+      showTags = false;
       const analyzingId = `analyzing-timer-${idx}`;
-      aiContentWithLabel = `<span id='${analyzingId}' class='ai-analyzing-wrap'>${aiLabelHtml}<span class='ai-analyzing'>正在进行 AI 分析</span></span>`;
+      aiContentWithLabel = `<span id='${analyzingId}' class='ai-analyzing'>${_('sidebar.card.analyzing', '正在进行 AI 分析')}</span>`;
       setTimeout(() => {
         const el = document.getElementById(analyzingId);
         if (el && item.visitStartTime) {
-          startAnalyzingTimer({ el, item, dayId, root, tab, aiLabelHtml });
+          startAnalyzingTimer({ el, item, dayId, root, tab, aiLabelHtml: '' });
         }
       }, 0);
     } else {
-      aiContentWithLabel = aiContent + aiLabelHtml;
+      aiContentWithLabel = aiContent;
     }
     return `
       <div class='${cardClass}'>
@@ -331,6 +346,7 @@ async function renderMergedView(root: HTMLElement, dayId: string, tab: 'today' |
         <div id='${entryId}' class='merged-card-content' style='${collapsed ? 'display:none;' : ''}'>
           ${urlLine}
           <div class='merged-card-ai-content'>${aiContentWithLabel}</div>
+          ${showTags ? cardTagsLine : ''}
         </div>
       </div>
     `;
@@ -435,12 +451,12 @@ function startAnalyzingTimer({ el, item, dayId, root, tab, aiLabelHtml }: {
 async function clearMergedViewData(root: HTMLElement) {
   try {
     logger.info('清除本地数据（不清除配置）');
-    // 只清除 visits_、ai_analysis_ 等业务数据，保留 config
+    // 只清除 browsing_visits_、browsing_summary_、highlight_records_、page_snapshots_、record_logs_ 等业务数据，保留 config
     const allKeys = await storage.keys();
     const keepPrefixes = ['extension_config', 'app_config', 'config', 'settings']; // 可能的配置表前缀
     const keysToRemove = allKeys.filter(k =>
       !keepPrefixes.some(prefix => k.startsWith(prefix)) &&
-      (k.startsWith('visits_') || k.startsWith('ai_analysis_') || k.startsWith('highlight_') || k.startsWith('page_') || k.startsWith('record_'))
+      (k.startsWith('browsing_visits_') || k.startsWith('browsing_summary_') || k.startsWith('highlight_records_') || k.startsWith('page_snapshots_') || k.startsWith('record_logs_'))
     );
     await Promise.all(keysToRemove.map(k => storage.remove(k)));
     messenger.send('DATA_CLEARED'); // fire-and-forget，无需等待响应
@@ -453,7 +469,7 @@ async function clearMergedViewData(root: HTMLElement) {
 
 // 清空AI服务配置缓存
 function clearAiConfigCache() {
-  aiConfigCache = null;
+  aiConfigCache
 }
 
 document.addEventListener('DOMContentLoaded', () => {

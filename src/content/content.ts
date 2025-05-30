@@ -214,3 +214,5 @@ window.addEventListener('beforeunload', () => {
     if (observerTimer) clearInterval(observerTimer);
   });
 })();
+
+// 发送访问记录、AI分析等相关 key 已统一为 browsing_visits_、browsing_summary_ 等

@@ -123,14 +123,14 @@ function handleMessengerGetStatus() {
 function handleMessengerGetVisits(msg: any) {
   const dayId = msg.payload?.dayId;
   if (!dayId) return { visits: [] };
-  const key = `visits_${dayId}`;
+  const key = `browsing_visits_${dayId}`;
   return storage.get<any[]>(key).then((visits) => ({ visits: visits || [] }));
 }
 
 function handleMessengerGetAiAnalysis(msg: any) {
   const dayId = msg.payload?.dayId;
   if (!dayId) return { analysis: [] };
-  const key = `visits_${dayId}`;
+  const key = `browsing_visits_${dayId}`;
   return storage.get<any[]>(key).then((visits) => ({ analysis: visits || [] }));
 }
 
@@ -180,7 +180,7 @@ async function handleMessengerAiAnalyzeRequestWithNotify(msg: any) {
   }
   const date = new Date(visitStartTime);
   const dayId = date.toISOString().slice(0, 10);
-  const key = `visits_${dayId}`;
+  const key = `browsing_visits_${dayId}`;
   let visits: any[] = (await storage.get<any[]>(key)) || [];
   const visit = visits.find(v => v.id === visitId);
   if (!visit) {

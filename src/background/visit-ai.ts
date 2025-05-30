@@ -49,7 +49,7 @@ export async function handlePageVisitRecord(data: any) {
     const isRefresh = !!record.isRefresh;
     const date = new Date(record.visitStartTime);
     const dayId = date.toISOString().slice(0, 10);
-    const key = `visits_${dayId}`;
+    const key = `browsing_visits_${dayId}`; // 原 visits_${dayId}
     const visits: any[] = (await storage.get<any[]>(key)) || [];
     let existed = false;
     let updated = false;
@@ -120,7 +120,7 @@ export async function updateVisitAiResult(
     }
     const date = new Date(visitStartTime);
     const dayId = date.toISOString().slice(0, 10);
-    const key = `visits_${dayId}`;
+    const key = `browsing_visits_${dayId}`; // 原 visits_${dayId}
     const visits: any[] = (await storage.get<any[]>(key)) || [];
     let updated = false;
     for (const v of visits) {
@@ -147,20 +147,20 @@ export async function updateVisitAiResult(
 }
 
 export async function getVisitsByDay(dayId: string) {
-  const key = `visits_${dayId}`;
+  const key = `browsing_visits_${dayId}`; // 原 visits_${dayId}
   return (await storage.get<any[]>(key)) || [];
 }
 
 export async function cleanupOldVisits() {
   try {
     const allKeys: string[] = await storage.keys();
-    const visitKeys = allKeys.filter(k => k.startsWith('visits_'));
-    const days = visitKeys.map(k => k.replace('visits_', ''));
+    const visitKeys = allKeys.filter(k => k.startsWith('browsing_visits_'));
+    const days = visitKeys.map(k => k.replace('browsing_visits_', ''));
     const sortedDays = days.sort().reverse();
     const keepDays = sortedDays.slice(0, VISIT_KEEP_DAYS);
     const removeDays = sortedDays.slice(VISIT_KEEP_DAYS);
     for (const day of removeDays) {
-      await storage.remove(`visits_${day}`);
+      await storage.remove(`browsing_visits_${day}`);
       logger.info(`[内容捕获] 已清理过期访问数据`, { day });
     }
   } catch (err) {
@@ -176,7 +176,7 @@ import { AIManager } from '../lib/artificial-intelligence/ai-manager.js';
  * 获取指定日期的汇总报告（优先本地缓存，若无则自动触发生成）
  */
 export async function getSummaryReport(dayId: string) {
-  const key = `summary_${dayId}`;
+  const key = `browsing_summary_${dayId}`; // 原 summary_${dayId}
   let summary = await storage.get<any>(key);
   if (summary && summary.summary) return summary;
   // 若无缓存，自动生成
@@ -188,7 +188,7 @@ export async function getSummaryReport(dayId: string) {
  * 生成指定日期的汇总报告（可强制刷新）
  */
 export async function generateSummaryReport(dayId: string, force = false) {
-  const key = `summary_${dayId}`;
+  const key = `browsing_summary_${dayId}`; // 原 summary_${dayId}
   // 优先读取超时配置，保证前端和AI调用一致
   let requestTimeout = 30000;
   let aiConfig = { serviceId: 'ollama' };
@@ -230,7 +230,6 @@ export async function generateSummaryReport(dayId: string, force = false) {
         aiService.generateDailyReport(dayId, pageSummaries, { timeout: requestTimeout }),
         new Promise((_, reject) => setTimeout(() => reject(new Error('AI 汇总超时')), requestTimeout))
       ]);
-      // 附加统计和服务名
       report.stats = stats;
       report.aiServiceLabel = aiServiceLabel;
     } else {

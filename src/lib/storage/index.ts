@@ -109,3 +109,5 @@ export const createStorage = {
 
 // 创建默认的基于策略的存储实例，使用 storageConfig
 export const storage = createStorage.withStrategy( storageConfig );
+
+// 默认数据库名建议统一为 yesterday 或 ystd，表名/前缀建议统一为 browsing_visits_、browsing_summary_、highlight_records_、page_snapshots_、record_logs_

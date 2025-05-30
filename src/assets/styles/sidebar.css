@@ -134,6 +134,14 @@ a:hover {
   font-size: 12px;
   margin-left: 4px;
   vertical-align: middle;
+  background: #e0e4ea;
+  color: #555;
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 12px;
+  margin-right: 4px;
+  display: inline-block;
+  vertical-align: middle;
 }
 
 /* AI 内容样式 */
@@ -360,7 +368,7 @@ a:hover {
   border-radius: 4px;
   padding: 2px 8px;
   font-size: 12px;
-  margin: 4px;
+  margin-right: 4px;
   display: inline-block;
   vertical-align: middle;
 }
@@ -380,4 +388,20 @@ a:hover {
   font-weight: bold;
   font-size: 16px;
   color: #5d4a00;
+}
+.merged-card-tags-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0 0 0;
+  min-height: 22px;
+}
+.merged-card-analyze-duration {
+  background: #f7f7fa;
+  color: #888;
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 12px;
+  display: inline-block;
+  vertical-align: middle;
 }
