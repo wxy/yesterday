@@ -658,18 +658,31 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       if (mergedBox) renderMergedView(mergedBox, dayId, currentTab);
     }
   }
-  // SCROLL_TO_VISIT 消息：找不到卡片时直接忽略
+  // SCROLL_TO_VISIT 消息：滚动并高亮并展开对应卡片
   if (msg && msg.type === 'SCROLL_TO_VISIT' && msg.payload && msg.payload.url) {
     setTimeout(() => {
-      const url = msg.payload.url;
+      const url = msg.payload.url.split('#')[0];
       try {
         const links = document.querySelectorAll('.merged-card-url');
-        let found = false;
         links.forEach((link) => {
-          // 原: if (isSystemUrl(url)) return;
-          shouldAnalyzeUrl(url).then(shouldAnalyze => { if (!shouldAnalyze) return; /* ...原有后续逻辑... */ });
+          const href = link.getAttribute('href')?.split('#')[0] || '';
+          if (href === url) {
+            const card = link.closest('.merged-card');
+            if (card) {
+              card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              card.classList.add('merged-card-scroll-focus');
+              setTimeout(() => card.classList.remove('merged-card-scroll-focus'), 1600);
+              // 展开卡片内容
+              const header = card.querySelector('.merged-card-header') as HTMLElement;
+              if (header && header.dataset.entryId) {
+                const contentBox = document.getElementById(header.dataset.entryId);
+                if (contentBox) {
+                  contentBox.style.display = 'block';
+                }
+              }
+            }
+          }
         });
-        // 不再输出警告，未找到直接忽略
       } catch (err) {
         // 忽略异常
       }
