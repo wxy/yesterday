@@ -454,11 +454,6 @@
     "description": "从TS提取 (_): sidebar/sidebar.ts",
     "_untranslated": true
   },
-  "sidebar_insight_today": {
-    "message": "今日洞察",
-    "description": "从TS提取 (_): sidebar/sidebar.ts",
-    "_untranslated": true
-  },
   "sidebar_insight_generate": {
     "message": "即刻洞察",
     "description": "从TS提取 (_): sidebar/sidebar.ts",
@@ -469,18 +464,8 @@
     "description": "从TS提取 (_): sidebar/sidebar.ts",
     "_untranslated": true
   },
-  "sidebar_insight_loading": {
-    "message": "昨日洞察加载中...",
-    "description": "从TS提取 (_): sidebar/sidebar.ts",
-    "_untranslated": true
-  },
   "sidebar_insight_empty": {
     "message": "暂无昨日洞察",
-    "description": "从TS提取 (_): sidebar/sidebar.ts",
-    "_untranslated": true
-  },
-  "sidebar_insight_yesterday": {
-    "message": "昨日洞察",
     "description": "从TS提取 (_): sidebar/sidebar.ts",
     "_untranslated": true
   },
@@ -522,6 +507,146 @@
   "sidebar_card_analyzing": {
     "message": "正在进行 AI 分析",
     "description": "从TS提取 (_): sidebar/sidebar.ts",
+    "_untranslated": true
+  },
+  "sidebar_card_analyze_duration": {
+    "message": "分析用时",
+    "description": "从TS提取 (_): sidebar/sidebar.ts",
+    "_untranslated": true
+  },
+  "sidebar_card_seconds": {
+    "message": "秒",
+    "description": "从TS提取 (_): sidebar/sidebar.ts",
+    "_untranslated": true
+  },
+  "ai_service_ollama": {
+    "message": "Ollama 本地",
+    "description": "从TS提取 (_): sidebar/sidebar.ts",
+    "_untranslated": true
+  },
+  "ai_service_chrome_ai": {
+    "message": "Chrome 内置 AI",
+    "description": "从TS提取 (_): sidebar/sidebar.ts",
+    "_untranslated": true
+  },
+  "ai_service_openai": {
+    "message": "OpenAI",
+    "description": "从TS提取 (_): sidebar/sidebar.ts",
+    "_untranslated": true
+  },
+  "ai_service_other": {
+    "message": "其它",
+    "description": "从TS提取 (_): sidebar/sidebar.ts",
+    "_untranslated": true
+  },
+  "ai_service_default": {
+    "message": "AI",
+    "description": "从TS提取 (_): sidebar/sidebar.ts",
+    "_untranslated": true
+  },
+  "sidebar_card_minutes": {
+    "message": "分钟",
+    "description": "从TS提取 (_): sidebar/sidebar.ts",
+    "_untranslated": true
+  },
+  "sidebar_insight_regenerate": {
+    "message": "重新生成",
+    "description": "从TS提取 (_): sidebar/sidebar.ts",
+    "_untranslated": true
+  },
+  "sidebar_card_duration": {
+    "message": "用时",
+    "description": "从TS提取 (_): sidebar/sidebar.ts",
+    "_untranslated": true
+  },
+  "sidebar_card_loading": {
+    "message": "加载中...",
+    "description": "从TS提取 (_): sidebar/sidebar.ts",
+    "_untranslated": true
+  },
+  "sidebar_card_empty": {
+    "message": "无数据",
+    "description": "从TS提取 (_): sidebar/sidebar.ts",
+    "_untranslated": true
+  },
+  "sidebar_card_ai_failed": {
+    "message": "AI 分析失败",
+    "description": "从TS提取 (_): sidebar/sidebar.ts",
+    "_untranslated": true
+  },
+  "sidebar_card_ai_empty": {
+    "message": "无分析结果",
+    "description": "从TS提取 (_): sidebar/sidebar.ts",
+    "_untranslated": true
+  },
+  "sidebar_card_seconds_short": {
+    "message": "s",
+    "description": "从TS提取 (_): sidebar/sidebar.ts",
+    "_untranslated": true
+  },
+  "sidebar_card_ai_timeout": {
+    "message": "分析超时",
+    "description": "从TS提取 (_): sidebar/sidebar.ts",
+    "_untranslated": true
+  },
+  "sidebar_clear_data_log": {
+    "message": "清除本地数据（不清除配置）",
+    "description": "从TS提取 (_): sidebar/sidebar.ts",
+    "_untranslated": true
+  },
+  "sidebar_clear_data_failed": {
+    "message": "清除数据失败",
+    "description": "从TS提取 (_): sidebar/sidebar.ts",
+    "_untranslated": true
+  },
+  "sidebar_clear_data_confirm": {
+    "message": "确定要清除所有本地数据吗？此操作无法撤销。",
+    "description": "从TS提取 (_): sidebar/sidebar.ts",
+    "_untranslated": true
+  },
+  "sidebar_version": {
+    "message": "版本：",
+    "description": "从TS提取 (_): sidebar/sidebar.ts",
+    "_untranslated": true
+  },
+  "sidebar_title": {
+    "message": "扩展侧边栏",
+    "description": "从HTML提取: sidebar/sidebar.html",
+    "_untranslated": true
+  },
+  "sidebar_clear_data": {
+    "message": "清除数据",
+    "description": "从HTML提取: sidebar/sidebar.html",
+    "_untranslated": true
+  },
+  "sidebar_help": {
+    "message": "帮助",
+    "description": "从HTML提取: sidebar/sidebar.html",
+    "_untranslated": true
+  },
+  "sidebar_open_options": {
+    "message": "",
+    "description": "从HTML提取: sidebar/sidebar.html",
+    "_untranslated": true
+  },
+  "popup_title": {
+    "message": "扩展弹出窗口",
+    "description": "从HTML提取: popup/popup.html",
+    "_untranslated": true
+  },
+  "options_title": {
+    "message": "扩展选项",
+    "description": "从HTML提取: options/options.html",
+    "_untranslated": true
+  },
+  "options_header_title": {
+    "message": "扩展设置",
+    "description": "从HTML提取: options/options.html",
+    "_untranslated": true
+  },
+  "options_main_title": {
+    "message": "扩展选项",
+    "description": "从HTML提取: options/options.html",
     "_untranslated": true
   }
 }

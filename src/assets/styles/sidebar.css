@@ -264,6 +264,16 @@ a:hover {
   word-break: break-word;
   padding: 6px 0 6px 0;
 }
+.insight-report-content--empty {
+  color: #888;
+  padding: 12px 0;
+  font-size: 15px;
+}
+.insight-report-content-duration {
+  margin-left: 8px;
+  font-size: 11px;
+  color: #888;
+}
 .insight-highlights {
   margin: 0 0 10px 0;
   padding-left: 22px;
@@ -422,4 +432,10 @@ a:hover {
   margin-right: 4px;
   display: inline-block;
   vertical-align: middle;
+}
+.text-muted {
+  color: #888 !important;
+}
+.text-error {
+  color: #e53935 !important;
 }

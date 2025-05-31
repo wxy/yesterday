@@ -17,8 +17,8 @@ export class I18n {
   private loadedMessages: LocaleMessages = {};
   private fallbackMessages: LocaleMessages = {};
   private forcedLocale: string | null = null;
-  private hasInitialized: boolean = false;
-  private defaultLocale: string = 'en';
+  private initPromise: Promise<void> | null = null;
+  private defaultLocale: string = "en";
 
   // 构造函数不再做异步操作
   constructor() {}
@@ -27,15 +27,15 @@ export class I18n {
    * 尝试从 manifest.json 读取 default_locale 字段，自动设置 defaultLocale
    */
   private async initDefaultLocaleFromManifest(): Promise<string> {
-    if (typeof fetch === 'undefined') return this.defaultLocale;
+    if (typeof fetch === "undefined") return this.defaultLocale;
     try {
       // manifest.json 路径适配 popup/background/content script
       const manifestPaths = [
-        '/manifest.json',
-        '../manifest.json',
-        '../../manifest.json',
-        '/src/manifest.json',
-        '../src/manifest.json',
+        "/manifest.json",
+        "../manifest.json",
+        "../../manifest.json",
+        "/src/manifest.json",
+        "../src/manifest.json",
       ];
       for (const path of manifestPaths) {
         try {
@@ -44,7 +44,6 @@ export class I18n {
             const manifest = await res.json().catch(() => null);
             if (manifest && manifest.default_locale) {
               this.defaultLocale = manifest.default_locale;
-              console.debug(`[i18n-utils] Loaded default_locale from manifest.json: ${this.defaultLocale}`);
               return this.defaultLocale;
             }
           }
@@ -68,8 +67,8 @@ export class I18n {
    * 检测浏览器默认语言
    */
   private detectBrowserLocale(): string {
-    if (typeof navigator !== 'undefined' && navigator.language) {
-      return navigator.language.replace('-', '_');
+    if (typeof navigator !== "undefined" && navigator.language) {
+      return navigator.language.replace("-", "_");
     }
     return this.defaultLocale;
   }
@@ -78,12 +77,37 @@ export class I18n {
    * 加载指定 locale 的 messages.json
    */
   private async loadMessages(locale: string): Promise<LocaleMessages | null> {
-    if (typeof fetch === 'undefined') return null;
+    if (typeof fetch === "undefined") return null;
     try {
-      const response = await fetch(`../_locales/${locale}/messages.json`).catch(() => null);
-      if (!response || !response.ok) return null;
-      return await response.json().catch(() => null);
-    } catch {
+      const response = await fetch(`../_locales/${locale}/messages.json`).catch(
+        (err) => {
+          console.error("[i18n-utils] fetch error", err);
+          return null;
+        }
+      );
+      if (!response || !response.ok) {
+        console.warn(
+          `[i18n-utils] Failed to fetch messages.json for locale: ${locale}, response:`,
+          response
+        );
+        return null;
+      }
+      try {
+        return await response.json();
+      } catch (jsonErr) {
+        console.error(
+          "[i18n-utils] Failed to parse messages.json for locale:",
+          locale,
+          jsonErr
+        );
+        return null;
+      }
+    } catch (err) {
+      console.error(
+        "[i18n-utils] Unexpected error loading messages.json for locale:",
+        locale,
+        err
+      );
       return null;
     }
   }
@@ -92,68 +116,58 @@ export class I18n {
    * 初始化国际化系统，支持 fallback 到默认语言
    */
   public async init(): Promise<void> {
-    if (this.hasInitialized) {
-      console.debug('[i18n-utils] I18n already initialized, skipping');
-      return;
-    }
-    this.hasInitialized = true;
-    try {
-      // Chrome API 环境直接交给浏览器
-      if (typeof chrome !== 'undefined' && chrome.i18n) {
-        console.debug('[i18n-utils] Using Chrome API for localization');
-        return;
-      }
-      // 先确保 defaultLocale 与 manifest.json 保持一致
-      await this.initDefaultLocaleFromManifest();
-      // 检测 locale
-      this.forcedLocale = this.forcedLocale || this.detectBrowserLocale();
-      // 优先加载 forcedLocale
-      const main = await this.loadMessages(this.forcedLocale);
-      if (main) {
-        this.loadedMessages = main;
-        console.log(`[i18n-utils] Loaded ${Object.keys(main).length} messages for ${this.forcedLocale}`);
-      } else {
-        this.loadedMessages = {};
-        console.warn(`[i18n-utils] Failed to load locale ${this.forcedLocale}, fallback to default`);
-      }
-      // fallback 加载默认语言
-      if (this.forcedLocale !== this.defaultLocale) {
-        const fallback = await this.loadMessages(this.defaultLocale);
-        if (fallback) {
-          this.fallbackMessages = fallback;
+    if (this.initPromise) return this.initPromise;
+    this.initPromise = (async () => {
+      try {
+        // Chrome API 环境不再跳过自定义国际化逻辑，始终加载本地 messages.json 并处理 data-i18n
+        // if (typeof chrome !== "undefined" && chrome.i18n) {
+        //   console.debug("[i18n-utils] Using Chrome API for localization");
+        //   return;
+        // }
+        // 先确保 defaultLocale 与 manifest.json 保持一致
+        await this.initDefaultLocaleFromManifest();
+        this.forcedLocale = this.forcedLocale || this.detectBrowserLocale();
+        const main = await this.loadMessages(this.forcedLocale);
+        if (main) {
+          this.loadedMessages = main;
+          console.log(
+            `[i18n-utils] Loaded ${Object.keys(main).length} messages for ${this.forcedLocale}`
+          );
+        } else {
+          this.loadedMessages = {};
+          console.warn(
+            `[i18n-utils] Failed to load locale ${this.forcedLocale}, fallback to default`
+          );
         }
+        if (this.forcedLocale !== this.defaultLocale) {
+          const fallback = await this.loadMessages(this.defaultLocale);
+          if (fallback) {
+            this.fallbackMessages = fallback;
+          }
+        }
+      } catch (error) {
+        // 只打印简单错误信息，避免 context invalidated 报错影响主流程
+        const msg =
+          typeof error === "object" && error && "message" in error
+            ? (error as any).message
+            : String(error);
+        console.warn("[i18n-utils] Initialization error:", msg);
       }
-    } catch (error) {
-      // 只打印简单错误信息，避免 context invalidated 报错影响主流程
-      const msg = (typeof error === 'object' && error && 'message' in error) ? (error as any).message : String(error);
-      console.warn('[i18n-utils] Initialization error:', msg);
-    }
+    })();
+    return this.initPromise;
   }
 
   /**
    * 初始化本地化工具并应用到页面
    */
   public async apply(): Promise<void> {
-    if (this.hasInitialized) {
-      console.debug('[i18n-utils] I18n already initialized, skipping');
-      return;
-    }
-    this.hasInitialized = true;
-    try {
-      // URL locale 优先
-      const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
-      const urlLocale = urlParams?.get('locale')?.replace('-', '_') ?? null;
-      if (urlLocale) this.forcedLocale = urlLocale;
-      await this.init();
-    } catch (error) {
-      console.error('[i18n-utils] Failed to load localization file:', error);
-      this.forcedLocale = null;
-    }
-    if (typeof document !== 'undefined') {
-      if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => this.applyToPage());
+    await this.init();
+    if (typeof document !== "undefined") {
+      const run = async () => await this.applyToPage();
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", run);
       } else {
-        this.applyToPage();
+        await run();
       }
     }
   }
@@ -162,13 +176,16 @@ export class I18n {
    * 获取本地化字符串，优先 loadedMessages，其次 fallbackMessages
    */
   public getMessage(messageId: string, defaultValue?: string): string {
-    if (this.loadedMessages[messageId] && typeof this.loadedMessages[messageId].message === 'string') {
+    if (
+      this.loadedMessages[messageId] &&
+      typeof this.loadedMessages[messageId].message === "string"
+    ) {
       return this.loadedMessages[messageId].message;
     }
     if (
       this.fallbackMessages &&
       this.fallbackMessages[messageId] &&
-      typeof this.fallbackMessages[messageId].message === 'string'
+      typeof this.fallbackMessages[messageId].message === "string"
     ) {
       return this.fallbackMessages[messageId].message;
     }
@@ -179,21 +196,35 @@ export class I18n {
   /**
    * 格式化消息，支持 {0}、{name} 占位符
    */
-  public formatMessage(messageId: string, defaultMessage: string, ...args: any[]): string {
+  public formatMessage(
+    messageId: string,
+    defaultMessage: string,
+    ...args: any[]
+  ): string {
     const message = this.getMessage(messageId, defaultMessage);
     if (!args.length) return message;
     let result = message;
     // 支持对象参数 {name: value}
-    if (args.length === 1 && typeof args[0] === 'object' && !Array.isArray(args[0])) {
+    if (
+      args.length === 1 &&
+      typeof args[0] === "object" &&
+      !Array.isArray(args[0])
+    ) {
       const obj = args[0];
-      Object.keys(obj).forEach(key => {
-        result = result.replace(new RegExp('\\{' + key + '\\}', 'g'), String(obj[key]));
+      Object.keys(obj).forEach((key) => {
+        result = result.replace(
+          new RegExp("\\{" + key + "\\}", "g"),
+          String(obj[key])
+        );
       });
     } else {
       // 支持 {0} {1} ...
       const arr = args.length === 1 && Array.isArray(args[0]) ? args[0] : args;
       for (let i = 0; i < arr.length; i++) {
-        result = result.replace(new RegExp('\\{' + i + '\\}', 'g'), String(arr[i] ?? ''));
+        result = result.replace(
+          new RegExp("\\{" + i + "\\}", "g"),
+          String(arr[i] ?? "")
+        );
       }
     }
     return result;
@@ -202,25 +233,25 @@ export class I18n {
   /**
    * 对DOM元素应用本地化
    */
-  public applyToPage(): void {
-    if (typeof document === 'undefined') return;
+  public async applyToPage(): Promise<void> {
+    if (typeof document === "undefined") return;
     // 处理页面标题
-    const titleElement = document.querySelector('title[data-i18n]');
+    const titleElement = document.querySelector("title[data-i18n]");
     if (titleElement) {
-      const key = titleElement.getAttribute('data-i18n');
+      const key = titleElement.getAttribute("data-i18n");
       if (key) {
         document.title = this.getMessage(key, document.title);
       }
     }
     // 处理所有带data-i18n的元素
-    const i18nElements = document.querySelectorAll('[data-i18n]');
-    i18nElements.forEach(element => {
-      const key = element.getAttribute('data-i18n');
+    const i18nElements = document.querySelectorAll("[data-i18n]");
+    i18nElements.forEach((element) => {
+      const key = element.getAttribute("data-i18n");
       if (key) {
         const translated = this.getMessage(key);
         if (translated) {
           // 支持 data-i18n-attr 指定属性
-          const attr = element.getAttribute('data-i18n-attr');
+          const attr = element.getAttribute("data-i18n-attr");
           if (attr) {
             element.setAttribute(attr, translated);
           } else {
@@ -229,7 +260,7 @@ export class I18n {
         }
       }
     });
-    console.debug('[i18n-utils] Applied localization to page');
+    console.debug("[i18n-utils] Applied localization to page");
   }
 
   /**
@@ -237,7 +268,7 @@ export class I18n {
    */
   private setElementContent(element: Element, message: string): void {
     switch (element.tagName) {
-      case 'INPUT': {
+      case "INPUT": {
         const inputElem = element as HTMLInputElement;
         if (["submit", "button"].includes(inputElem.type)) {
           inputElem.value = message;
@@ -246,17 +277,17 @@ export class I18n {
         }
         break;
       }
-      case 'OPTION':
+      case "OPTION":
         (element as HTMLOptionElement).text = message;
         break;
-      case 'IMG':
+      case "IMG":
         (element as HTMLImageElement).alt = message;
         break;
       default:
-        if (element.hasAttribute('placeholder')) {
-          element.setAttribute('placeholder', message);
-        } else if (element.hasAttribute('aria-label')) {
-          element.setAttribute('aria-label', message);
+        if (element.hasAttribute("placeholder")) {
+          element.setAttribute("placeholder", message);
+        } else if (element.hasAttribute("aria-label")) {
+          element.setAttribute("aria-label", message);
         } else {
           element.textContent = message;
         }
@@ -274,14 +305,22 @@ export class _Error extends Error {
   /**
    * 创建一个已本地化的错误对象
    * 所有可能暴露给用户的错误都应使用此类
-   * 
+   *
    * @param messageId 消息ID，用于本地化
    * @param defaultMessage 默认消息，当本地化失败时使用
    * @param args 替换参数，用于格式化消息
    */
-  constructor(messageId: string, defaultMessage: string = messageId, ...args: any[]) {
+  constructor(
+    messageId: string,
+    defaultMessage: string = messageId,
+    ...args: any[]
+  ) {
     // 使用本地化的消息作为错误消息，并格式化替换参数
-    const formattedMessage = I18n.getInstance().formatMessage(messageId, defaultMessage, ...args);
+    const formattedMessage = I18n.getInstance().formatMessage(
+      messageId,
+      defaultMessage,
+      ...args
+    );
     super(formattedMessage);
 
     this.messageId = messageId;
@@ -300,10 +339,14 @@ export class _Error extends Error {
 export const i18n = {
   init: async () => await I18n.getInstance().init(),
   apply: async () => await I18n.getInstance().apply(),
-  getMessage: (messageId: string, defaultMessage?: string) => 
+  getMessage: (messageId: string, defaultMessage?: string) =>
     I18n.getInstance().getMessage(messageId, defaultMessage),
-  translate: (messageId: string, defaultMessage: string, ...args: any[]): string => 
-    I18n.getInstance().formatMessage(messageId, defaultMessage, ...args)
+  translate: (
+    messageId: string,
+    defaultMessage: string,
+    ...args: any[]
+  ): string =>
+    I18n.getInstance().formatMessage(messageId, defaultMessage, ...args),
 };
 
 /**
@@ -313,12 +356,16 @@ export const i18n = {
  * @param args 用于替换消息中的{0}, {1}等占位符的参数
  * @returns 本地化后的字符串
  */
-export function _(messageId: string, defaultMessage: string, ...args: any[]): string {
+export function _(
+  messageId: string,
+  defaultMessage: string,
+  ...args: any[]
+): string {
   // 简化为直接调用实例方法
   return I18n.getInstance().formatMessage(messageId, defaultMessage, ...args);
 }
 
 // 自动初始化处理 - 保持不变
-if (typeof document !== 'undefined') {
+if (typeof document !== "undefined") {
   I18n.getInstance().apply();
 }
