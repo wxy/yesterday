@@ -326,8 +326,9 @@ async function renderInsightReport(box: HTMLElement, dayId: string, tab: 'today'
 async function renderMergedView(root: HTMLElement, dayId: string, tab: 'today' | 'yesterday') {
   clearAllAnalyzingTimers(); // 渲染前清理所有分析中计时器，防止泄漏
   root.innerHTML = '<div class="text-muted" style="padding:16px;">'+_('sidebar_card_loading', '加载中...')+'</div>';
+  // 恢复 GET_VISITS 消息调用
   const [visits, tabs] = await Promise.all([
-    messenger.send('GET_VISITS', { dayId }).then(r => r?.visits || []).catch(() => []), // 后台已用 browsing_visits_
+    messenger.send('GET_VISITS', { dayId }).then(r => r?.visits || []).catch(() => []),
     (tab === 'today' && typeof chrome !== 'undefined' && chrome.tabs) ? new Promise<any[]>(resolve => {
       chrome.tabs.query({}, resolve);
     }) : Promise.resolve([])
