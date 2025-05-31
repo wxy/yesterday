@@ -156,34 +156,30 @@ function renderSidebarTabs(root: HTMLElement) {
 
 // 洞察报告渲染（今日/昨日）
 async function renderInsightReport(box: HTMLElement, dayId: string, tab: 'today' | 'yesterday') {
-  box.innerHTML = '';
-  if (tab === 'today') {
-    // 今日默认仅显示按钮，按钮居右
-    box.innerHTML = `<div class='insight-report-card'>
-      <div class='insight-report-title'>${_('sidebar_insight_today', '今日洞察')}</div>
-      <div class='insight-generate-btn'><button id='generateTodayInsightBtn'>${_('sidebar_insight_generate', '即刻洞察')}</button></div>
+  let startTime = 0;
+  // 折叠状态持久化key
+  const collapsedKey = `insightCollapsed_${tab}`;
+  // 渲染卡片头部（标题+按钮同行）
+  function renderHeader(aiServiceLabel = '', isToday = false, showGenerate = true) {
+    return `<div class='insight-report-header' id='insight-header-row'>
+      <div class='insight-report-title'>${_(isToday ? 'sidebar_insight_today' : 'sidebar_insight_yesterday', isToday ? '今日洞察' : '昨日洞察')}</div>
+      <div class='insight-header-btns'>
+        <button id='regenerateInsightBtn'>${_('sidebar_insight_regenerate', '重新生成')}</button>
+        ${isToday && showGenerate ? `<button id='generateTodayInsightBtn'>${_('sidebar_insight_generate', '即刻洞察')}</button>` : ''}
+        <span class='insight-ai-label'>${aiServiceLabel || ''}</span>
+      </div>
     </div>`;
-    const btn = document.getElementById('generateTodayInsightBtn');
-    if (btn) {
-      btn.onclick = async () => {
-        box.innerHTML = `<div style='color:#888;padding:12px 0;'>${_('sidebar_insight_generating', '正在生成...')}</div>`;
-        await messenger.send('GENERATE_SUMMARY_REPORT', { dayId, force: true });
-        setTimeout(() => renderInsightReport(box, dayId, tab), 1200);
-      };
-    }
-    // 不自动加载今日洞察
-    return;
   }
-  // 昨日洞察直接加载
-  box.innerHTML = `<div style='color:#888;padding:12px 0;'>${_('sidebar_insight_loading', '昨日洞察加载中...')}</div>`;
-  messenger.send('GET_SUMMARY_REPORT', { dayId }).then((resp) => {
-    if (!resp || (!resp.summaries && !resp.summary && !resp.suggestions)) {
-      box.innerHTML = `<div style=\"color:#888;padding:12px 0;\">${_('sidebar_insight_empty', '暂无昨日洞察')}</div>`;
-      return;
+  // 渲染内容区
+  function renderContent(resp: any, generating = false, duration = 0) {
+    if (generating) {
+      return `<div class='insight-report-content' style='color:#888;padding:12px 0;'>${_('sidebar_insight_generating', '正在生成...')}${duration > 0 ? `<span style='margin-left:8px;font-size:11px;'>(用时 ${(duration/1000).toFixed(1)} 秒)</span>` : ''}</div>`;
     }
-    const { summaries, suggestions, aiServiceLabel, stats, summary, highlights, specialConcerns } = resp;
-    let html = `<div class='insight-report-card'>`;
-    html += `<div class='insight-report-title'>${_('sidebar_insight_yesterday', '昨日洞察')} <span class='insight-ai-label'>${aiServiceLabel || ''}</span></div>`;
+    if (!resp || (!resp.summaries && !resp.summary && !resp.suggestions)) {
+      return `<div class='insight-report-content' style='color:#888;padding:12px 0;'>${_('sidebar_insight_empty', '暂无洞察')}</div>`;
+    }
+    const { summaries, suggestions, stats, summary, highlights, specialConcerns } = resp;
+    let html = '';
     if (stats) {
       html += `<div class='insight-stats'>
         <div class='insight-stats-row-label'>${_('sidebar_insight_stats_total', '访问总数')}</div><div class='insight-stats-row-value'>${stats.total}</div>
@@ -207,11 +203,126 @@ async function renderInsightReport(box: HTMLElement, dayId: string, tab: 'today'
         html += `<div class='insight-special-concerns'>${_('sidebar_insight_special', '特别关注')}: ${specialConcerns.map((c) => c).join('，')}</div>`;
       }
     }
-    html += `</div>`;
-    box.innerHTML = html;
+    return html;
+  }
+  // 折叠状态，优先读取本地存储
+  let collapsed = false;
+  try {
+    const stored = localStorage.getItem(collapsedKey);
+    if (stored === '1') collapsed = true;
+  } catch {}
+  // 渲染主流程
+  let aiServiceLabel = '';
+  if (tab === 'today') {
+    // 今日洞察：先查数据
+    const resp = await messenger.send('GET_SUMMARY_REPORT', { dayId }).catch(() => null);
+    aiServiceLabel = resp?.aiServiceLabel || '';
+    const showGenerate = !(resp && (resp.summaries || resp.summary || resp.suggestions));
+    box.innerHTML = `<div class='insight-report-card${collapsed ? ' insight-report-collapsed' : ''}'>
+      ${renderHeader(aiServiceLabel, true, showGenerate)}
+      <div id='insight-content-box' style='${collapsed ? 'display:none;' : ''}'>${renderContent(resp)}</div>
+    </div>`;
+    // 折叠/展开事件
+    const headerRow = document.getElementById('insight-header-row');
+    if (headerRow) {
+      headerRow.onclick = (e) => {
+        if ((e.target as HTMLElement).tagName === 'BUTTON') return;
+        collapsed = !collapsed;
+        // 持久化
+        try { localStorage.setItem(collapsedKey, collapsed ? '1' : '0'); } catch {}
+        const card = headerRow.closest('.insight-report-card');
+        const contentBox = document.getElementById('insight-content-box');
+        if (card && contentBox) {
+          card.classList.toggle('insight-report-collapsed', collapsed);
+          contentBox.style.display = collapsed ? 'none' : '';
+        }
+      };
+    }
+    // 绑定按钮
+    const genBtn = document.getElementById('generateTodayInsightBtn');
+    if (genBtn) {
+      genBtn.onclick = async () => {
+        startTime = Date.now();
+        const contentBox = document.getElementById('insight-content-box');
+        if (contentBox) contentBox.innerHTML = renderContent(null, true, 0);
+        await messenger.send('GENERATE_SUMMARY_REPORT', { dayId, force: true });
+        // 轮询刷新，直到有新数据或超时
+        let waited = 0;
+        let lastResp = null;
+        while (waited < 20000) {
+          await new Promise(r => setTimeout(r, 800));
+          lastResp = await messenger.send('GET_SUMMARY_REPORT', { dayId }).catch(() => null);
+          if (lastResp && (lastResp.summaries || lastResp.summary || lastResp.suggestions)) break;
+          if (contentBox) contentBox.innerHTML = renderContent(null, true, Date.now() - startTime);
+          waited += 800;
+        }
+        if (contentBox) contentBox.innerHTML = renderContent(lastResp, false, Date.now() - startTime);
+        // 生成后隐藏即刻洞察按钮
+        renderInsightReport(box, dayId, tab);
+      };
+    }
+    // 重新生成按钮
+    const regenBtn = document.getElementById('regenerateInsightBtn');
+    if (regenBtn) {
+      regenBtn.onclick = async () => {
+        if (genBtn) genBtn.click();
+      };
+    }
+    return;
+  }
+  // 昨日洞察
+  box.innerHTML = `<div class='insight-report-card${collapsed ? ' insight-report-collapsed' : ''}'>
+    ${renderHeader('', false, false)}
+    <div id='insight-content-box' style='${collapsed ? 'display:none;' : ''}'>${renderContent(null, true, 0)}</div>
+  </div>`;
+  // 折叠/展开事件
+  const headerRow = document.getElementById('insight-header-row');
+  if (headerRow) {
+    headerRow.onclick = (e) => {
+      if ((e.target as HTMLElement).tagName === 'BUTTON') return;
+      collapsed = !collapsed;
+      // 持久化
+      try { localStorage.setItem(collapsedKey, collapsed ? '1' : '0'); } catch {}
+      const card = headerRow.closest('.insight-report-card');
+      const contentBox = document.getElementById('insight-content-box');
+      if (card && contentBox) {
+        card.classList.toggle('insight-report-collapsed', collapsed);
+        contentBox.style.display = collapsed ? 'none' : '';
+      }
+    };
+  }
+  // 先显示 loading
+  const contentBox = document.getElementById('insight-content-box');
+  startTime = Date.now();
+  messenger.send('GET_SUMMARY_REPORT', { dayId }).then((resp) => {
+    aiServiceLabel = resp?.aiServiceLabel || '';
+    if (contentBox) contentBox.innerHTML = renderContent(resp, false, Date.now() - startTime);
+    // 更新 header AI label
+    const header = box.querySelector('.insight-ai-label');
+    if (header) header.textContent = aiServiceLabel;
   }).catch(() => {
-    box.innerHTML = `<div style='color:#e53935;padding:12px 0;'>${_('sidebar_insight_error', '昨日洞察加载失败')}</div>`;
+    if (contentBox) contentBox.innerHTML = `<div style='color:#e53935;padding:12px 0;'>${_('sidebar_insight_error', '昨日洞察加载失败')}</div>`;
   });
+  // 重新生成按钮
+  const regenBtn = document.getElementById('regenerateInsightBtn');
+  if (regenBtn) {
+    regenBtn.onclick = async () => {
+      startTime = Date.now();
+      if (contentBox) contentBox.innerHTML = renderContent(null, true, 0);
+      await messenger.send('GENERATE_SUMMARY_REPORT', { dayId, force: true });
+      // 轮询刷新，直到有新数据或超时
+      let waited = 0;
+      let lastResp = null;
+      while (waited < 20000) {
+        await new Promise(r => setTimeout(r, 800));
+        lastResp = await messenger.send('GET_SUMMARY_REPORT', { dayId }).catch(() => null);
+        if (lastResp && (lastResp.summaries || lastResp.summary || lastResp.suggestions)) break;
+        if (contentBox) contentBox.innerHTML = renderContent(null, true, Date.now() - startTime);
+        waited += 800;
+      }
+      if (contentBox) contentBox.innerHTML = renderContent(lastResp, false, Date.now() - startTime);
+    };
+  }
 }
 
 // 访问数据卡片渲染，今日标签下高亮当前打开标签页

@@ -187,7 +187,7 @@ a:hover {
   border: 1px solid #ffe082;
   border-radius: 8px;
   margin: 12px 0 18px 0;
-  padding: 18px 22px 16px 22px;
+  padding: 16px;
   box-shadow: 0 2px 8px 0 rgba(255, 193, 7, 0.08);
   font-size: 15px;
   color: #5d4a00;
@@ -199,21 +199,35 @@ a:hover {
   box-shadow: 0 4px 16px 0 rgba(255, 193, 7, 0.16);
   border-color: #ffd54f;
 }
+/* 洞察报告卡片头部样式 */
+.insight-report-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  cursor: pointer;
+}
+.insight-header-btns {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
 .insight-report-title {
   font-weight: bold;
   font-size: 16px;
-  margin-bottom: 10px;
+  color: #5d4a00;
   display: flex;
   align-items: center;
   gap: 10px;
 }
-.insight-ai-label {
-  background: #ffe082;
-  color: #7c5c00;
-  border-radius: 4px;
-  padding: 2px 8px;
-  font-size: 12px;
-  margin-left: 4px;
+.insight-report-collapsed .insight-report-content,
+.insight-report-collapsed .insight-highlights,
+.insight-report-collapsed .insight-special-concerns,
+.insight-report-collapsed .insight-stats {
+  display: none;
+}
+#insight-content-box[style*="display:none"] {
+  display: none !important;
 }
 .insight-refresh-btn {
   margin-left: auto;
@@ -288,14 +302,6 @@ a:hover {
   text-align: left;
   word-break: break-all;
 }
-/* 洞察卡片收起时内容隐藏 */
-.insight-report-collapsed .insight-report-content,
-.insight-report-collapsed .insight-highlights,
-.insight-report-collapsed .insight-special-concerns,
-.insight-report-collapsed .insight-stats {
-  display: none;
-}
-
 /* 即刻洞察按钮居右 */
 .insight-generate-btn {
   display: flex;
@@ -402,6 +408,18 @@ a:hover {
   border-radius: 4px;
   padding: 2px 8px;
   font-size: 12px;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+/* 洞察报告 AI 标签样式，保持与 merged-card-ai-label 一致 */
+.insight-ai-label {
+  background: #ffe082;
+  color: #7c5c00;
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 12px;
+  margin-right: 4px;
   display: inline-block;
   vertical-align: middle;
 }
