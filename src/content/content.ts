@@ -1,3 +1,5 @@
+import { shouldAnalyzeUrl } from '../lib/browser-events/url-filter.js';
+
 // 记录访问起始时间
 const visitStartTime = Date.now();
 // 生成唯一访问 id
@@ -22,16 +24,18 @@ function capturePageInfo(): Record<string, any> {
 }
 
 // 监听页面卸载，计算停留时长并发送数据
-window.addEventListener('beforeunload', () => {
+window.addEventListener('beforeunload', async () => {
   const visitEndTime = Date.now();
   const duration = Math.max(1, Math.floor((visitEndTime - visitStartTime) / 1000)); // 秒
   const pageInfo = capturePageInfo();
   pageInfo.duration = duration;
   pageInfo.visitEndTime = visitEndTime;
-  // 直接用 chrome.runtime.sendMessage，避免依赖自定义消息库
+  // 新增：仅当 shouldAnalyzeUrl 返回 true 时才发送访问记录
   if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
     try {
-      chrome.runtime.sendMessage({ type: 'PAGE_VISIT_RECORD', payload: pageInfo });
+      if (await shouldAnalyzeUrl(pageInfo.url)) {
+        chrome.runtime.sendMessage({ type: 'PAGE_VISIT_RECORD', payload: pageInfo });
+      }
     } catch (e) {
       if (e && String(e).includes('Extension context invalidated')) {
         // 静默屏蔽
@@ -75,16 +79,18 @@ window.addEventListener('beforeunload', () => {
         id: thisVisitId,
         isRefresh // 新增
       };
-      // 1. 发送访问记录
-      await new Promise<void>((resolve) => {
-        if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
-          try {
-            chrome.runtime.sendMessage({ type: 'PAGE_VISIT_RECORD', payload: pageInfo }, () => resolve());
-          } catch (e) { resolve(); }
-        } else {
-          resolve();
-        }
-      });
+      // 1. 发送访问记录（仅分析目标才发）
+      if (await shouldAnalyzeUrl(pageInfo.url)) {
+        await new Promise<void>((resolve) => {
+          if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+            try {
+              chrome.runtime.sendMessage({ type: 'PAGE_VISIT_RECORD', payload: pageInfo }, () => resolve());
+            } catch (e) { resolve(); }
+          } else {
+            resolve();
+          }
+        });
+      }
       // 2. 轮询确认访问记录已写入
       const dayId = new Date(thisVisitStartTime).toISOString().slice(0, 10);
       let found = false, retry = 0;
@@ -104,21 +110,23 @@ window.addEventListener('beforeunload', () => {
         }
         retry++;
       }
-      // 3. 发送 AI 分析请求
+      // 3. 发送 AI 分析请求（需判断是否应分析）
       const pageContent = getPageContent();
-      if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
-        try {
-          chrome.runtime.sendMessage({
-            type: 'AI_ANALYZE_REQUEST',
-            content: pageContent,
-            url: location.href,
-            title: document.title,
-            visitStartTime: thisVisitStartTime,
-            id: thisVisitId
-          }, (resp) => {
-            console.log('[Yesterday] AI 分析结果:', resp);
-          });
-        } catch (e) {}
+      if (await shouldAnalyzeUrl(location.href)) {
+        if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+          try {
+            chrome.runtime.sendMessage({
+              type: 'AI_ANALYZE_REQUEST',
+              content: pageContent,
+              url: location.href,
+              title: document.title,
+              visitStartTime: thisVisitStartTime,
+              id: thisVisitId
+            }, (resp) => {
+              console.log('[Yesterday] AI 分析结果:', resp);
+            });
+          } catch (e) {}
+        }
       }
     } catch (err) {
       console.error('[Yesterday] main 执行异常:', err);
@@ -162,25 +170,32 @@ window.addEventListener('beforeunload', () => {
       id: lastVisitId,
       isRefresh // 新增
     };
+    // 采集访问记录（仅分析目标才发）
     if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
-      try {
-        chrome.runtime.sendMessage({ type: 'PAGE_VISIT_RECORD', payload: pageInfo });
-      } catch (e) {}
+      shouldAnalyzeUrl(pageInfo.url).then(shouldAnalyze => {
+        if (shouldAnalyze) {
+          try {
+            chrome.runtime.sendMessage({ type: 'PAGE_VISIT_RECORD', payload: pageInfo });
+          } catch (e) {}
+        }
+      });
     }
-    // 采集AI分析
+    // 采集AI分析（需判断是否应分析）
     const pageContent = `${document.title}\n${document.body ? document.body.innerText.slice(0, 2000) : ''}`;
-    if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
-      try {
-        chrome.runtime.sendMessage({
-          type: 'AI_ANALYZE_REQUEST',
-          content: pageContent,
-          url: location.href,
-          title: document.title,
-          visitStartTime: lastVisitStartTime,
-          id: lastVisitId
-        });
-      } catch (e) {}
-    }
+    shouldAnalyzeUrl(location.href).then(shouldAnalyze => {
+      if (shouldAnalyze && typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+        try {
+          chrome.runtime.sendMessage({
+            type: 'AI_ANALYZE_REQUEST',
+            content: pageContent,
+            url: location.href,
+            title: document.title,
+            visitStartTime: lastVisitStartTime,
+            id: lastVisitId
+          });
+        } catch (e) {}
+      }
+    });
   }
 
   function checkUrlChange() {

@@ -2,7 +2,7 @@
 // src/background/visit-ai.ts
 import { storage } from '../lib/storage/index.js';
 import { Logger } from '../lib/logger/logger.js';
-import { isSystemUrl } from '../lib/browser-events/system-url.js';
+import { shouldAnalyzeUrl } from '../lib/browser-events/url-filter.js';
 
 const logger = new Logger('visit-ai');
 
@@ -18,9 +18,9 @@ export async function handlePageVisitRecord(data: any) {
       return { status: 'invalid' };
     }
     // 兜底：系统页面不记录
-    if (isSystemUrl(record.url)) {
-      logger.info('[内容捕获] 跳过系统页面', { url: record.url });
-      return { status: 'system' };
+    if (!(await shouldAnalyzeUrl(record.url))) {
+      // 跳过分析
+      return;
     }
     // 新增：写入 aiServiceLabel（分析中也写入，保证前端可立即显示）
     if (!('aiResult' in record)) {
@@ -113,7 +113,6 @@ export async function updateVisitAiResult(
   aiServiceLabel?: string // 新增参数，标记本次分析所用 AI 服务
 ) {
   try {
-    logger.debug('[AI调试] updateVisitAiResult called', { url, visitStartTime, id, aiResultType: typeof aiResult, aiResult });
     if (!id) {
       logger.error('updateVisitAiResult 缺少 id，无法唯一定位访问记录', { url, visitStartTime, aiResult });
       return;
@@ -125,7 +124,6 @@ export async function updateVisitAiResult(
     let updated = false;
     for (const v of visits) {
       if (v.id === id) {
-        logger.debug('[AI调试] 命中访问记录，准备写入 aiResult', { v });
         v.aiResult = aiResult;
         v.analyzeDuration = analyzeDuration;
         if (aiServiceLabel) v.aiServiceLabel = aiServiceLabel; // 新增：写入 AI 服务名
@@ -134,12 +132,10 @@ export async function updateVisitAiResult(
       }
     }
     if (updated) {
-      logger.debug('[AI调试] 已更新 visits，准备写入 storage', { visits });
       await storage.set(key, visits);
       logger.info(`[AI] 已更新访问记录的 aiResult`, { url, dayId, id });
       logger.info(`[AI] 分析结果内容`, { id, aiResult });
     } else {
-      logger.warn('[AI调试] 未找到匹配的访问记录（仅按 id 匹配），aiResult 未写入', { url, visitStartTime, id });
     }
   } catch (err) {
     logger.error('更新访问记录 aiResult 失败', err);
@@ -196,7 +192,7 @@ export async function generateSummaryReport(dayId: string, force = false) {
   try {
     const allConfig = await config.getAll();
     if (allConfig && allConfig['aiServiceConfig']) aiConfig = allConfig['aiServiceConfig'];
-    if (allConfig && allConfig['advanced.requestTimeout']) requestTimeout = allConfig['advanced.requestTimeout'];
+    if (allConfig && allConfig['requestTimeout']) requestTimeout = allConfig['requestTimeout'];
     aiServiceLabel = aiConfig.serviceId === 'chrome-ai' ? 'Chrome AI' : (aiConfig.serviceId === 'ollama' ? 'Ollama' : aiConfig.serviceId);
   } catch {}
 

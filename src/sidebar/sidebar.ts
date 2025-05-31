@@ -2,7 +2,7 @@ import { Logger } from '../lib/logger/logger.js';
 import { messenger } from '../lib/messaging/messenger.js';
 import { storage } from '../lib/storage/index.js';
 import { _ } from '../lib/i18n/i18n.js';
-import { isSystemUrl } from '../lib/browser-events/system-url.js';
+import { shouldAnalyzeUrl } from '../lib/browser-events/url-filter.js';
 
 const logger = new Logger('Sidebar');
 
@@ -17,8 +17,14 @@ function showAnalyzeDuration(analyzeDuration: number) {
 
 // 合并访问记录和分析结果，优先用 id 匹配，兼容 url+visitStartTime
 // 已迁移为单表，直接用 visits 作为 analysis
-function mergeVisitsAndAnalysis(visits: any[]): any[] {
-  return visits;
+async function mergeVisitsAndAnalysis(visits: any[]): Promise<any[]> {
+  // 只保留应分析的 url（异步过滤）
+  const filtered = await Promise.all(visits.map(async v => {
+    if (!v.url || typeof v.url !== 'string') return v;
+    const shouldAnalyze = await shouldAnalyzeUrl(v.url);
+    return shouldAnalyze ? v : null;
+  }));
+  return filtered.filter(Boolean);
 }
 
 // 获取当前 AI 服务名称（带缓存）
@@ -56,22 +62,22 @@ async function getCurrentAiServiceLabel(): Promise<string> {
 async function renderSummaryReport(root: HTMLElement, dayId: string) {
   const summaryBox = document.getElementById('summary-report-box');
   if (!summaryBox) return;
-  summaryBox.innerHTML = `<div style="color:#888;padding:12px 0;">${_('sidebar.summary.loading', '汇总报告加载中...')}</div>`;
+  summaryBox.innerHTML = `<div style="color:#888;padding:12px 0;">${_('sidebar_summary_loading', '汇总报告加载中...')}</div>`;
   messenger.send('GET_SUMMARY_REPORT', { dayId }).then((resp) => {
     if (!resp || (!resp.summaries && !resp.summary && !resp.suggestions)) {
-      summaryBox.innerHTML = `<div style=\"color:#888;padding:12px 0;\">${_('sidebar.summary.empty', '暂无汇总报告')}</div>`;
+      summaryBox.innerHTML = `<div style=\"color:#888;padding:12px 0;\">${_('sidebar_summary_empty', '暂无汇总报告')}</div>`;
       return;
     }
     // 新结构优先
     const { summaries, suggestions, aiServiceLabel, stats, summary, highlights, specialConcerns } = resp;
     let html = `<div class='summary-report-card'>`;
-    html += `<div class='summary-report-title'>${_('sidebar.summary.title', '汇总报告')} <span class='summary-ai-label'>${aiServiceLabel || ''}</span> <button id='refreshSummaryBtn' class='summary-refresh-btn'>${_('sidebar.summary.refresh', '刷新')}</button></div>`;
+    html += `<div class='summary-report-title'>${_('sidebar_summary_title', '汇总报告')} <span class='summary-ai-label'>${aiServiceLabel || ''}</span> <button id='refreshSummaryBtn' class='summary-refresh-btn'>${_('sidebar_summary_refresh', '刷新')}</button></div>`;
     if (stats) {
       html += `<div class='summary-stats'>
-        <div class='summary-stats-row-label'>${_('sidebar.summary.stats.total', '访问总数')}</div><div class='summary-stats-row-value'>${stats.total}</div>
-        <div class='summary-stats-row-label'>${_('sidebar.summary.stats.duration', '总时长')}</div><div class='summary-stats-row-value'>${(stats.totalDuration/1000/60).toFixed(1)} 分钟</div>
-        <div class='summary-stats-row-label'>${_('sidebar.summary.stats.domains', '涉及域名')}</div><div class='summary-stats-row-value'>${stats.domains && stats.domains.length ? stats.domains.join('，') : '-'}</div>
-        <div class='summary-stats-row-label'>${_('sidebar.summary.stats.keywords', '关键词')}</div><div class='summary-stats-row-value'>${stats.keywords && stats.keywords.length ? stats.keywords.slice(0, 10).join('，') : '-'}</div>
+        <div class='summary-stats-row-label'>${_('sidebar_summary_stats_total', '访问总数')}</div><div class='summary-stats-row-value'>${stats.total}</div>
+        <div class='summary-stats-row-label'>${_('sidebar_summary_stats_duration', '总时长')}</div><div class='summary-stats-row-value'>${(stats.totalDuration/1000/60).toFixed(1)} 分钟</div>
+        <div class='summary-stats-row-label'>${_('sidebar_summary_stats_domains', '涉及域名')}</div><div class='summary-stats-row-value'>${stats.domains && stats.domains.length ? stats.domains.join('，') : '-'}</div>
+        <div class='summary-stats-row-label'>${_('sidebar_summary_stats_keywords', '关键词')}</div><div class='summary-stats-row-value'>${stats.keywords && stats.keywords.length ? stats.keywords.slice(0, 10).join('，') : '-'}</div>
       </div>`;
     }
     // 汇总主内容
@@ -89,7 +95,7 @@ async function renderSummaryReport(root: HTMLElement, dayId: string) {
         html += `<ul class='summary-highlights'>${highlights.map((h) => `<li>${h}</li>`).join('')}</ul>`;
       }
       if (specialConcerns && Array.isArray(specialConcerns) && specialConcerns.length) {
-        html += `<div class='summary-special-concerns'>${_('sidebar.summary.special', '特别关注')}: ${specialConcerns.map((c) => c).join('，')}</div>`;
+        html += `<div class='summary-special-concerns'>${_('sidebar_summary_special', '特别关注')}: ${specialConcerns.map((c) => c).join('，')}</div>`;
       }
     }
     html += `</div>`;
@@ -97,13 +103,13 @@ async function renderSummaryReport(root: HTMLElement, dayId: string) {
     const refreshBtn = document.getElementById('refreshSummaryBtn');
     if (refreshBtn) {
       refreshBtn.onclick = async () => {
-        summaryBox.innerHTML = `<div style='color:#888;padding:12px 0;'>${_('sidebar.summary.refreshing', '正在刷新...')}</div>`;
+        summaryBox.innerHTML = `<div style='color:#888;padding:12px 0;'>${_('sidebar_summary_refreshing', '正在刷新...')}</div>`;
         await messenger.send('GENERATE_SUMMARY_REPORT', { dayId, force: true });
         setTimeout(() => renderSummaryReport(root, dayId), 1200);
       };
     }
   }).catch(() => {
-    summaryBox.innerHTML = `<div style='color:#e53935;padding:12px 0;'>${_('sidebar.summary.error', '汇总报告加载失败')}</div>`;
+    summaryBox.innerHTML = `<div style='color:#e53935;padding:12px 0;'>${_('sidebar_summary_error', '汇总报告加载失败')}</div>`;
   });
 }
 
@@ -117,8 +123,8 @@ function renderSidebarTabs(root: HTMLElement) {
   root.innerHTML = `
     <div class='sidebar-tabs-wrap'>
       <div class='tabs'>
-        <button id='tab-today' class='sidebar-tab tab'>${_('sidebar.tab.today', '今日')}</button>
-        <button id='tab-yesterday' class='sidebar-tab tab'>${_('sidebar.tab.yesterday', '昨日')}</button>
+        <button id='tab-today' class='sidebar-tab tab'>${_('sidebar_tab_today', '今日')}</button>
+        <button id='tab-yesterday' class='sidebar-tab tab'>${_('sidebar_tab_yesterday', '昨日')}</button>
       </div>
     </div>
     <div id='insight-report-box'></div>
@@ -154,13 +160,13 @@ async function renderInsightReport(box: HTMLElement, dayId: string, tab: 'today'
   if (tab === 'today') {
     // 今日默认仅显示按钮，按钮居右
     box.innerHTML = `<div class='insight-report-card'>
-      <div class='insight-report-title'>${_('sidebar.insight.today', '今日洞察')}</div>
-      <div class='insight-generate-btn'><button id='generateTodayInsightBtn'>${_('sidebar.insight.generate', '即刻洞察')}</button></div>
+      <div class='insight-report-title'>${_('sidebar_insight_today', '今日洞察')}</div>
+      <div class='insight-generate-btn'><button id='generateTodayInsightBtn'>${_('sidebar_insight_generate', '即刻洞察')}</button></div>
     </div>`;
     const btn = document.getElementById('generateTodayInsightBtn');
     if (btn) {
       btn.onclick = async () => {
-        box.innerHTML = `<div style='color:#888;padding:12px 0;'>${_('sidebar.insight.generating', '正在生成...')}</div>`;
+        box.innerHTML = `<div style='color:#888;padding:12px 0;'>${_('sidebar_insight_generating', '正在生成...')}</div>`;
         await messenger.send('GENERATE_SUMMARY_REPORT', { dayId, force: true });
         setTimeout(() => renderInsightReport(box, dayId, tab), 1200);
       };
@@ -169,21 +175,21 @@ async function renderInsightReport(box: HTMLElement, dayId: string, tab: 'today'
     return;
   }
   // 昨日洞察直接加载
-  box.innerHTML = `<div style='color:#888;padding:12px 0;'>${_('sidebar.insight.loading', '昨日洞察加载中...')}</div>`;
+  box.innerHTML = `<div style='color:#888;padding:12px 0;'>${_('sidebar_insight_loading', '昨日洞察加载中...')}</div>`;
   messenger.send('GET_SUMMARY_REPORT', { dayId }).then((resp) => {
     if (!resp || (!resp.summaries && !resp.summary && !resp.suggestions)) {
-      box.innerHTML = `<div style=\"color:#888;padding:12px 0;\">${_('sidebar.insight.empty', '暂无昨日洞察')}</div>`;
+      box.innerHTML = `<div style=\"color:#888;padding:12px 0;\">${_('sidebar_insight_empty', '暂无昨日洞察')}</div>`;
       return;
     }
     const { summaries, suggestions, aiServiceLabel, stats, summary, highlights, specialConcerns } = resp;
     let html = `<div class='insight-report-card'>`;
-    html += `<div class='insight-report-title'>${_('sidebar.insight.yesterday', '昨日洞察')} <span class='insight-ai-label'>${aiServiceLabel || ''}</span></div>`;
+    html += `<div class='insight-report-title'>${_('sidebar_insight_yesterday', '昨日洞察')} <span class='insight-ai-label'>${aiServiceLabel || ''}</span></div>`;
     if (stats) {
       html += `<div class='insight-stats'>
-        <div class='insight-stats-row-label'>${_('sidebar.insight.stats.total', '访问总数')}</div><div class='insight-stats-row-value'>${stats.total}</div>
-        <div class='insight-stats-row-label'>${_('sidebar.insight.stats.duration', '总时长')}</div><div class='insight-stats-row-value'>${(stats.totalDuration/1000/60).toFixed(1)} 分钟</div>
-        <div class='insight-stats-row-label'>${_('sidebar.insight.stats.domains', '涉及域名')}</div><div class='insight-stats-row-value'>${stats.domains && stats.domains.length ? stats.domains.join('，') : '-'}</div>
-        <div class='insight-stats-row-label'>${_('sidebar.insight.stats.keywords', '关键词')}</div><div class='insight-stats-row-value'>${stats.keywords && stats.keywords.length ? stats.keywords.slice(0, 10).join('，') : '-'}</div>
+        <div class='insight-stats-row-label'>${_('sidebar_insight_stats_total', '访问总数')}</div><div class='insight-stats-row-value'>${stats.total}</div>
+        <div class='insight-stats-row-label'>${_('sidebar_insight_stats_duration', '总时长')}</div><div class='insight-stats-row-value'>${(stats.totalDuration/1000/60).toFixed(1)} 分钟</div>
+        <div class='insight-stats-row-label'>${_('sidebar_insight_stats_domains', '涉及域名')}</div><div class='insight-stats-row-value'>${stats.domains && stats.domains.length ? stats.domains.join('，') : '-'}</div>
+        <div class='insight-stats-row-label'>${_('sidebar_insight_stats_keywords', '关键词')}</div><div class='insight-stats-row-value'>${stats.keywords && stats.keywords.length ? stats.keywords.slice(0, 10).join('，') : '-'}</div>
       </div>`;
     }
     if (summaries && Array.isArray(summaries) && summaries.length) {
@@ -198,13 +204,13 @@ async function renderInsightReport(box: HTMLElement, dayId: string, tab: 'today'
         html += `<ul class='insight-highlights'>${highlights.map((h) => `<li>${h}</li>`).join('')}</ul>`;
       }
       if (specialConcerns && Array.isArray(specialConcerns) && specialConcerns.length) {
-        html += `<div class='insight-special-concerns'>${_('sidebar.insight.special', '特别关注')}: ${specialConcerns.map((c) => c).join('，')}</div>`;
+        html += `<div class='insight-special-concerns'>${_('sidebar_insight_special', '特别关注')}: ${specialConcerns.map((c) => c).join('，')}</div>`;
       }
     }
     html += `</div>`;
     box.innerHTML = html;
   }).catch(() => {
-    box.innerHTML = `<div style='color:#e53935;padding:12px 0;'>${_('sidebar.insight.error', '昨日洞察加载失败')}</div>`;
+    box.innerHTML = `<div style='color:#e53935;padding:12px 0;'>${_('sidebar_insight_error', '昨日洞察加载失败')}</div>`;
   });
 }
 
@@ -222,7 +228,8 @@ async function renderMergedView(root: HTMLElement, dayId: string, tab: 'today' |
   if (tab === 'today' && Array.isArray(tabs)) {
     openTabUrls = tabs.map(t => t.url && typeof t.url === 'string' ? t.url.split('#')[0] : '').filter(Boolean);
   }
-  let merged = mergeVisitsAndAnalysis(visits).filter(item => {
+  let merged = await mergeVisitsAndAnalysis(visits);
+  merged = merged.filter(item => {
     return !!(item && (item.title || item.url));
   });
   merged = merged.slice().sort((a, b) => (b.visitStartTime || 0) - (a.visitStartTime || 0));
@@ -305,7 +312,7 @@ async function renderMergedView(root: HTMLElement, dayId: string, tab: 'today' |
     // 访问次数标签
     let visitCountLabel = '';
     if (item.visitCount && item.visitCount > 1) {
-      visitCountLabel = `<span class='merged-card-visit-count'>${item.visitCount}${_('sidebar.card.times', '次')}</span>`;
+      visitCountLabel = `<span class='merged-card-visit-count'>${item.visitCount}${_('sidebar_card_times', '次')}</span>`;
     }
     // AI服务标签
     let aiLabelHtml = '';
@@ -329,7 +336,7 @@ async function renderMergedView(root: HTMLElement, dayId: string, tab: 'today' |
       // 分析中：只渲染计时器内容，不渲染标签区
       showTags = false;
       const analyzingId = `analyzing-timer-${idx}`;
-      aiContentWithLabel = `<span id='${analyzingId}' class='ai-analyzing'>${_('sidebar.card.analyzing', '正在进行 AI 分析')}</span>`;
+      aiContentWithLabel = `<span id='${analyzingId}' class='ai-analyzing'>${_('sidebar_card_analyzing', '正在进行 AI 分析')}</span>`;
       setTimeout(() => {
         const el = document.getElementById(analyzingId);
         if (el && item.visitStartTime) {
@@ -463,7 +470,7 @@ async function clearMergedViewData(root: HTMLElement) {
     messenger.send('DATA_CLEARED'); // fire-and-forget，无需等待响应
     root.innerHTML = '<div style="color:#888;padding:16px;">无数据</div>';
   } catch (error) {
-    logger.error('sidebar.clear_data_failed', '清除数据失败', error);
+    logger.error('sidebar_clear_data_failed', '清除数据失败', error);
     root.innerHTML = '<div style="color:#e53935;padding:16px;">清除失败</div>';
   }
 }
@@ -551,15 +558,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         const links = document.querySelectorAll('.merged-card-url');
         let found = false;
         links.forEach((link) => {
-          if (isSystemUrl(url)) return;
-          if (link instanceof HTMLAnchorElement && link.href.split('#')[0] === url.split('#')[0]) {
-            const cardContent = link.closest('.merged-card-content') as HTMLElement;
-            if (cardContent && cardContent.style.display === 'none') {
-              cardContent.style.display = 'block';
-            }
-            cardContent?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            found = true;
-          }
+          // 原: if (isSystemUrl(url)) return;
+          shouldAnalyzeUrl(url).then(shouldAnalyze => { if (!shouldAnalyze) return; /* ...原有后续逻辑... */ });
         });
         // 不再输出警告，未找到直接忽略
       } catch (err) {

@@ -2,7 +2,6 @@
 // 统一管理 background 的所有消息和事件监听
 import { messenger } from '../lib/messaging/messenger.js';
 import { storage } from '../lib/storage/index.js';
-import { i18n } from '../lib/i18n/i18n.js';
 import { config } from '../lib/config/index.js';
 import {
   updateIcon,
@@ -23,6 +22,8 @@ import {
 import { getActiveAIService } from '../lib/artificial-intelligence/index.js';
 import { getCurrentAiConfig } from '../lib/artificial-intelligence/ai-config.js';
 import { AIManager } from '../lib/artificial-intelligence/ai-manager.js';
+import { Logger } from '../lib/logger/logger.js';
+import { _, _Error } from '../lib/i18n/i18n.js';
 
 // ====== 侧面板相关状态管理 ======
 let useSidePanel = false;
@@ -63,9 +64,6 @@ if (chrome && chrome.action && chrome.sidePanel) {
         }
       } catch {}
     }
-    // 侧边栏未打开，模拟原生弹窗行为（而不是 chrome.windows.create）
-    // 通过设置 default_popup 并移除 chrome.windows.create
-    // 这里什么都不做，交由 manifest 的 default_popup 控制
   });
 }
 
@@ -175,8 +173,8 @@ async function handleMessengerAiAnalyzeRequestWithNotify(msg: any) {
   const visitStartTime = msg.payload?.visitStartTime || Date.now();
   const visitId = id || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`);
   if (!content) {
-    console.warn('[AI_ANALYZE] 拒绝分析：无内容', { url, visitId, visitStartTime });
-    return { ok: false, error: 'No content' };
+    logger.warn('ai_analyze_no_content', '无内容可分析: {0}', url);
+    return { ok: false, error: _('ai_analyze_no_content', '无内容可分析: {0}', url) };
   }
   const date = new Date(visitStartTime);
   const dayId = date.toISOString().slice(0, 10);
@@ -184,12 +182,12 @@ async function handleMessengerAiAnalyzeRequestWithNotify(msg: any) {
   let visits: any[] = (await storage.get<any[]>(key)) || [];
   const visit = visits.find(v => v.id === visitId);
   if (!visit) {
-    console.error('[AI_ANALYZE] 未找到访问记录', { url, visitId, visitStartTime, key, visitsLength: visits.length });
-    return { ok: false, error: 'No visit record found for AI analysis' };
+    logger.warn('ai_analyze_no_visit_record', '未找到访问记录: {0}', url);
+    return { ok: false, error: _('ai_analyze_no_visit_record', '未找到访问记录: {0}', url) };
   }
   // 只要aiResult为空或'正在进行 AI 分析'，才分析，否则直接返回
   if (visit.aiResult && visit.aiResult !== '' && visit.aiResult !== '正在进行 AI 分析') {
-    console.log('[AI_ANALYZE] 已有分析结果，跳过', { url, visitId });
+    logger.info('ai_analyze_skipped', '已有分析结果，跳过: {0}', url);
     return { ok: true, skipped: true, reason: 'already analyzed' };
   }
   await config.reload();
@@ -206,8 +204,8 @@ async function handleMessengerAiAnalyzeRequestWithNotify(msg: any) {
   const analyzeStart = Date.now();
   onProcessingStart();
   try {
-    if (!aiService) throw new Error('无可用 AI 服务');
-    console.log('[AI_ANALYZE] 开始分析', { url, visitId, aiServiceLabel, contentLength: content.length });
+    if (!aiService) throw new _Error('ai_analyze_no_service', '无可用 AI 服务', url);
+    logger.info('ai_analyze_started', '开始分析: {0}', url);
     const aiSummary = await aiService.summarizePage(url, content);
     const analyzeEnd = Date.now();
     const analyzeDuration = analyzeEnd - analyzeStart;
@@ -215,13 +213,13 @@ async function handleMessengerAiAnalyzeRequestWithNotify(msg: any) {
     onProcessingEnd();
     setTip(aiSummary.important);
     notifySidePanelUpdate('ai');
-    console.log('[AI_ANALYZE] 分析完成', { url, visitId, analyzeDuration, aiSummary });
+    logger.info('ai_analyze_completed', '分析完成: {0}', url);
     return { ok: true, aiContent: aiSummary, analyzeDuration, shouldNotify: aiSummary.important };
   } catch (e: any) {
     onProcessingEnd();
     setTip(true);
-    console.error('[AI_ANALYZE] 分析异常', { url, visitId, error: e?.message || String(e) });
-    return { ok: false, error: e?.message || String(e) };
+    logger.error('ai_analyze_error', '分析异常: {0}', url);
+    return { ok: false, error: _('ai_analyze_error', '分析异常: {0}', url) };
   }
 }
 
@@ -240,6 +238,8 @@ async function handleMessengerGenerateSummaryReport(msg: any) {
   const report = await generateSummaryReport(dayId, force);
   return report || { summary: '' };
 }
+
+const logger = new Logger('background/event-handlers');
 
 export function registerBackgroundEventHandlers() {
   // 移除图标点击事件的清除逻辑，彻底只允许通过消息清除

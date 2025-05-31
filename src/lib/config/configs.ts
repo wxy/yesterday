@@ -13,41 +13,44 @@ interface ConfigDefinitionItem<T = any> {
  * 配置项定义 - 仅保留 API 请求超时和 AI 设置
  */
 export const configs: Record<string, ConfigDefinitionItem> = {
-  // ===== API 请求超时 =====
-  'advanced.requestTimeout': {
+  // ===== 常规设置 =====
+  'requestTimeout': {
     type: Number,
-    default: 10000, // 10秒，毫秒
+    default: 60000, // 60秒，毫秒
     ui: {
       type: 'number',
       label: 'API请求超时 (秒)',
       description: '设置网络请求的超时时间',
-      section: '高级设置',
+      section: '常规设置',
       min: 1,
       max: 60,
       converter: (seconds: number) => seconds * 1000, // 转换为毫秒
       reverter: (ms: number) => Math.floor(ms / 1000) // 毫秒转换为秒
     } as ConfigUI.NumberUIMetadata
   },
-
-  // ===== AI 设置 =====
-  'aiServiceConfigs': {
-    type: Array as unknown as () => AiServiceConfig[],
-    default: [
-      { serviceId: 'ollama' }
-    ],
+  'maxAIResultLength': {
+    type: Number,
+    default: 2048,
     ui: {
-      type: 'hidden'
-    } as any // 仅数据存储，不渲染
+      type: 'number',
+      label: 'AI分析结果最大长度',
+      description: '限制AI分析结果的最大字符数，防止内容过长影响体验',
+      section: '常规设置',
+      min: 256,
+      max: 10000,
+      step: 1
+    } as ConfigUI.NumberUIMetadata
   },
+
+  // ===== AI 服务配置 =====
   'aiServiceConfig': {
     type: Object as unknown as () => AiServiceConfig,
     default: { serviceId: 'ollama' },
     ui: {
       type: 'group',
-      label: '当前 AI 服务配置',
+      label: 'AI服务配置',
       description: '当前激活的 AI 服务配置，切换/编辑后自动同步到配置列表。',
-      section: 'AI 设置',
-      controller: 'serviceId', // 声明主从关系
+      section: 'AI 服务',
       fields: [
         { key: 'serviceId', type: 'select', label: '服务类型', options: [
           { value: 'ollama', label: 'Ollama 本地' },
@@ -60,6 +63,50 @@ export const configs: Record<string, ConfigDefinitionItem> = {
         { key: 'apiKey', type: 'password', label: 'API Key', description: '如需鉴权请填写', condition: "aiServiceConfig.serviceId !== 'ollama' && aiServiceConfig.serviceId !== 'chrome-ai'" }
       ]
     } as any // 兼容 group 类型
+  },
+
+  // ===== 网址过滤 =====
+  'urlFilterGroup': {
+    type: Object as unknown as () => any,
+    default: {
+      excludeTypes: ['intranet', 'ip', 'port', 'auth'],
+      excludeUrls: [],
+      includeUrls: []
+    },
+    ui: {
+      type: 'group',
+      label: '网址过滤',
+      description: '可灵活配置哪些网址不分析或强制分析',
+      section: '网址过滤',
+      fields: [
+        {
+          key: 'excludeTypes',
+          type: 'checkbox',
+          label: '排除类型',
+          description: '选择需要自动排除分析的网址类型',
+          options: [
+            { value: 'intranet', label: '内网地址（如 10.x/192.168.x/172.16-31.x/localhost）' },
+            { value: 'ip', label: '纯IP地址' },
+            { value: 'port', label: '非标准端口' },
+            { value: 'auth', label: '需要基础认证的网址' }
+          ]
+        },
+        {
+          key: 'excludeUrls',
+          type: 'text',
+          label: '手动排除网址',
+          description: '每行一个，支持通配符/正则表达式，匹配到的将不会进行AI分析。',
+          rows: 4
+        },
+        {
+          key: 'includeUrls',
+          type: 'text',
+          label: '强制分析网址',
+          description: '每行一个，支持通配符/正则表达式，优先于排除规则。',
+          rows: 4
+        }
+      ]
+    } as any
   }
 };
 

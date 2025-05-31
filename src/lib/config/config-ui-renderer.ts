@@ -35,26 +35,27 @@ export class ConfigUIRenderer {
     > = new Map();
 
     // 分组和排序元数据
-    const sortedPaths = this.sortConfigPaths(
-      Object.keys(configMetadata),
-      configMetadata
-    );
-
-    for (const path of sortedPaths) {
+    // 直接用 group 字段作为分区，不再用 section/其它设置/高级设置/AI设置
+    // 分区逻辑：直接以 group 字段 label 作为分区名，非 group 字段归为“常规设置”
+    for (const path of Object.keys(configMetadata)) {
       const metadata = configMetadata[path];
-      const section = metadata.section || "其他设置";
-
-      if (!sectionMap.has(section)) {
-        sectionMap.set(section, []);
+      // 只按分区，不再递归 group 字段
+      if (metadata.type === 'group' && metadata.label) {
+        if (!sectionMap.has(metadata.label)) sectionMap.set(metadata.label, []);
+        // group.fields 直接平铺到该分区
+        if (Array.isArray((metadata as any).fields)) {
+          (metadata as any).fields.forEach((field: any) => {
+            const fieldPath = path + '.' + field.key;
+            sectionMap.get(metadata.label)!.push({ ...field, path: fieldPath });
+          });
+        }
+      } else {
+        if (!sectionMap.has('常规设置')) sectionMap.set('常规设置', []);
+        sectionMap.get('常规设置')!.push({ ...metadata, path });
       }
-
-      sectionMap.get(section)!.push({
-        ...metadata,
-        path, // 添加路径属性，方便后续处理
-      });
     }
 
-    // 按部分创建UI
+    // 按分区渲染
     for (const [sectionName, items] of sectionMap.entries()) {
       this.renderSection(container, sectionName, items, currentConfig, options);
     }
@@ -88,26 +89,88 @@ export class ConfigUIRenderer {
   }
 
   /**
-   * 收集UI中的所有配置值
+   * 收集UI中的所有配置值（修正版：先聚合所有唯一 path，再针对每个 path 处理）
    * @template T 配置类型
    * @returns 收集到的配置值
    */
   public collectConfigValues<T>(): Partial<T> {
     this.logger.debug("收集配置值");
-    const values = {} as Partial<T>;
-
-    document.querySelectorAll("[data-config-path]").forEach((element) => {
-      const path = element.getAttribute("data-config-path");
-      if (!path) return;
-
-      const metadata = this.metadataCache[path];
-      const value = this.getElementValue(element as HTMLElement, metadata);
-
-      // 使用类型安全的方式设置值
-      this.setConfigValueByPath(values, path, value);
-    });
-
-    return values;
+    const values: Record<string, any> = {};
+    // 先聚合所有唯一 path
+    const allPaths = Array.from(document.querySelectorAll('[data-config-path]'))
+      .map(el => el.getAttribute('data-config-path'))
+      .filter(Boolean) as string[];
+    // 只保留所有最顶层 path（与 configs.ts 一致，无 advanced）
+    const topLevelPaths = Array.from(new Set(allPaths.map(p => p.split('.')[0])));
+    for (const topPath of topLevelPaths) {
+      const metadata = this.metadataCache[topPath];
+      if (metadata && metadata.type === 'group' && Array.isArray((metadata as any).fields)) {
+        // 递归采集 group 字段
+        const groupValue: any = {};
+        (metadata as any).fields.forEach((field: any) => {
+          const fieldPath = topPath + '.' + field.key;
+          const fieldMeta = this.metadataCache[fieldPath] || field;
+          let value: any;
+          const el = document.querySelector(`[data-config-path="${fieldPath}"]`);
+          if (el) {
+            // 复选框组
+            if (fieldMeta && fieldMeta.type === 'checkbox' && Array.isArray((fieldMeta as any).options)) {
+              let container = el.closest('div.option-control');
+              if (!container) container = el.parentElement;
+              if (!container) container = el;
+              const checkboxes = container.querySelectorAll('input[type="checkbox"]');
+              const arr: string[] = [];
+              checkboxes.forEach((cb: any) => {
+                if (cb.getAttribute('data-config-path') === fieldPath && cb.checked) arr.push(cb.value);
+              });
+              value = arr;
+            } else if (fieldMeta && fieldMeta.type === 'text' && (fieldMeta as any).rows) {
+              // 多行文本，直接保存字符串
+              if (el instanceof HTMLTextAreaElement) {
+                value = el.value;
+              } else {
+                value = this.getElementValue(el as HTMLElement, fieldMeta);
+              }
+            } else {
+              value = this.getElementValue(el as HTMLElement, fieldMeta);
+            }
+            if (Array.isArray(value) && value.length === 0) value = [];
+            if (value === false || value == null) value = [];
+            groupValue[field.key] = value;
+          }
+        });
+        values[topPath] = groupValue;
+      } else {
+        // 非 group 字段
+        const el = document.querySelector(`[data-config-path="${topPath}"]`);
+        if (!el) continue;
+        let value: any;
+        if (metadata && metadata.type === 'checkbox' && Array.isArray((metadata as any).options)) {
+          let container = el.closest('div.option-control');
+          if (!container) container = el.parentElement;
+          if (!container) container = el;
+          const checkboxes = container.querySelectorAll('input[type="checkbox"]');
+          const arr: string[] = [];
+          checkboxes.forEach((cb: any) => {
+            if (cb.getAttribute('data-config-path') === topPath && cb.checked) arr.push(cb.value);
+          });
+          value = arr;
+        } else if (metadata && metadata.type === 'text' && (metadata as any).rows) {
+          // 多行文本，直接保存字符串
+          if (el instanceof HTMLTextAreaElement) {
+            value = el.value;
+          } else {
+            value = this.getElementValue(el as HTMLElement, metadata);
+          }
+        } else {
+          value = this.getElementValue(el as HTMLElement, metadata);
+        }
+        if (Array.isArray(value) && value.length === 0) value = [];
+        if (value === false || value == null) value = [];
+        values[topPath] = value;
+      }
+    }
+    return values as Partial<T>;
   }
 
   /**
@@ -201,6 +264,45 @@ export class ConfigUIRenderer {
     metadata: ConfigUI.UIMetadata,
     value: any
   ): HTMLElement {
+    // 多选复选框组（checkbox + options）
+    if (metadata.type === 'checkbox' && Array.isArray((metadata as any).options)) {
+      const options = (metadata as any).options;
+      const container = document.createElement('div');
+      options.forEach((opt: any) => {
+        const line = document.createElement('div'); // 每个选项单独一行
+        const label = document.createElement('label');
+        label.style.marginRight = '16px';
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.value = opt.value;
+        checkbox.checked = Array.isArray(value) && value.includes(opt.value);
+        checkbox.setAttribute('data-config-path', path);
+        checkbox.onchange = () => {
+          // 收集所有同组checkbox
+          const checkboxes = container.querySelectorAll('input[type="checkbox"]');
+          const arr: string[] = [];
+          checkboxes.forEach((cb: any) => { if (cb.checked) arr.push(cb.value); });
+          container.dispatchEvent(new Event('input', { bubbles: true }));
+        };
+        label.appendChild(checkbox);
+        label.appendChild(document.createTextNode(' ' + opt.label));
+        line.appendChild(label);
+        container.appendChild(line);
+      });
+      return container;
+    }
+    // 多行文本框（text + rows）
+    if (metadata.type === 'text' && (metadata as any).rows) {
+      const textarea = document.createElement('textarea');
+      textarea.rows = (metadata as any).rows || 4;
+      textarea.style.width = '100%';
+      textarea.value = value || '';
+      textarea.setAttribute('data-config-path', path);
+      textarea.onchange = () => {
+        // 只触发 change，不再触发 input，避免递归
+      };
+      return textarea;
+    }
     switch (metadata.type) {
       case "checkbox":
         return this.createCheckbox(
