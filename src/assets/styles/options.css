@@ -2,7 +2,7 @@
 .options-topbar {
   display: flex;
   align-items: center;
-  background: linear-gradient(90deg, #ffffff 100%, #008F00 100%);
+  background: linear-gradient(90deg, #ffffff 0%, #008F00 100%);
   padding: 0 0 0 18px;
   height: 54px;
   border-bottom: 2px solid #008F00;

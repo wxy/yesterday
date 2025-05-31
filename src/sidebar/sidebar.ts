@@ -12,20 +12,16 @@ const AI_CONFIG_CACHE_TTL = 60 * 1000; // 1分钟
 
 function showAnalyzeDuration(analyzeDuration: number) {
   if (typeof analyzeDuration !== 'number' || analyzeDuration <= 0) return '';
-  // 用类名替换内联样式，单位国际化
-  return `<span class='insight-report-content-duration'>(${_('sidebar_card_analyze_duration', '分析用时')} ${(analyzeDuration / 1000).toFixed(1)}${_('sidebar_card_seconds', '秒')})</span>`;
+  // 只返回格式化秒数，不再加“分析用时”文字
+  return `<span class='insight-report-content-duration'>${(analyzeDuration / 1000).toFixed(1)}${_('sidebar_card_seconds', '秒')}</span>`;
 }
 
 // 合并访问记录和分析结果，优先用 id 匹配，兼容 url+visitStartTime
 // 已迁移为单表，直接用 visits 作为 analysis
 async function mergeVisitsAndAnalysis(visits: any[]): Promise<any[]> {
   // 只保留应分析的 url（异步过滤）
-  const filtered = await Promise.all(visits.map(async v => {
-    if (!v.url || typeof v.url !== 'string') return v;
-    const shouldAnalyze = await shouldAnalyzeUrl(v.url);
-    return shouldAnalyze ? v : null;
-  }));
-  return filtered.filter(Boolean);
+  // 已由后台过滤，前端无需再异步 shouldAnalyzeUrl，可直接返回 visits
+  return visits;
 }
 
 // 获取当前 AI 服务名称（带缓存）
@@ -419,7 +415,7 @@ async function renderMergedView(root: HTMLElement, dayId: string, tab: 'today' |
     </div>`;
     const urlLine = `<div class='merged-card-url-line'>
       <a href='${item.url || ''}' target='_blank' class='merged-card-url'>${item.url || ''}</a>
-      <div class='merged-card-duration'>${durationStr}</div>
+      <!-- 分析用时不再显示在 URL 行 -->
     </div>`;
     // 访问次数标签
     let visitCountLabel = '';
@@ -436,10 +432,10 @@ async function renderMergedView(root: HTMLElement, dayId: string, tab: 'today' |
     if (item.analyzeDuration && item.analyzeDuration > 0) {
       analyzeDurationLabel = `<span class='merged-card-analyze-duration'>${(item.analyzeDuration / 1000).toFixed(1)}${_('sidebar_card_seconds_short', 's')}</span>`;
     }
-    // 标签区（并列展示）
+    // 标签区（并列展示，放在 AI 标签旁）
     let cardTagsLine = '';
     if (aiLabelHtml || visitCountLabel || analyzeDurationLabel) {
-      cardTagsLine = `<div class='merged-card-tags-line'>${aiLabelHtml}${visitCountLabel}${analyzeDurationLabel}</div>`;
+      cardTagsLine = `<div class='merged-card-tags-line'>${aiLabelHtml}${analyzeDurationLabel}${visitCountLabel}</div>`;
     }
     // aiContent 渲染后不再追加 cardTagsLine，分析中时标签区和计时器只在底部渲染
     let aiContentWithLabel = '';

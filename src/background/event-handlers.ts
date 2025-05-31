@@ -154,12 +154,13 @@ async function handlePageVisitRecordWithNotify(record: any, sender?: any) {
   // 1. 写入/更新访问记录（aiResult 为空或'正在进行 AI 分析'，visitCount递增，内容变化/刷新时重置aiResult）
   const result = await handlePageVisitRecord(record);
   notifySidePanelUpdate('visit');
-  // 2. 只要aiResult为空或'正在进行 AI 分析'，且mainContent存在，自动触发AI分析
-  if (record.mainContent && record.mainContent.length > 0 && (!record.aiResult || record.aiResult === '' || record.aiResult === '正在进行 AI 分析')) {
+  // 2. 只要 mainContent 存在且应分析，自动触发AI分析（兼容 content-script 传 content 字段的情况）
+  const mainContent = record.content || record.mainContent;
+  if (mainContent && mainContent.length > 0 && (!record.aiResult || record.aiResult === '' || record.aiResult === '正在进行 AI 分析')) {
     await handleMessengerAiAnalyzeRequestWithNotify({
       url: record.url,
       title: record.title,
-      content: record.mainContent,
+      content: mainContent,
       id: record.id,
       visitStartTime: record.visitStartTime
     });
@@ -241,6 +242,16 @@ async function handleMessengerGenerateSummaryReport(msg: any) {
 
 const logger = new Logger('background/event-handlers');
 
+// 兜底处理发往侧边栏但侧边栏可能未打开的消息，避免报错
+function handleNoop(_msg: any, sender?: chrome.runtime.MessageSender) {
+  // sender.url 只在页面上下文存在，background->content script 时可能为 undefined
+  if (!sender || !sender.url || !sender.url.includes('sidebar.html')) {
+    return { ok: true };
+  }
+  // 让消息继续传递到侧边栏页面
+  return false;
+}
+
 export function registerBackgroundEventHandlers() {
   // 移除图标点击事件的清除逻辑，彻底只允许通过消息清除
   // chrome.action.onClicked.addListener(() => {
@@ -260,4 +271,26 @@ export function registerBackgroundEventHandlers() {
   messenger.on('PAGE_VISIT_RECORD', handlePageVisitRecordWithNotify);
   messenger.on('GET_SUMMARY_REPORT', handleMessengerGetSummaryReport);
   messenger.on('GENERATE_SUMMARY_REPORT', handleMessengerGenerateSummaryReport);
+  messenger.on('SCROLL_TO_VISIT', handleNoop); // 兜底
+  messenger.on('SIDE_PANEL_UPDATE', handleNoop); // 兜底
+  messenger.on('PAGE_VISIT_AND_ANALYZE', handlePageVisitRecordWithNotify); // 注册 PAGE_VISIT_AND_ANALYZE 到 messenger，保证所有消息通路一致
+
+  // ========== 消息注册 ========== //
+  chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+    if (msg && msg.type === 'PAGE_VISIT_AND_ANALYZE') {
+      (async () => {
+        try {
+          // 1. 先写入访问记录（含主内容、AI分析中标记等）
+          await handlePageVisitRecordWithNotify(msg.payload, sender); // 必须用 handlePageVisitRecordWithNotify
+          // 2. 通知侧边栏刷新
+          notifySidePanelUpdate('visit');
+          notifySidePanelUpdate('ai');
+          sendResponse && sendResponse({ ok: true });
+        } catch (e) {
+          sendResponse && sendResponse({ ok: false, error: String(e) });
+        }
+      })();
+      return true; // 异步响应
+    }
+  });
 }

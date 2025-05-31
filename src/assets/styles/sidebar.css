@@ -7,78 +7,19 @@ body {
   color: #222;
   background: #f6fff6;
 }
-.container {
-  padding: 16px;
-  overflow-x: hidden;
-  overflow-y: scroll;
-  min-height: 100vh;
-  max-height: 100vh;
-}
-.footer {
-  display: flex;
-  justify-content: space-between;
-  font-size: 12px;
-  color: #70757a;
-  margin-top: 16px;
-  padding-top: 12px;
-  border-top: 1px solid #eee;
-  align-items: center;
-}
-.footer-links {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-}
-a {
-  color: #1a73e8;
-  text-decoration: none;
-}
-a:hover {
-  text-decoration: underline;
-}
-.icon-btn {
-  background: none;
-  border: none;
-  padding: 0;
-  margin: 0 0 0 4px;
-  cursor: pointer;
-  vertical-align: middle;
-  line-height: 1;
-}
-#clearDataBtn {
-  padding: 6px 16px;
-  background: #e53935;
-  color: #fff;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  margin: 16px 0 0 0;
-  display: block;
-  width: 100%;
-  text-align: center;
-}
 
 /* 卡片样式 */
 .merged-card {
   border: 1.5px solid #b2e5b2;
   border-radius: 12px;
   padding: 10px 14px;
-  margin: 10px 0px;
+  margin: 10px 0;
   background: #fff;
   box-shadow: 0 2px 12px 0 rgba(0,143,0,0.08);
   transition: box-shadow 0.18s, border-color 0.18s;
 }
 .merged-card:hover {
   box-shadow: 0 6px 24px 0 rgba(0,143,0,0.16);
-  border-color: #008F00;
-}
-.merged-card-important {
-  border-color: #008F00;
-  background: linear-gradient(90deg,#e6fbe6 0%,#b2e5b2 100%);
-  transition: box-shadow 0.18s, border-color 0.18s;
-}
-.merged-card-important:hover {
-  box-shadow: 0 2px 12px 0 #008f0033;
   border-color: #008F00;
 }
 .merged-card-header {
@@ -96,12 +37,6 @@ a:hover {
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 70%;
-}
-.merged-card-time {
-  color: #888;
-  font-size: 12px;
-  margin-left: 8px;
-  flex-shrink: 0;
 }
 .merged-card-url-line {
   display: flex;
@@ -121,19 +56,13 @@ a:hover {
   text-decoration: underline;
   vertical-align: bottom;
 }
-.merged-card-duration {
-  color: #888;
-  font-size: 11px;
-  margin-left: 8px;
-  flex-shrink: 0;
-}
 .merged-card-content {
   margin-top: 6px;
 }
 .merged-card-ai-content {
   margin-top: 4px;
 }
-.merged-card-visit-count {
+.merged-card-visit-count, .merged-card-analyze-duration {
   background: #e6fbe6;
   color: #008F00;
   border-radius: 6px;
@@ -148,49 +77,12 @@ a:hover {
   line-height: 1.5em;
 }
 
-/* AI 内容样式 */
-.ai-summary {
-  font-weight: bold;
-  margin-bottom: 4px;
-}
-.ai-highlights {
-  margin: 4px 0 4px 16px;
-  padding: 0;
-  color: #333;
-  font-size: 13px;
-}
-.ai-special-concerns {
-  color: #e53935;
-  font-size: 13px;
-  margin: 4px 0;
-}
-.ai-failed {
-  color: #e53935;
-  background: #fff3f3;
-  border-radius: 4px;
-  padding: 6px 8px;
-}
-.ai-plain {
-  color: #888;
-  background: #f7f7fa;
-  border-radius: 4px;
-  padding: 6px 8px;
-}
-.ai-analyzing {
-  color: #1a73e8;
-}
-.ai-empty {
-  color: #aaa;
-}
-
-/* 汇总报告卡片样式（已合并为 insight-report-card） */
-
-/* 洞察报告卡片样式（与 summary-report-card 保持一致） */
+/* 洞察报告卡片样式 */
 .insight-report-card {
   background: #e6fbe6;
   border: 1.5px solid #b2e5b2;
   border-radius: 12px;
-  margin: 18px 0px 22px 0px;
+  margin: 10px 0 12px 0;
   padding: 22px 20px 16px 20px;
   box-shadow: 0 2px 12px 0 rgba(0,143,0,0.08);
   font-size: 15px;
@@ -203,7 +95,6 @@ a:hover {
   box-shadow: 0 6px 24px 0 rgba(0,143,0,0.16);
   border-color: #008F00;
 }
-/* 洞察报告卡片头部样式 */
 .insight-report-header {
   display: flex;
   align-items: center;
@@ -223,41 +114,6 @@ a:hover {
   display: flex;
   align-items: center;
   gap: 10px;
-}
-.insight-report-collapsed .insight-report-content,
-.insight-report-collapsed .insight-highlights,
-.insight-report-collapsed .insight-special-concerns,
-.insight-report-collapsed .insight-stats {
-  display: none;
-}
-#insight-content-box[style*="display:none"] {
-  display: none !important;
-}
-.insight-refresh-btn {
-  background: #e6fbe6;
-  border: 1.5px solid #b2e5b2;
-  color: #008F00;
-  border-radius: 6px;
-  padding: 3px 14px;
-  font-size: 13px;
-  cursor: pointer;
-  transition: background 0.18s, color 0.18s, box-shadow 0.18s;
-}
-.insight-refresh-btn:hover {
-  background: #b2e5b2;
-  color: #006600;
-  box-shadow: 0 2px 8px 0 #008f0022;
-}
-.insight-report-toggle {
-  cursor: pointer;
-  color: #008F00;
-  font-size: 13px;
-  margin-left: 8px;
-  user-select: none;
-  transition: color 0.18s;
-}
-.insight-report-toggle:hover {
-  color: #006600;
 }
 .insight-report-content {
   margin-bottom: 10px;
@@ -303,26 +159,6 @@ a:hover {
 .insight-stats-row-value {
   text-align: left;
   word-break: break-all;
-}
-/* 即刻洞察按钮居右 */
-.insight-generate-btn {
-  display: flex;
-  justify-content: flex-end;
-  margin-bottom: 0;
-  margin-left: 16px;
-}
-
-/* loading/empty/error 状态 */
-#summary-report-box > div {
-  font-size: 14px;
-  padding: 16px;
-  text-align: left;
-}
-#summary-report-box .error {
-  color: #e53935;
-  background: #fff3f3;
-  border-radius: 4px;
-  padding: 8px 0;
 }
 
 /* 标签页样式 */
@@ -384,19 +220,119 @@ a:hover {
   letter-spacing: 0.01em;
   line-height: 1.5em;
 }
-.merged-card-analyze-duration {
+
+/* 容器与辅助样式 */
+.container {
+  padding: 16px;
+  overflow-x: hidden;
+  overflow-y: scroll;
+  min-height: 100vh;
+  max-height: 100vh;
+}
+#insight-report-box {
+  background: #f6fff6;
+  border-radius: 14px;
+  box-shadow: 0 2px 12px 0 #008f0011;
+  padding: 0;
+  margin-bottom: 6px;
+  min-width: 0;
+}
+#merged-view-box {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 1px 6px 0 #008f0011;
+  padding: 0;
+  margin-top: 0;
+  margin-bottom: 16px;
+  min-width: 0;
+}
+
+/* 按钮样式 */
+.insight-refresh-btn {
   background: #e6fbe6;
+  border: 1.5px solid #b2e5b2;
   color: #008F00;
   border-radius: 6px;
-  padding: 2px 10px;
-  font-size: 12px;
-  margin-right: 6px;
-  font-weight: 600;
-  display: inline-block;
-  vertical-align: middle;
-  border: 1px solid #b2e5b2;
-  box-shadow: 0 1px 2px 0 #008f0011;
-  line-height: 1.5em;
+  padding: 3px 14px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.18s, color 0.18s, box-shadow 0.18s;
+}
+.insight-refresh-btn:hover {
+  background: #b2e5b2;
+  color: #006600;
+  box-shadow: 0 2px 8px 0 #008f0022;
+}
+.insight-report-toggle {
+  cursor: pointer;
+  color: #008F00;
+  font-size: 13px;
+  margin-left: 8px;
+  user-select: none;
+  transition: color 0.18s;
+}
+.insight-report-toggle:hover {
+  color: #006600;
+}
+
+/* 清除数据按钮品牌色样式 */
+#clearDataBtn {
+  background: linear-gradient(90deg, #e53935 0%, #ffbdbd 100%);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 10px 0;
+  font-size: 1em;
+  font-weight: 700;
+  cursor: pointer;
+  margin: 18px 0 0 0;
+  box-shadow: 0 2px 8px 0 #e5393522;
+  transition: background 0.18s, color 0.18s, box-shadow 0.18s;
+  width: 100%;
+  letter-spacing: 0.01em;
+}
+#clearDataBtn:hover {
+  background: linear-gradient(90deg, #b71c1c 0%, #ff5252 100%);
+  color: #fff;
+  box-shadow: 0 4px 16px 0 #e5393555;
+}
+
+/* 底部信息区样式优化 */
+.footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  color: #888;
+  margin-top: 18px;
+  padding-top: 12px;
+  border-top: 1px solid #e0e4ea;
+  background: none;
+}
+.footer-links {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+.footer a {
+  color: #008F00;
+  text-decoration: none;
+  font-weight: 500;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: background 0.18s, color 0.18s;
+}
+.footer a:hover {
+  background: #e6fbe6;
+  color: #006600;
+}
+
+/* merged-card-open 高亮样式 */
+.merged-card-open {
+  border: 1.5px solid #008F00 !important;
+  background: linear-gradient(90deg, #e6fbe6 0%, #b2e5b2 100%) !important;
+  box-shadow: 0 2px 12px 0 #008f0033 !important;
+  position: relative;
 }
 
 .text-muted {
