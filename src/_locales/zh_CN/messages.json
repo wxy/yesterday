@@ -512,11 +512,135 @@
     "description": "从HTML提取: options/options.html"
   },
   "options_header_title": {
-    "message": "扩展设置",
-    "description": "从HTML提取: options/options.html"
-  },
-  "options_main_title": {
     "message": "扩展选项",
     "description": "从HTML提取: options/options.html"
+  },
+  "config_request_timeout_label": {
+    "message": "API请求超时 (秒)",
+    "description": "从TS提取 (_): lib/config/configs.ts"
+  },
+  "config_request_timeout_desc": {
+    "message": "设置网络请求的超时时间",
+    "description": "从TS提取 (_): lib/config/configs.ts"
+  },
+  "config_section_general": {
+    "message": "常规设置",
+    "description": "从TS提取 (_): lib/config/configs.ts"
+  },
+  "config_max_ai_result_length_label": {
+    "message": "AI分析结果最大长度",
+    "description": "从TS提取 (_): lib/config/configs.ts"
+  },
+  "config_max_ai_result_length_desc": {
+    "message": "限制AI分析结果的最大字符数，防止内容过长影响体验",
+    "description": "从TS提取 (_): lib/config/configs.ts"
+  },
+  "config_ai_service_label": {
+    "message": "AI服务配置",
+    "description": "从TS提取 (_): lib/config/configs.ts"
+  },
+  "config_ai_service_desc": {
+    "message": "当前激活的 AI 服务配置，切换/编辑后自动同步到配置列表。",
+    "description": "从TS提取 (_): lib/config/configs.ts"
+  },
+  "config_section_ai": {
+    "message": "AI 服务",
+    "description": "从TS提取 (_): lib/config/configs.ts"
+  },
+  "config_ai_service_type_label": {
+    "message": "服务类型",
+    "description": "从TS提取 (_): lib/config/configs.ts"
+  },
+  "config_ai_service_ollama": {
+    "message": "Ollama 本地",
+    "description": "从TS提取 (_): lib/config/configs.ts"
+  },
+  "config_ai_service_chrome_ai": {
+    "message": "Chrome 内置 AI",
+    "description": "从TS提取 (_): lib/config/configs.ts"
+  },
+  "config_ai_service_openai": {
+    "message": "OpenAI",
+    "description": "从TS提取 (_): lib/config/configs.ts"
+  },
+  "config_ai_service_other": {
+    "message": "其它",
+    "description": "从TS提取 (_): lib/config/configs.ts"
+  },
+  "config_ai_model_label": {
+    "message": "模型名称",
+    "description": "从TS提取 (_): lib/config/configs.ts"
+  },
+  "config_ai_model_desc": {
+    "message": "如 llama2, gpt-3.5-turbo 等",
+    "description": "从TS提取 (_): lib/config/configs.ts"
+  },
+  "config_ai_url_label": {
+    "message": "API 地址",
+    "description": "从TS提取 (_): lib/config/configs.ts"
+  },
+  "config_ai_url_desc": {
+    "message": "自定义服务地址（如本地或企业 API）",
+    "description": "从TS提取 (_): lib/config/configs.ts"
+  },
+  "config_ai_apikey_label": {
+    "message": "API 密钥",
+    "description": "从TS提取 (_): lib/config/configs.ts"
+  },
+  "config_ai_apikey_desc": {
+    "message": "如需鉴权请填写",
+    "description": "从TS提取 (_): lib/config/configs.ts"
+  },
+  "config_url_filter_label": {
+    "message": "网址过滤",
+    "description": "从TS提取 (_): lib/config/configs.ts"
+  },
+  "config_url_filter_desc": {
+    "message": "可灵活配置哪些网址不分析或强制分析",
+    "description": "从TS提取 (_): lib/config/configs.ts"
+  },
+  "config_section_url_filter": {
+    "message": "网址过滤",
+    "description": "从TS提取 (_): lib/config/configs.ts"
+  },
+  "config_url_filter_exclude_types_label": {
+    "message": "排除类型",
+    "description": "从TS提取 (_): lib/config/configs.ts"
+  },
+  "config_url_filter_exclude_types_desc": {
+    "message": "选择需要自动排除分析的网址类型",
+    "description": "从TS提取 (_): lib/config/configs.ts"
+  },
+  "config_url_filter_intranet": {
+    "message": "内网地址（如 10.x/192.168.x/172.16-31.x/localhost）",
+    "description": "从TS提取 (_): lib/config/configs.ts"
+  },
+  "config_url_filter_ip": {
+    "message": "纯IP地址",
+    "description": "从TS提取 (_): lib/config/configs.ts"
+  },
+  "config_url_filter_port": {
+    "message": "非标准端口",
+    "description": "从TS提取 (_): lib/config/configs.ts"
+  },
+  "config_url_filter_auth": {
+    "message": "需要基础认证的网址",
+    "description": "从TS提取 (_): lib/config/configs.ts"
+  },
+  "config_url_filter_exclude_urls_label": {
+    "message": "手动排除网址",
+    "description": "从TS提取 (_): lib/config/configs.ts"
+  },
+  "config_url_filter_exclude_urls_desc": {
+    "message": "每行一个，支持通配符/正则表达式，匹配到的将不会进行AI分析。",
+    "description": "从TS提取 (_): lib/config/configs.ts"
+  },
+  "config_url_filter_include_urls_label": {
+    "message": "强制分析网址",
+    "description": "从TS提取 (_): lib/config/configs.ts"
+  },
+  "config_url_filter_include_urls_desc": {
+    "message": "每行一个，支持通配符/正则表达式，优先于排除规则。",
+    "description": "从TS提取 (_): lib/config/configs.ts"
   }
 }
