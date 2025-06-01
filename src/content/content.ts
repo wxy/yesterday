@@ -46,14 +46,20 @@ window.addEventListener('beforeunload', async () => {
   // 只发送访问记录，不触发分析
   if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
     try {
-      chrome.runtime.sendMessage({ type: 'PAGE_VISIT_RECORD', payload: pageInfo });
+      chrome.runtime.sendMessage({
+        type: 'UPDATE_PAGE_VISIT',
+        payload: pageInfo,
+        id: visitId, // 保证和页面信息 id 一致
+        source: 'content',
+        timestamp: Date.now()
+      });
     } catch (e) {
       if (e && String(e).includes('Extension context invalidated')) {
         // 静默屏蔽
       } else {
         // 增强错误日志
         console.error('[Yesterday][ContentScript] sendMessage failed:', {
-          type: 'PAGE_VISIT_RECORD',
+          type: 'UPDATE_PAGE_VISIT',
           url: window.location.href,
           error: e
         });
@@ -105,7 +111,10 @@ window.addEventListener('beforeunload', async () => {
             payload: {
               ...pageInfo,
               content: pageContent
-            }
+            },
+            id: visitId, // 保证和页面信息 id 一致
+            source: 'content',
+            timestamp: Date.now()
           });
         } catch (e) {
           console.error('[Yesterday][ContentScript] sendMessage failed:', {
@@ -167,7 +176,10 @@ window.addEventListener('beforeunload', async () => {
           payload: {
             ...pageInfo,
             content: pageContent
-          }
+          },
+          id: visitId, // 保证和页面信息 id 一致
+          source: 'content',
+          timestamp: Date.now()
         });
       } catch (e) {
         // 增强错误日志，包含消息类型、目标、URL等上下文

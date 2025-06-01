@@ -82,30 +82,11 @@ async function initializeOptionsPage() {
       }
     } as any));
 
-    // 初始化侧面板选项
-    await initSidePanelOption();
-    // 初始化 AI 服务选择
-    // await initAiServiceSelect(); // 旧的单独下拉框已废弃，统一用 config.renderUI 渲染
     
     logger.debug('选项页初始化完成');
   } catch (error) {
     logger.error('初始化选项页失败', error);
   }
-}
-
-/**
- * 初始化侧面板选项
- */
-async function initSidePanelOption() {
-  const checkbox = document.getElementById('useSidePanelOption') as HTMLInputElement;
-  if (!checkbox) return;
-  // 初始化状态
-  const resp = await messenger.send('GET_USE_SIDE_PANEL');
-  checkbox.checked = !!resp?.useSidePanel;
-  // 变更时通知后台
-  checkbox.addEventListener('change', async () => {
-    await messenger.send('SET_USE_SIDE_PANEL', { useSidePanel: checkbox.checked });
-  });
 }
 
 // 检查 AI 服务可用性并禁用不可用服务

@@ -120,7 +120,7 @@ export async function handlePageVisitRecord(data: any) {
             v.analyzeDuration = undefined;
             logger.info('[内容捕获] 重复访问但内容有变化，已重置分析', { url: record.url, dayId, id: record.id });
           } else {
-            logger.info(`[内容捕获] 跳过重复访问记录，仅递增visitCount`, { url: record.url, dayId, id: record.id });
+            logger.info(`[内容捕获] 跳过重复访问记录，更新访问时长和访问次数`, { url: record.url, dayId, id: record.id });
           }
           updated = true;
         }

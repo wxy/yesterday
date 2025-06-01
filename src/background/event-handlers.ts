@@ -33,21 +33,6 @@ storage.get<boolean>('useSidePanel').then(val => {
   useSidePanel = !!val;
 });
 
-function handleGetUseSidePanel() {
-  return { useSidePanel };
-}
-
-function handleSetUseSidePanel(msg: any) {
-  const val = !!(msg.payload?.useSidePanel ?? msg.useSidePanel);
-  useSidePanel = val;
-  storage.set('useSidePanel', val);
-  updateSidePanelMenu(val); // 新增：同步右键菜单勾选状态
-  // 切换时自动打开侧面板（仅支持 open，无 close 方法）
-  if (chrome && chrome.sidePanel && typeof (chrome.sidePanel as any).open === 'function' && val) {
-    (chrome.sidePanel as any).open({ windowId: undefined });
-  }
-  return { ok: true, useSidePanel: val };
-}
 
 // ========== 扩展图标点击行为优化 ==========
 if (chrome && chrome.action && chrome.sidePanel) {
@@ -96,27 +81,6 @@ function updateSidePanelMenu(checked: boolean) {
 }
 
 // ====== messenger 消息处理函数 ======
-async function handleMessengerAiChatRequest(msg: any) {
-  const payload = msg.payload || msg;
-  try {
-    const aiService = await getActiveAIService();
-    if (!aiService) throw new Error('无可用 AI 服务');
-    // 兼容 chat 风格调用，拼接为 summarizePage
-    const userMsg = (payload.messages || []).find((m: any) => m.role === 'user');
-    const url = payload.options?.url || '';
-    const content = userMsg?.content || '';
-    const summary = await aiService.summarizePage(url, content);
-    return { success: true, data: summary };
-  } catch (err: any) {
-    let errorMsg = err?.message || String(err);
-    let fullResponse = err?.fullResponse || err?.responseText || '';
-    return { success: false, error: errorMsg, fullResponse };
-  }
-}
-
-function handleMessengerGetStatus() {
-  return { status: '正常' };
-}
 
 function handleMessengerGetVisits(msg: any) {
   const dayId = msg.payload?.dayId;
@@ -150,9 +114,16 @@ function notifySidePanelUpdate(type: 'visit' | 'ai') {
 }
 
 // 包装原有处理函数，任务流重构：访问记录和AI分析合并
-async function handlePageVisitRecordWithNotify(record: any, sender?: any, isAnalyze: boolean = true) {
+async function handlePageVisitRecordWithNotify(record: any, sender?: any, isAnalyze: boolean = true, sourceType?: string) {
   // 1. 写入/更新访问记录（aiResult 为空或'正在进行 AI 分析'，visitCount递增，内容变化/刷新时重置aiResult）
   const result = await handlePageVisitRecord(record);
+  // 新增：区分 unload 产生的访问记录日志
+  if (sourceType === 'unload') {
+    const url = record.url;
+    const id = record.id;
+    const dayId = record.dayId;
+    logger.info('[内容捕获] 页面卸载，更新访问时长和访问次数', { url, dayId, id });
+  }
   notifySidePanelUpdate('visit');
   // 2. 只要 mainContent 存在且应分析，自动触发AI分析（兼容 content-script 传 content 字段的情况）
   if (isAnalyze) {
@@ -260,54 +231,32 @@ async function handleMessengerCheckAiServices() {
   return result;
 }
 
-export function registerBackgroundEventHandlers() {
-  // 移除图标点击事件的清除逻辑，彻底只允许通过消息清除
-  // chrome.action.onClicked.addListener(() => {
-  //   clearAllIconStatus();
-  // });
+function handleMessengerPageVisitAndAnalyze(msg: any, sender?: any) {
+  return handlePageVisitRecordWithNotify(msg.payload, sender, true, 'analyze').then(() => {
+    notifySidePanelUpdate('visit');
+    notifySidePanelUpdate('ai');
+    return { ok: true };
+  });
+}
+function handleMessengerUpdatePageVisit(msg: any, sender?: any) {
+  return handlePageVisitRecordWithNotify(msg.payload, sender, false, 'unload').then(() => {
+    notifySidePanelUpdate('visit');
+    return { ok: true };
+  });
+}
 
-  // 统一 messenger 消息类型为大写，结构更清晰
-  messenger.on('AI_CHAT_REQUEST', handleMessengerAiChatRequest);
-  messenger.on('AI_ANALYZE_REQUEST', handleMessengerAiAnalyzeRequestWithNotify);
-  messenger.on('GET_STATUS', handleMessengerGetStatus);
+export function registerBackgroundEventHandlers() {
   messenger.on('GET_VISITS', handleMessengerGetVisits);
   messenger.on('GET_AI_ANALYSIS', handleMessengerGetAiAnalysis);
   messenger.on('DATA_CLEARED', handleMessengerDataCleared);
   messenger.on('CLEAR_ICON_STATUS', handleMessengerClearIconStatus);
-  messenger.on('GET_USE_SIDE_PANEL', handleGetUseSidePanel);
-  messenger.on('SET_USE_SIDE_PANEL', handleSetUseSidePanel);
   messenger.on('GET_SUMMARY_REPORT', handleMessengerGetSummaryReport);
   messenger.on('GENERATE_SUMMARY_REPORT', handleMessengerGenerateSummaryReport);
   messenger.on('SCROLL_TO_VISIT', handleNoop); // 兜底
   messenger.on('SIDE_PANEL_UPDATE', handleNoop); // 兜底
   messenger.on('CHECK_AI_SERVICES', handleMessengerCheckAiServices);
 
-  // ========== 消息注册 ========== //
-  chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-    if (msg && msg.type === 'PAGE_VISIT_AND_ANALYZE') {
-      (async () => {
-        try {
-          await handlePageVisitRecordWithNotify(msg.payload, sender, true);
-          notifySidePanelUpdate('visit');
-          notifySidePanelUpdate('ai');
-          sendResponse && sendResponse({ ok: true });
-        } catch (e) {
-          sendResponse && sendResponse({ ok: false, error: String(e) });
-        }
-      })();
-      return true; // 异步响应
-    }
-    if (msg && msg.type === 'PAGE_VISIT_RECORD') {
-      (async () => {
-        try {
-          await handlePageVisitRecordWithNotify(msg.payload, sender, false);
-          notifySidePanelUpdate('visit');
-          sendResponse && sendResponse({ ok: true });
-        } catch (e) {
-          sendResponse && sendResponse({ ok: false, error: String(e) });
-        }
-      })();
-      return true;
-    }
-  });
+  // 新增：直接用 messenger.on 处理内容脚本发来的 PAGE_VISIT_AND_ANALYZE、PAGE_VISIT_RECORD
+  messenger.on('PAGE_VISIT_AND_ANALYZE', handleMessengerPageVisitAndAnalyze);
+  messenger.on('UPDATE_PAGE_VISIT', handleMessengerUpdatePageVisit);
 }
