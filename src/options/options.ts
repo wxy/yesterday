@@ -108,16 +108,63 @@ async function initSidePanelOption() {
   });
 }
 
-// 配置变更自动刷新 UI
-if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.onChanged) {
-  chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === 'local' && changes.yesterday_config) {
-      if (typeof initializeOptionsPage === 'function') {
-        initializeOptionsPage();
+// 检查 AI 服务可用性并禁用不可用服务
+async function disableUnavailableAiServices() {
+  try {
+    const result = await messenger.send('CHECK_AI_SERVICES');
+    if (result && result.details) {
+      for (const [id, available] of Object.entries(result.details)) {
+        // 假设每个服务相关控件有 data-ai-service-id 属性
+        const row = document.querySelector(`[data-ai-service-id="${id}"]`);
+        if (row) {
+          row.classList.toggle('ai-service-unavailable-row', !available);
+          // 禁用所有输入控件
+          row.querySelectorAll('input,select,textarea,button').forEach(el => {
+            (el as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement | HTMLButtonElement).disabled = !available;
+          });
+        }
       }
     }
-  });
+  } catch (e) {
+    // 忽略异常
+  }
 }
 
+// 配置变更自动刷新 UI
+config.onConfigChanged(() => {
+  if (typeof initializeOptionsPage === 'function') {
+    initializeOptionsPage();
+  }
+});
+
+// 监听 AI_SERVICE_UNAVAILABLE 消息
+messenger.on('AI_SERVICE_UNAVAILABLE', (msg) => {
+  let text = '未检测到可用的本地 AI 服务，AI 分析功能已禁用。';
+  const details = msg.payload?.details as Record<string, boolean> | undefined;
+  if (details) {
+    const detailArr = Object.entries(details).map(([k, v]) => `${k}: ${v ? '可用' : '不可用'}`);
+    text += '\n' + detailArr.join('，');
+  }
+  let aiWarn = document.querySelector('.ai-service-unavailable');
+  if (!aiWarn) {
+    aiWarn = document.createElement('div');
+    aiWarn.className = 'ai-service-unavailable';
+    document.body.prepend(aiWarn);
+  }
+  aiWarn.textContent = text;
+  // 标记服务不可用
+  if (details) {
+    for (const [id, available] of Object.entries(details)) {
+      const row = document.querySelector(`[data-ai-service-id="${id}"]`);
+      if (row) {
+        row.classList.toggle('ai-service-unavailable-row', !available);
+      }
+    }
+  }
+});
+
 // 当DOM内容加载完成后初始化页面
-document.addEventListener('DOMContentLoaded', initializeOptionsPage);
+document.addEventListener('DOMContentLoaded', () => {
+  initializeOptionsPage();
+  disableUnavailableAiServices();
+});

@@ -254,6 +254,12 @@ function handleNoop(_msg: any, sender?: chrome.runtime.MessageSender) {
   return false;
 }
 
+async function handleMessengerCheckAiServices() {
+  // 只返回检测结果，不广播
+  const result = await AIManager.checkAllLocalServicesAvailable();
+  return result;
+}
+
 export function registerBackgroundEventHandlers() {
   // 移除图标点击事件的清除逻辑，彻底只允许通过消息清除
   // chrome.action.onClicked.addListener(() => {
@@ -274,6 +280,7 @@ export function registerBackgroundEventHandlers() {
   messenger.on('GENERATE_SUMMARY_REPORT', handleMessengerGenerateSummaryReport);
   messenger.on('SCROLL_TO_VISIT', handleNoop); // 兜底
   messenger.on('SIDE_PANEL_UPDATE', handleNoop); // 兜底
+  messenger.on('CHECK_AI_SERVICES', handleMessengerCheckAiServices);
 
   // ========== 消息注册 ========== //
   chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {

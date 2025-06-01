@@ -2,6 +2,8 @@ import { Logger } from '../logger/logger.js';
 import { ChromeStorageAdapter } from '../storage/adapters/chrome-storage.js';
 import { ConfigUI, ExtractConfigValues } from './config-types.js';
 import { ConfigUIRenderer } from './config-ui-renderer.js';
+import { AIManager } from '../artificial-intelligence/ai-manager.js';
+import { messenger } from '../messaging/messenger.js';
 
 /**
  * 配置管理器 - 负责配置的存储、检索和更新
@@ -113,12 +115,11 @@ export class ConfigManager<T extends Record<string, any>> {
    */
   async set<K extends keyof T>(key: K, value: T[K]): Promise<void> {
     await this.ensureInitialized();
-    
     this.userConfig[key] = value;
     await this.storage.set(this.storageKey, this.userConfig);
-    
     this.logger.debug(`配置已更新: ${String(key)}`);
     await this.notifyListeners(key as string, value);
+    await this.checkAIServicesOnConfigChange();
   }
   
   /**
@@ -127,21 +128,15 @@ export class ConfigManager<T extends Record<string, any>> {
    */
   async update(partialConfig: Partial<T>): Promise<void> {
     await this.ensureInitialized();
-    
-    // 深度合并配置
     this.userConfig = this.deepMerge(this.userConfig, partialConfig) as Partial<T>;
-    
-    // 保存到存储
     await this.storage.set(this.storageKey, this.userConfig);
-    
     this.logger.debug('配置已批量更新');
-    
-    // 通知监听器
     for (const key in partialConfig) {
       if (Object.prototype.hasOwnProperty.call(partialConfig, key)) {
         await this.notifyListeners(key, partialConfig[key]);
       }
     }
+    await this.checkAIServicesOnConfigChange();
   }
   
   /**
@@ -150,14 +145,12 @@ export class ConfigManager<T extends Record<string, any>> {
   async reset(): Promise<void> {
     this.userConfig = {} as Partial<T>;
     await this.storage.set(this.storageKey, this.userConfig);
-    
     this.logger.debug('所有配置已重置为默认值');
-    
-    // 通知所有监听器
     for (const key of this.listeners.keys()) {
       const value = this.getValueByPath(this.defaultConfig, key);
       await this.notifyListeners(key, value);
     }
+    await this.checkAIServicesOnConfigChange();
   }
   
   /**
@@ -334,6 +327,25 @@ export class ConfigManager<T extends Record<string, any>> {
     } catch (error) {
       this.logger.error('强制reload: 加载配置失败', error);
       this.userConfig = {} as Partial<T>;
+    }
+  }
+
+  // 检查本地 AI 服务可用性（配置变更时只检测，不广播）
+  private async checkAIServicesOnConfigChange() {
+    await AIManager.checkAllLocalServicesAvailable();
+  }
+
+  /**
+   * 注册配置变更回调（如 options 页面 UI 自动刷新）
+   */
+  public onConfigChanged(cb: (newConfig: Partial<T>) => void) {
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.onChanged) {
+      chrome.storage.onChanged.addListener(async (changes, area) => {
+        if (area === 'local' && changes[this.storageKey]) {
+          await this.reload();
+          cb(this.userConfig);
+        }
+      });
     }
   }
 }

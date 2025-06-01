@@ -80,6 +80,7 @@ export class ChromeAIService extends AIBaseService {
       this.logger.warn(_('ai_chrome_unavailable', 'Chrome AI 不可用: {0}', avail.reason || '未知原因'));
       return false;
     }
+    this.logger.debug('Chrome AI 可用');
     return true;
   }
 

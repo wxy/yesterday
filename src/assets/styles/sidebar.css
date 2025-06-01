@@ -297,6 +297,10 @@ body {
   box-shadow: 0 4px 16px 0 #e5393555;
 }
 
+.icon-btn {
+    background: transparent;
+    border: none;
+}
 /* 底部信息区样式优化 */
 .footer {
   display: flex;

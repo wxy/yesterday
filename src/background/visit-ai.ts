@@ -4,6 +4,7 @@ import { storage } from '../lib/storage/index.js';
 import { Logger } from '../lib/logger/logger.js';
 import { shouldAnalyzeUrl } from '../lib/browser-events/url-filter.js';
 import { config } from '../lib/config/index.js';
+import { messenger } from '../lib/messaging/messenger.js';
 
 const logger = new Logger('visit-ai');
 
@@ -33,8 +34,17 @@ if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.onChanged)
   });
 }
 
+let aiServiceAvailable = true;
+// 通过 messenger 监听 AI_SERVICE_UNAVAILABLE
+messenger.on('AI_SERVICE_UNAVAILABLE', (msg) => {
+  aiServiceAvailable = false;
+});
+
 export async function handlePageVisitRecord(data: any) {
   try {
+    if (!aiServiceAvailable) {
+      return { status: 'no_ai_service', message: '未检测到可用的本地 AI 服务，AI 分析已禁用。' };
+    }
     // 兼容 content-script 可能传递 { payload: {...} } 的情况
     const record = data && data.payload && typeof data.payload === 'object' ? data.payload : data;
     // 字段完整性校验：url、title、id 必须存在且为非空字符串

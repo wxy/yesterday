@@ -1,5 +1,6 @@
 import { messenger } from '../lib/messaging/messenger.js';
 import { renderAiCard } from '../lib/ui/ai-card-util.js';
+import { config } from '../lib/config/index.js';
 
 function getDayId(offset = 0) {
   const d = new Date();
@@ -12,9 +13,7 @@ async function renderSingleBrief(root: HTMLElement) {
   const dayId = getDayId(0);
   const resp = await messenger.send('GET_AI_ANALYSIS', { dayId });
   const analysis = Array.isArray(resp?.analysis) ? resp.analysis : [];
-  if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
-    try { chrome.runtime.sendMessage({ type: 'CLEAR_ICON_STATUS' }); } catch {}
-  }
+  await messenger.sendWithoutResponse('CLEAR_ICON_STATUS');
   if (!analysis.length) {
     root.innerHTML = '<div style="color:#888;padding:16px;">暂无数据</div>';
     return;
@@ -92,4 +91,27 @@ async function renderSingleBrief(root: HTMLElement) {
 document.addEventListener('DOMContentLoaded', () => {
   const root = document.getElementById('mergedDataArea') as HTMLElement;
   if (root) renderSingleBrief(root);
+});
+
+// 配置变更自动刷新
+config.onConfigChanged(() => {
+  const root = document.getElementById('mergedDataArea') as HTMLElement;
+  if (root) renderSingleBrief(root);
+});
+
+// 监听 AI_SERVICE_UNAVAILABLE 消息
+messenger.on('AI_SERVICE_UNAVAILABLE', (msg) => {
+  let text = '未检测到可用的本地 AI 服务，AI 分析功能已禁用。';
+  const details = msg.payload?.details as Record<string, boolean> | undefined;
+  if (details) {
+    const detailArr = Object.entries(details).map(([k, v]) => `${k}: ${v ? '可用' : '不可用'}`);
+    text += '\n' + detailArr.join('，');
+  }
+  let aiWarn = document.querySelector('.ai-service-unavailable');
+  if (!aiWarn) {
+    aiWarn = document.createElement('div');
+    aiWarn.className = 'ai-service-unavailable';
+    document.body.prepend(aiWarn);
+  }
+  aiWarn.textContent = text;
 });

@@ -644,6 +644,11 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
+// 配置变更自动刷新
+config.onConfigChanged(() => {
+  window.location.reload(); // 或调用自定义刷新逻辑
+});
+
 // 监听页面标签变化，及时刷新“当前打开”高亮
 if (typeof chrome !== 'undefined' && chrome.tabs) {
   chrome.tabs.onRemoved.addListener(() => updateOpenTabHighlight('today'));
@@ -652,32 +657,32 @@ if (typeof chrome !== 'undefined' && chrome.tabs) {
 }
 
 // 消息监听：局部刷新
-chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-  if (msg && msg.type === 'SIDE_PANEL_UPDATE') {
-    clearAiConfigCache();
-    const insightBox = document.getElementById('insight-report-box');
-    const mergedBox = document.getElementById('merged-view-box');
-    // 根据当前tab刷新对应数据
-    let dayId: string;
-    if (currentTab === 'today') {
-      dayId = new Date().toISOString().slice(0, 10);
-    } else {
-      const yesterday = new Date(Date.now() - 86400000);
-      dayId = yesterday.toISOString().slice(0, 10);
-    }
-    const updateType = msg.payload && msg.payload.updateType;
-    if (updateType === 'ai') {
-      if (insightBox) renderInsightReport(insightBox, dayId, currentTab);
-      if (mergedBox) renderMergedView(mergedBox, dayId, currentTab);
-    } else if (updateType === 'visit' && mergedBox) {
-      renderMergedView(mergedBox, dayId, currentTab);
-    } else {
-      if (insightBox) renderInsightReport(insightBox, dayId, currentTab);
-      if (mergedBox) renderMergedView(mergedBox, dayId, currentTab);
-    }
+messenger.on('SIDE_PANEL_UPDATE', (msg) => {
+  clearAiConfigCache();
+  const insightBox = document.getElementById('insight-report-box');
+  const mergedBox = document.getElementById('merged-view-box');
+  // 根据当前tab刷新对应数据
+  let dayId: string;
+  if (currentTab === 'today') {
+    dayId = new Date().toISOString().slice(0, 10);
+  } else {
+    const yesterday = new Date(Date.now() - 86400000);
+    dayId = yesterday.toISOString().slice(0, 10);
   }
-  // SCROLL_TO_VISIT 消息：滚动并高亮并展开对应卡片
-  if (msg && msg.type === 'SCROLL_TO_VISIT' && msg.payload && msg.payload.url) {
+  const updateType = msg.payload && msg.payload.updateType;
+  if (updateType === 'ai') {
+    if (insightBox) renderInsightReport(insightBox, dayId, currentTab);
+    if (mergedBox) renderMergedView(mergedBox, dayId, currentTab);
+  } else if (updateType === 'visit' && mergedBox) {
+    renderMergedView(mergedBox, dayId, currentTab);
+  } else {
+    if (insightBox) renderInsightReport(insightBox, dayId, currentTab);
+    if (mergedBox) renderMergedView(mergedBox, dayId, currentTab);
+  }
+});
+
+messenger.on('SCROLL_TO_VISIT', (msg) => {
+  if (msg && msg.payload && msg.payload.url) {
     setTimeout(() => {
       const url = msg.payload.url.split('#')[0];
       try {
@@ -708,11 +713,20 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
 });
 
-// 监听配置变更
-if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.onChanged) {
-  chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === 'local' && changes.yesterday_config) {
-      window.location.reload(); // 或调用自定义刷新逻辑
-    }
-  });
-}
+// 监听 AI_SERVICE_UNAVAILABLE 消息
+messenger.on('AI_SERVICE_UNAVAILABLE', (msg) => {
+  let text = '未检测到可用的本地 AI 服务，AI 分析功能已禁用。';
+  const details = msg.payload?.details as Record<string, boolean> | undefined;
+  if (details) {
+    const detailArr = Object.entries(details).map(([k, v]) => `${k}: ${v ? '可用' : '不可用'}`);
+    text += '\n' + detailArr.join('，');
+  }
+  let aiWarn = document.querySelector('.ai-service-unavailable');
+  if (!aiWarn) {
+    aiWarn = document.createElement('div');
+    aiWarn.className = 'ai-service-unavailable';
+    document.body.prepend(aiWarn);
+  }
+  aiWarn.textContent = text;
+  // 可选：禁用相关按钮/入口
+});
