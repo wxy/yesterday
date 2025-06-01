@@ -112,10 +112,10 @@ async function renderSummaryReport(root: HTMLElement, dayId: string) {
 
 // Tab切换与主渲染（标签页样式）
 let currentTab: 'today' | 'yesterday' = 'today'; // 全局记录当前tab
+// 全局记录最近活跃时间（初始为当前时间）
+let lastActiveTime = Date.now();
+
 function renderSidebarTabs(root: HTMLElement) {
-  const todayId = new Date().toISOString().slice(0, 10);
-  const yesterday = new Date(Date.now() - 86400000);
-  const yesterdayId = yesterday.toISOString().slice(0, 10);
   currentTab = 'today';
   root.innerHTML = `
     <div class='sidebar-tabs-wrap'>
@@ -135,18 +135,34 @@ function renderSidebarTabs(root: HTMLElement) {
     tabToday?.classList.toggle('active', tab === 'today');
     tabYesterday?.classList.toggle('active', tab === 'yesterday');
   }
+  // 计算“当前活跃日”逻辑：如活跃时间与当前时间间隔<6小时，则以lastActiveTime为准，否则以当前时间为准
+  function getActiveDayId(tab: 'today' | 'yesterday') {
+    const now = Date.now();
+    const SIX_HOURS = 6 * 60 * 60 * 1000;
+    let base = now;
+    if (now - lastActiveTime < SIX_HOURS) {
+      base = lastActiveTime;
+    }
+    if (tab === 'today') {
+      return new Date(base).toISOString().slice(0, 10);
+    } else {
+      return new Date(base - 86400000).toISOString().slice(0, 10);
+    }
+  }
   async function switchTab(tab: 'today' | 'yesterday') {
+    lastActiveTime = Date.now(); // 切tab时刷新活跃时间
     currentTab = tab;
     setActiveTab(tab);
-    const dayId = tab === 'today' ? todayId : yesterdayId;
+    const dayId = getActiveDayId(tab);
     if (insightBox) renderInsightReport(insightBox, dayId, tab);
     if (mergedBox) await renderMergedView(mergedBox, dayId, tab);
-    updateOpenTabHighlight(tab); // 切换时也刷新高亮
+    updateOpenTabHighlight(tab);
   }
   tabToday?.addEventListener('click', () => switchTab('today'));
   tabYesterday?.addEventListener('click', () => switchTab('yesterday'));
-  // 默认显示今日
+  // 默认显示今日，初始化也用活跃日
   setActiveTab('today');
+  const todayId = getActiveDayId('today');
   if (insightBox) renderInsightReport(insightBox, todayId, 'today');
   if (mergedBox) renderMergedView(mergedBox, todayId, 'today');
 }

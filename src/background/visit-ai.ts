@@ -3,10 +3,35 @@
 import { storage } from '../lib/storage/index.js';
 import { Logger } from '../lib/logger/logger.js';
 import { shouldAnalyzeUrl } from '../lib/browser-events/url-filter.js';
+import { config } from '../lib/config/index.js';
 
 const logger = new Logger('visit-ai');
 
 export const VISIT_KEEP_DAYS = 7;
+
+// ====== 全局活跃时间判断逻辑 ======
+let lastActiveTime = 0;
+
+// ====== 全局跨日空闲阈值配置（单位 ms） ======
+let crossDayIdleThresholdMs = 6 * 60 * 60 * 1000; // 默认 6 小时
+async function updateCrossDayIdleThreshold() {
+  try {
+    const allConfig = await config.getAll();
+    if (allConfig && typeof allConfig['crossDayIdleThreshold'] === 'number') {
+      crossDayIdleThresholdMs = allConfig['crossDayIdleThreshold'] * 60 * 60 * 1000;
+    }
+  } catch {}
+}
+// 启动时立即加载一次
+updateCrossDayIdleThreshold();
+// 监听配置变更（如有事件总线可用）
+if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.onChanged) {
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === 'local' && changes.crossDayIdleThreshold) {
+      updateCrossDayIdleThreshold();
+    }
+  });
+}
 
 export async function handlePageVisitRecord(data: any) {
   try {
@@ -28,7 +53,7 @@ export async function handlePageVisitRecord(data: any) {
       // 获取当前 AI 配置
       let aiServiceLabel = 'AI';
       try {
-        const allConfig = await import('../lib/config/index.js').then(m => m.config.getAll());
+        const allConfig = await config.getAll();
         let aiConfig = allConfig && allConfig['aiServiceConfig'] ? allConfig['aiServiceConfig'] : { serviceId: 'ollama' };
         const labelMap: Record<string, string> = {
           'ollama': 'Ollama 本地',
@@ -46,10 +71,19 @@ export async function handlePageVisitRecord(data: any) {
       record.visitStartTime = now;
       logger.warn('visitStartTime 缺失或非法，已自动补当前时间', { id: record.id, url: record.url, visitStartTime: now });
     }
+    // ====== 关键逻辑：判断 dayId ======
+    const now = record.visitStartTime;
+    if (!lastActiveTime || now - lastActiveTime > crossDayIdleThresholdMs) {
+      lastActiveTime = now;
+    }
+    let base = now;
+    if (now - lastActiveTime < crossDayIdleThresholdMs) {
+      base = lastActiveTime;
+    }
+    const dateObj = new Date(base);
+    const dayId = dateObj.toISOString().slice(0, 10);
+    const key = `browsing_visits_${dayId}`;
     const isRefresh = !!record.isRefresh;
-    const date = new Date(record.visitStartTime);
-    const dayId = date.toISOString().slice(0, 10);
-    const key = `browsing_visits_${dayId}`; // 原 visits_${dayId}
     const visits: any[] = (await storage.get<any[]>(key)) || [];
     let existed = false;
     let updated = false;
@@ -165,7 +199,6 @@ export async function cleanupOldVisits() {
 }
 
 // ===== 汇总报告相关 =====
-import { config } from '../lib/config/index.js';
 import { AIManager } from '../lib/artificial-intelligence/ai-manager.js';
 
 /**
@@ -221,34 +254,17 @@ export async function generateSummaryReport(dayId: string, force = false) {
   let report: any = null;
   try {
     const aiService = await AIManager.instance.getAvailableService(aiConfig.serviceId);
-    if (aiService) {
-      report = await Promise.race([
-        aiService.generateDailyReport(dayId, pageSummaries, { timeout: requestTimeout }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('AI 汇总超时')), requestTimeout))
-      ]);
-      report.stats = stats;
-      report.aiServiceLabel = aiServiceLabel;
+    if (aiService && aiService.generateDailyReport) {
+      report = await aiService.generateDailyReport(dayId, pageSummaries, { timeout: requestTimeout });
     } else {
-      // 无可用 AI 服务，降级为简单统计
-      report = {
-        date: dayId,
-        summaries: pageSummaries,
-        suggestions: [],
-        stats,
-        aiServiceLabel
-      };
+      logger.warn('未找到可用的 AI 服务或该服务不支持日报生成', { aiConfig });
     }
-  } catch (e) {
-    // AI 失败，降级为简单统计
-    report = {
-      date: dayId,
-      summaries: pageSummaries,
-      suggestions: [],
-      stats,
-      aiServiceLabel,
-      error: (typeof e === 'object' && e && 'message' in e) ? (e as any).message : String(e)
-    };
+  } catch (err) {
+    logger.error('生成日报时调用 AI 服务失败', err);
   }
-  await storage.set(key, report);
-  return report;
+  // 写入缓存
+  const summaryData = { dayId, stats, report, visits, pageSummaries };
+  await storage.set(key, summaryData);
+  logger.info(`[汇总报告] 已生成并缓存 ${dayId} 的汇总报告`);
+  return summaryData;
 }

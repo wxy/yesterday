@@ -175,12 +175,12 @@ async function handleMessengerAiAnalyzeRequestWithNotify(msg: any) {
   const { url, title, content, id } = msg.payload || msg;
   const visitStartTime = msg.payload?.visitStartTime || Date.now();
   const visitId = id || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`);
-  if (!content) {
-    logger.warn('ai_analyze_no_content', '无内容可分析: {0}', url);
-    return { ok: false, error: _('ai_analyze_no_content', '无内容可分析: {0}', url) };
+  // dayId 优先
+  let dayId = msg.payload?.dayId;
+  if (!dayId) {
+    const date = new Date(visitStartTime);
+    dayId = date.toISOString().slice(0, 10);
   }
-  const date = new Date(visitStartTime);
-  const dayId = date.toISOString().slice(0, 10);
   const key = `browsing_visits_${dayId}`;
   let visits: any[] = (await storage.get<any[]>(key)) || [];
   const visit = visits.find(v => v.id === visitId);

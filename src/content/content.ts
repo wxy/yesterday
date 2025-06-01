@@ -3,6 +3,21 @@ const visitStartTime = Date.now();
 // 生成唯一访问 id
 const visitId = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
+// ========== 活跃日逻辑支持 ==========
+let lastActiveTime = Date.now();
+function getActiveDayId(now: number, lastActive: number, tab: 'today' | 'yesterday' = 'today') {
+  const SIX_HOURS = 6 * 60 * 60 * 1000;
+  let base = now;
+  if (now - lastActive < SIX_HOURS) {
+    base = lastActive;
+  }
+  if (tab === 'today') {
+    return new Date(base).toISOString().slice(0, 10);
+  } else {
+    return new Date(base - 86400000).toISOString().slice(0, 10);
+  }
+}
+
 // 直接使用原生API，避免依赖自定义库
 
 // 提取页面主要内容（初版用body文本，后续可用Readability优化）
@@ -60,6 +75,7 @@ window.addEventListener('beforeunload', async () => {
     try {
       console.log('[Yesterday] starting');
       // 生成唯一 id 和访问时间
+      lastActiveTime = Date.now(); // 每次采集刷新活跃时间
       const thisVisitId = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
       const thisVisitStartTime = Date.now();
       // 判断是否为刷新
@@ -73,13 +89,15 @@ window.addEventListener('beforeunload', async () => {
         }
       } catch {}
       // 先发送访问记录
+      const dayId = getActiveDayId(thisVisitStartTime, lastActiveTime, 'today');
       const pageInfo = {
         url: location.href,
         title: document.title,
         mainContent: extractMainContent(),
         visitStartTime: thisVisitStartTime,
         id: thisVisitId,
-        isRefresh // 新增
+        isRefresh, // 新增
+        dayId // 新增
       };
       // 只发送一次 PAGE_VISIT_AND_ANALYZE，由后台判断是否分析
       const pageContent = getPageContent();
@@ -122,6 +140,7 @@ window.addEventListener('beforeunload', async () => {
 
   function sendVisitAndAnalyze() {
     // 生成新访问id和时间
+    lastActiveTime = Date.now();
     lastVisitId = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
     lastVisitStartTime = Date.now();
     // 判断是否为刷新
@@ -134,6 +153,7 @@ window.addEventListener('beforeunload', async () => {
         if ((performance as any).navigation.type === 1) isRefresh = true;
       }
     } catch {}
+    const dayId = getActiveDayId(lastVisitStartTime, lastActiveTime, 'today');
     // 采集访问记录和内容
     const pageInfo = {
       url: location.href,
@@ -141,7 +161,8 @@ window.addEventListener('beforeunload', async () => {
       mainContent: extractMainContent(),
       visitStartTime: lastVisitStartTime,
       id: lastVisitId,
-      isRefresh // 新增
+      isRefresh, // 新增
+      dayId // 新增
     };
     const pageContent = `${document.title}\n${document.body ? document.body.innerText.slice(0, 2000) : ''}`;
     // 统一发送 PAGE_VISIT_AND_ANALYZE，由后台处理记录和分析
