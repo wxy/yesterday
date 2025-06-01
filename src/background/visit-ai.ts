@@ -27,7 +27,7 @@ updateCrossDayIdleThreshold();
 // 监听配置变更（如有事件总线可用）
 if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.onChanged) {
   chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === 'local' && changes.crossDayIdleThreshold) {
+    if (area === 'local' && changes.yesterday_config) {
       updateCrossDayIdleThreshold();
     }
   });

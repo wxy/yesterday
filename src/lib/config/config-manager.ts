@@ -1,5 +1,5 @@
 import { Logger } from '../logger/logger.js';
-import { storage } from '../storage/index.js';
+import { ChromeStorageAdapter } from '../storage/adapters/chrome-storage.js';
 import { ConfigUI, ExtractConfigValues } from './config-types.js';
 import { ConfigUIRenderer } from './config-ui-renderer.js';
 
@@ -15,6 +15,7 @@ export class ConfigManager<T extends Record<string, any>> {
   private initialized = false;
   private uiRenderer: ConfigUIRenderer;
   private configMetadata: Record<string, ConfigUI.UIMetadata> = {};
+  private storage: ChromeStorageAdapter;
   
   /**
    * 构造函数
@@ -27,6 +28,8 @@ export class ConfigManager<T extends Record<string, any>> {
     this.storageKey = storageKey;
     this.logger = new Logger('ConfigManager');
     this.uiRenderer = new ConfigUIRenderer();
+    // 配置专用 chrome.storage.local
+    this.storage = new ChromeStorageAdapter({ type: 'local' });
     
     // 注意：不再自动初始化，改为需要明确调用 init()
     // 这样可以控制初始化顺序
@@ -50,12 +53,12 @@ export class ConfigManager<T extends Record<string, any>> {
     if (this.initialized) return;
     
     try {
-      // 从存储加载用户配置
-      const storedConfig = await storage.get<Partial<T>>(this.storageKey);
+      // 从 chrome.storage.local 加载用户配置
+      const storedConfig = await this.storage.get<Partial<T>>(this.storageKey);
       
       if (storedConfig) {
         this.userConfig = storedConfig;
-        this.logger.debug('从存储加载配置成功');
+        this.logger.debug('从chrome.storage.local加载配置成功');
       } else {
         this.userConfig = {} as Partial<T>;
         this.logger.debug('未找到存储的配置，使用默认值');
@@ -112,7 +115,7 @@ export class ConfigManager<T extends Record<string, any>> {
     await this.ensureInitialized();
     
     this.userConfig[key] = value;
-    await storage.set(this.storageKey, this.userConfig);
+    await this.storage.set(this.storageKey, this.userConfig);
     
     this.logger.debug(`配置已更新: ${String(key)}`);
     await this.notifyListeners(key as string, value);
@@ -129,7 +132,7 @@ export class ConfigManager<T extends Record<string, any>> {
     this.userConfig = this.deepMerge(this.userConfig, partialConfig) as Partial<T>;
     
     // 保存到存储
-    await storage.set(this.storageKey, this.userConfig);
+    await this.storage.set(this.storageKey, this.userConfig);
     
     this.logger.debug('配置已批量更新');
     
@@ -146,7 +149,7 @@ export class ConfigManager<T extends Record<string, any>> {
    */
   async reset(): Promise<void> {
     this.userConfig = {} as Partial<T>;
-    await storage.set(this.storageKey, this.userConfig);
+    await this.storage.set(this.storageKey, this.userConfig);
     
     this.logger.debug('所有配置已重置为默认值');
     
@@ -320,7 +323,7 @@ export class ConfigManager<T extends Record<string, any>> {
    */
   async reload(): Promise<void> {
     try {
-      const storedConfig = await storage.get<Partial<T>>(this.storageKey);
+      const storedConfig = await this.storage.get<Partial<T>>(this.storageKey);
       if (storedConfig) {
         this.userConfig = storedConfig;
         this.logger.debug('强制reload: 从存储加载配置成功');

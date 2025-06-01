@@ -108,5 +108,16 @@ async function initSidePanelOption() {
   });
 }
 
+// 配置变更自动刷新 UI
+if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.onChanged) {
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === 'local' && changes.yesterday_config) {
+      if (typeof initializeOptionsPage === 'function') {
+        initializeOptionsPage();
+      }
+    }
+  });
+}
+
 // 当DOM内容加载完成后初始化页面
 document.addEventListener('DOMContentLoaded', initializeOptionsPage);

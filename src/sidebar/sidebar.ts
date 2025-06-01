@@ -3,6 +3,7 @@ import { messenger } from '../lib/messaging/messenger.js';
 import { storage } from '../lib/storage/index.js';
 import { _ } from '../lib/i18n/i18n.js';
 import { shouldAnalyzeUrl } from '../lib/browser-events/url-filter.js';
+import { config } from '../lib/config/index.js';
 
 const logger = new Logger('Sidebar');
 
@@ -706,3 +707,12 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     }, 300);
   }
 });
+
+// 监听配置变更
+if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.onChanged) {
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === 'local' && changes.yesterday_config) {
+      window.location.reload(); // 或调用自定义刷新逻辑
+    }
+  });
+}
