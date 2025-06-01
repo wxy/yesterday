@@ -72,23 +72,21 @@ window.addEventListener('beforeunload', async () => {
   }
 
   async function main() {
+    // 生成唯一 id 和访问时间
+    lastActiveTime = Date.now();
+    const thisVisitId = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    const thisVisitStartTime = Date.now();
+    let isRefresh = false;
     try {
-      console.log('[Yesterday] starting');
-      // 生成唯一 id 和访问时间
-      lastActiveTime = Date.now(); // 每次采集刷新活跃时间
-      const thisVisitId = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-      const thisVisitStartTime = Date.now();
-      // 判断是否为刷新
-      let isRefresh = false;
-      try {
-        if (performance && performance.getEntriesByType) {
-          const nav = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming;
-          if (nav && nav.type === 'reload') isRefresh = true;
-        } else if (performance && (performance as any).navigation) {
-          if ((performance as any).navigation.type === 1) isRefresh = true;
-        }
-      } catch {}
-      // 先发送访问记录
+      if (performance && performance.getEntriesByType) {
+        const nav = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming;
+        if (nav && nav.type === 'reload') isRefresh = true;
+      } else if (performance && (performance as any).navigation) {
+        if ((performance as any).navigation.type === 1) isRefresh = true;
+      }
+    } catch {}
+    // 延迟3秒后再发送访问记录和分析请求
+    setTimeout(() => {
       const dayId = getActiveDayId(thisVisitStartTime, lastActiveTime, 'today');
       const pageInfo = {
         url: location.href,
@@ -96,10 +94,9 @@ window.addEventListener('beforeunload', async () => {
         mainContent: extractMainContent(),
         visitStartTime: thisVisitStartTime,
         id: thisVisitId,
-        isRefresh, // 新增
-        dayId // 新增
+        isRefresh,
+        dayId
       };
-      // 只发送一次 PAGE_VISIT_AND_ANALYZE，由后台判断是否分析
       const pageContent = getPageContent();
       if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
         try {
@@ -111,7 +108,6 @@ window.addEventListener('beforeunload', async () => {
             }
           });
         } catch (e) {
-          // 增强错误日志
           console.error('[Yesterday][ContentScript] sendMessage failed:', {
             type: 'PAGE_VISIT_AND_ANALYZE',
             url: location.href,
@@ -119,9 +115,7 @@ window.addEventListener('beforeunload', async () => {
           });
         }
       }
-    } catch (err) {
-      console.error('[Yesterday] main 执行异常:', err);
-    }
+    }, 3000);
   }
 
   if (document.readyState === 'complete' || document.readyState === 'interactive') {
