@@ -19,7 +19,7 @@ async function initializeOptionsPage() {
     const allConfig = await config.getAll();
     (window as any).currentConfig = JSON.parse(JSON.stringify(allConfig));
     // 2. 渲染配置UI，保存时也刷新 window.currentConfig
-    await config.renderUI(container, Object.assign({
+    await config.renderUI(container, {
       onSave: async () => {
         const formData = config['uiRenderer'].collectConfigValues();
         await config.update(formData);
@@ -28,59 +28,7 @@ async function initializeOptionsPage() {
         (window as any).currentConfig = JSON.parse(JSON.stringify(latest));
         logger.debug('保存选项并刷新 currentConfig', latest);
       }
-    }, {
-      // 兼容类型声明，强制 any
-      fieldRenderers: {
-        // 排除类型：多选复选框组
-        'urlFilterGroup.excludeTypes': (field: any, value: any, onChange: any) => {
-          const types = [
-            { key: 'intranet', label: '内网' },
-            { key: 'ip', label: '纯IP' },
-            { key: 'port', label: '端口' },
-            { key: 'auth', label: '基础认证' }
-          ];
-          const container = document.createElement('div');
-          types.forEach(type => {
-            const label = document.createElement('label');
-            label.style.marginRight = '16px';
-            const checkbox = document.createElement('input');
-            checkbox.type = 'checkbox';
-            checkbox.value = type.key;
-            checkbox.checked = Array.isArray(value) && value.includes(type.key);
-            checkbox.onchange = () => {
-              let newVal = Array.isArray(value) ? [...value] : [];
-              if (checkbox.checked) {
-                if (!newVal.includes(type.key)) newVal.push(type.key);
-              } else {
-                newVal = newVal.filter((k: string) => k !== type.key);
-              }
-              onChange(newVal);
-            };
-            label.appendChild(checkbox);
-            label.appendChild(document.createTextNode(' ' + type.label));
-            container.appendChild(label);
-          });
-          return container;
-        },
-        // 多行文本框
-        'urlFilterGroup.excludeUrls': (field: any, value: any, onChange: any) => {
-          const textarea = document.createElement('textarea');
-          textarea.rows = 4;
-          textarea.style.width = '100%';
-          textarea.value = value || '';
-          textarea.oninput = () => onChange(textarea.value);
-          return textarea;
-        },
-        'urlFilterGroup.includeUrls': (field: any, value: any, onChange: any) => {
-          const textarea = document.createElement('textarea');
-          textarea.rows = 4;
-          textarea.style.width = '100%';
-          textarea.value = value || '';
-          textarea.oninput = () => onChange(textarea.value);
-          return textarea;
-        }
-      }
-    } as any));
+    } as any);
 
     
     logger.debug('选项页初始化完成');
