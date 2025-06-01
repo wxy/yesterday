@@ -1,3 +1,27 @@
+/* 顶部品牌色条和 logo 优化 */
+.options-topbar {
+  display: flex;
+  align-items: center;
+  background: linear-gradient(90deg, #ffffff 0%, #008F00 100%);
+  padding: 0 0 0 18px;
+  height: 54px;
+  border-bottom: 2px solid #008F00;
+  box-shadow: 0 2px 8px 0 #008f0022;
+}
+.options-logo {
+  width: 32px;
+  height: 32px;
+  margin-right: 12px;
+  filter: drop-shadow(0 0 2px #fff) drop-shadow(0 0 1px #008F00);
+}
+.options-title {
+  font-size: 1.25em;
+  font-weight: 700;
+  color: #006600;
+  letter-spacing: 0.02em;
+  text-shadow: 0 1px 4px #fff, 0 0 2px #008F0022;
+}
+
 /* 全局样式 */
 
 body, html {
@@ -7,176 +31,173 @@ body, html {
   margin: 0;
   padding: 0;
 }
+
+/* 容器和标题 */
 .container {
   max-width: 700px;
   margin: 0 auto;
-  padding: 24px 16px 32px 16px;
+  padding: 32px 16px 40px 16px;
 }
 h1 {
   font-size: 1.6em;
   font-weight: 700;
-  margin-bottom: 18px;
+  margin-bottom: 22px;
   color: #2a3550;
+  letter-spacing: 0.01em;
 }
-.option-section {
-  margin-bottom: 32px;
+
+/* 卡片分组美化 */
+.option-group-card {
+  border: 1.5px solid #b2e5b2;
+  border-radius: 14px;
+  background: #f6fff6;
+  box-shadow: 0 2px 12px 0 rgba(0,143,0,0.08);
+  margin: 22px 0 28px 0;
+  padding: 24px 32px 20px 32px;
+  position: relative;
+  min-width: 0;
+  transition: box-shadow 0.2s, border-color 0.2s;
 }
+.option-group-card:hover {
+  box-shadow: 0 8px 24px 0 rgba(0,143,0,0.16);
+  border-color: #008F00;
+}
+.option-group-legend {
+  font-size: 1.18em;
+  font-weight: 600;
+  color: #008F00;
+  margin-bottom: 8px;
+  padding: 0 8px;
+  letter-spacing: 0.01em;
+}
+.option-group-description {
+  color: #3a7a3a;
+  font-size: 1em;
+  margin-bottom: 12px;
+  margin-top: -2px;
+  padding-left: 2px;
+}
+
+/* 按钮美化 */
 .primary-button {
-  background: #1a73e8;
+  background: linear-gradient(90deg, #43e543 0%, #008F00 100%);
   color: #fff;
   border: none;
-  border-radius: 4px;
-  padding: 8px 20px;
+  border-radius: 6px;
+  padding: 9px 26px;
   font-size: 1em;
-  font-weight: 500;
+  font-weight: 700;
   cursor: pointer;
   margin-right: 12px;
-  transition: background 0.2s;
+  transition: background 0.18s, color 0.18s, box-shadow 0.18s;
+  box-shadow: 0 2px 8px 0 #008f0022;
+  letter-spacing: 0.01em;
 }
 .primary-button:hover {
-  background: #1765c1;
+  background: linear-gradient(90deg, #006600 0%, #00c800 100%);
+  color: #fff;
+  box-shadow: 0 4px 16px 0 #008f0033;
 }
 .secondary-button {
-  background: #f5f5f5;
-  color: #333;
-  border: 1px solid #e0e4ea;
-  border-radius: 4px;
-  padding: 8px 20px;
+  background: #e6fbe6;
+  color: #008F00;
+  border: 1.5px solid #b2e5b2;
+  border-radius: 6px;
+  padding: 9px 26px;
   font-size: 1em;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: background 0.18s, border 0.18s, color 0.18s;
 }
 .secondary-button:hover {
-  background: #e0e4ea;
+  background: #c2f0c2;
+  border-color: #008F00;
+  color: #006600;
 }
 .success-message {
-  color: #43a047;
+  color: #008F00;
   font-size: 1em;
   margin-left: 10px;
 }
 
-/* 选项页 group 分组美化样式 */
+/* 分隔线 */
+hr {
+  border: none;
+  border-top: 1.5px solid #b2e5b2;
+  margin: 24px 0;
+}
 
-.option-group-card {
-  border: 1.5px solid #e0e4ea;
-  border-radius: 10px;
-  background: #f8fafd;
-  box-shadow: 0 2px 8px 0 rgba(60, 80, 120, 0.04);
-  margin: 18px 0 24px 0;
-  padding: 18px 22px 14px 22px;
-  position: relative;
-  min-width: 0;
-  transition: box-shadow 0.2s;
+/* 分组/行/标签美化 */
+.option-label-group, .option-label {
+  color: #008F00;
 }
-.option-group-card:hover {
-  box-shadow: 0 4px 16px 0 rgba(60, 80, 120, 0.10);
-}
-.option-group-nested {
-  margin-left: 24px;
-  background: #f3f6fa;
-  border-color: #d2d8e6;
-}
-.option-group-legend {
-  font-size: 1.13em;
-  font-weight: 600;
-  color: #2a3550;
-  margin-bottom: 6px;
-  padding: 0 6px;
-  letter-spacing: 0.01em;
-}
-.option-group-description {
-  color: #6b7a99;
-  font-size: 0.98em;
-  margin-bottom: 10px;
-  margin-top: -2px;
-  padding-left: 2px;
-}
-.option-row-group-field {
-  display: flex;
-  align-items: flex-start;
-  margin-bottom: 8px;
-  gap: 10px;
-}
-.option-row-group-flex {
-  flex-wrap: wrap;
-}
-.option-label-group {
-  min-width: 110px;
-  max-width: 180px;
-  font-weight: 500;
-  color: #3a4666;
-  padding-top: 2px;
-  flex-shrink: 0;
-  text-align: right;
-  margin-right: 8px;
-}
-.option-control-group {
-  flex: 1 1 0%;
-  min-width: 0;
-}
-.option-description-group {
-  color: #8a98b8;
-  font-size: 0.93em;
-  margin-top: 2px;
-  margin-bottom: 0;
-}
-.option-row {
-  display: flex;
-  align-items: flex-start;
-  margin-bottom: 14px;
-  gap: 10px;
-}
-.option-label {
-  min-width: 120px;
-  max-width: 200px;
-  font-weight: 500;
-  color: #3a4666;
-  padding-top: 2px;
-  flex-shrink: 0;
-  text-align: right;
-  margin-right: 10px;
-}
-.option-control {
-  flex: 1 1 0%;
-  min-width: 0;
-}
-.option-description {
-  color: #8a98b8;
-  font-size: 0.95em;
-  margin-top: 2px;
-  margin-bottom: 0;
-}
-.radio-group,
-.radio-group-inline {
-  display: flex;
-  gap: 16px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-.radio-group {
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 6px;
+.option-description-group, .option-description {
+  color: #3a7a3a;
 }
 .radio-option {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 1em;
-  color: #3a4666;
+  color: #008F00;
 }
-@media (max-width: 600px) {
+
+/* 表单控件美化 */
+input[type="text"], input[type="number"], textarea, select {
+  border: 1.5px solid #b2e5b2;
+  border-radius: 6px;
+  padding: 8px 14px;
+  font-size: 1em;
+  background: #fff;
+  color: #222;
+  transition: border 0.18s, box-shadow 0.18s;
+  outline: none;
+  margin-bottom: 2px;
+}
+input[type="text"]:focus, input[type="number"]:focus, textarea:focus, select:focus {
+  border-color: #008F00;
+  box-shadow: 0 0 0 2px #e6fbe6;
+}
+input[type="checkbox"], input[type="radio"] {
+  accent-color: #008F00;
+}
+input[type="password"] {
+  border: 1.5px solid #b2e5b2;
+  border-radius: 6px;
+  padding: 8px 14px;
+  font-size: 1em;
+  background: #f6fff6;
+  color: #222;
+  transition: border 0.18s, box-shadow 0.18s;
+  outline: none;
+  margin-bottom: 2px;
+  letter-spacing: 0.12em;
+}
+input[type="password"]:focus {
+  border-color: #43e543;
+  box-shadow: 0 0 0 2px #e6fbe6;
+}
+
+/* 响应式适配优化 */
+@media (max-width: 700px) {
+  .container {
+    padding: 12px 2px 18px 2px;
+  }
   .option-group-card {
     padding: 10px 6px 8px 6px;
   }
-  .option-row-group-field {
-    flex-direction: column;
-    align-items: stretch;
+}
+@media (max-width: 480px) {
+  .options-topbar {
+    height: 44px;
+    padding-left: 6px;
   }
-  .option-label-group {
-    text-align: left;
-    margin-bottom: 2px;
-    margin-right: 0;
+  .options-logo {
+    width: 24px;
+    height: 24px;
+    margin-right: 6px;
+  }
+  .options-title {
+    font-size: 1em;
+  }
+  h1 {
+    font-size: 1.1em;
+    margin-bottom: 12px;
   }
 }

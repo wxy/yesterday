@@ -129,7 +129,6 @@ export class OllamaService extends AIBaseService {
         ]
       });
       const text = resp.choices?.[0]?.message?.content || '';
-      this.logger.debug(text);
       // 先本地预处理解析
       let parsed: any = parseJsonWithPreprocess(text, this.logger);
       if (!parsed) {

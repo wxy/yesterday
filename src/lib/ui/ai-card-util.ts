@@ -71,3 +71,6 @@ export function renderAiCard(item: AiCardData, idx = 0): string {
   const urlLine = `<div style='display:flex;justify-content:space-between;align-items:center;margin-top:2px;'>\n      <a href='${item.url || ''}' target='_blank' style='color:#1a73e8;font-size:12px;word-break:break-all;max-width:70%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;text-decoration:underline;vertical-align:bottom;'>${item.url || ''}</a>\n      <div style='color:#888;font-size:11px;margin-left:8px;flex-shrink:0;'>${durationStr}</div>\n    </div>`;
   return `\n      <div style='${cardStyle}'>\n        <div class='merged-card-header' style='cursor:pointer;'>\n          ${titleLine}\n        </div>\n        <div style='margin-top:6px;'>\n          ${urlLine}\n          <div style='margin-top:4px;'>${aiContent}</div>\n        </div>\n      </div>\n    `;
 }
+
+// 如需在渲染前过滤不应分析的 url，可在业务层调用 shouldAnalyzeUrl 进行异步过滤
+// import { shouldAnalyzeUrl } from '../browser-events/url-filter.js';

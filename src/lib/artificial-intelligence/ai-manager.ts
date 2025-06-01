@@ -24,7 +24,7 @@ export class AIManager {
   }
 
   register(service: AIBaseService) {
-    this.logger.info('ai_register_service', '注册 AI 服务: {0}', service.name);
+    this.logger.info('注册 AI 服务: {0}', service.name);
     this.services.set(service.id, service);
   }
 

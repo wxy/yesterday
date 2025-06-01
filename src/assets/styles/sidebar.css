@@ -4,78 +4,23 @@ body {
   min-width: 320px;
   margin: 0;
   padding: 0;
-  color: #333;
-  background: #fff;
-}
-.container {
-  padding: 16px;
-}
-.footer {
-  display: flex;
-  justify-content: space-between;
-  font-size: 12px;
-  color: #70757a;
-  margin-top: 16px;
-  padding-top: 12px;
-  border-top: 1px solid #eee;
-  align-items: center;
-}
-.footer-links {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-}
-a {
-  color: #1a73e8;
-  text-decoration: none;
-}
-a:hover {
-  text-decoration: underline;
-}
-.icon-btn {
-  background: none;
-  border: none;
-  padding: 0;
-  margin: 0 0 0 4px;
-  cursor: pointer;
-  vertical-align: middle;
-  line-height: 1;
-}
-#clearDataBtn {
-  padding: 6px 16px;
-  background: #e53935;
-  color: #fff;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  margin: 16px 0 0 0;
-  display: block;
-  width: 100%;
-  text-align: center;
+  color: #222;
+  background: #f6fff6;
 }
 
 /* 卡片样式 */
 .merged-card {
-  border: 1px solid #e0e4ea;
-  border-radius: 6px;
-  padding: 8px 10px;
-  margin-bottom: 8px;
+  border: 1.5px solid #b2e5b2;
+  border-radius: 12px;
+  padding: 10px 14px;
+  margin: 10px 0;
   background: #fff;
-  box-shadow: 0 1px 2px 0 #f2f3f5;
-  transition: box-shadow 0.2s, border-color 0.2s;
+  box-shadow: 0 2px 12px 0 rgba(0,143,0,0.08);
+  transition: box-shadow 0.18s, border-color 0.18s;
 }
 .merged-card:hover {
-  box-shadow: 0 2px 8px 0 #ffe08233;
-  border-color: #ffe082;
-}
-.merged-card-important {
-  border-color: #FFC10A;
-  background: linear-gradient(90deg,#f8f0a9 0%,#FFEB3B 100%);
-  transition: box-shadow 0.2s, border-color 0.2s;
-}
-.merged-card-important:hover {
-  box-shadow: 0 2px 12px 0 #ffc10a55;
-  border-color: #ffc10a;
+  box-shadow: 0 6px 24px 0 rgba(0,143,0,0.16);
+  border-color: #008F00;
 }
 .merged-card-header {
   cursor: pointer;
@@ -92,12 +37,6 @@ a:hover {
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 70%;
-}
-.merged-card-time {
-  color: #888;
-  font-size: 12px;
-  margin-left: 8px;
-  flex-shrink: 0;
 }
 .merged-card-url-line {
   display: flex;
@@ -117,160 +56,94 @@ a:hover {
   text-decoration: underline;
   vertical-align: bottom;
 }
-.merged-card-duration {
-  color: #888;
-  font-size: 11px;
-  margin-left: 8px;
-  flex-shrink: 0;
-}
 .merged-card-content {
   margin-top: 6px;
 }
 .merged-card-ai-content {
   margin-top: 4px;
 }
-.merged-card-visit-count {
-  color: #888;
+.merged-card-visit-count, .merged-card-analyze-duration {
+  background: #e6fbe6;
+  color: #008F00;
+  border-radius: 6px;
+  padding: 2px 10px;
   font-size: 12px;
-  margin-left: 4px;
-  vertical-align: middle;
-  background: #e0e4ea;
-  color: #555;
-  border-radius: 4px;
-  padding: 2px 8px;
-  font-size: 12px;
-  margin-right: 4px;
+  margin-right: 6px;
+  font-weight: 600;
   display: inline-block;
   vertical-align: middle;
+  border: 1px solid #b2e5b2;
+  box-shadow: 0 1px 2px 0 #008f0011;
+  line-height: 1.5em;
 }
 
-/* AI 内容样式 */
-.ai-summary {
-  font-weight: bold;
-  margin-bottom: 4px;
-}
-.ai-highlights {
-  margin: 4px 0 4px 16px;
-  padding: 0;
-  color: #333;
-  font-size: 13px;
-}
-.ai-special-concerns {
-  color: #e53935;
-  font-size: 13px;
-  margin: 4px 0;
-}
-.ai-failed {
-  color: #e53935;
-  background: #fff3f3;
-  border-radius: 4px;
-  padding: 6px 8px;
-}
-.ai-plain {
-  color: #888;
-  background: #f7f7fa;
-  border-radius: 4px;
-  padding: 6px 8px;
-}
-.ai-analyzing {
-  color: #1a73e8;
-}
-.ai-empty {
-  color: #aaa;
-}
-
-/* 汇总报告卡片样式（已合并为 insight-report-card） */
-
-/* 洞察报告卡片样式（与 summary-report-card 保持一致） */
+/* 洞察报告卡片样式 */
 .insight-report-card {
-  background: #fffbe8;
-  border: 1px solid #ffe082;
-  border-radius: 8px;
-  margin: 12px 0 18px 0;
-  padding: 18px 22px 16px 22px;
-  box-shadow: 0 2px 8px 0 rgba(255, 193, 7, 0.08);
+  background: #e6fbe6;
+  border: 1.5px solid #b2e5b2;
+  border-radius: 12px;
+  margin: 10px 0 12px 0;
+  padding: 22px 20px 16px 20px;
+  box-shadow: 0 2px 12px 0 rgba(0,143,0,0.08);
   font-size: 15px;
-  color: #5d4a00;
+  color: #008F00;
   text-align: left;
   max-width: 100%;
-  transition: box-shadow 0.2s, border-color 0.2s;
+  transition: box-shadow 0.18s, border-color 0.18s;
 }
 .insight-report-card:hover {
-  box-shadow: 0 4px 16px 0 rgba(255, 193, 7, 0.16);
-  border-color: #ffd54f;
+  box-shadow: 0 6px 24px 0 rgba(0,143,0,0.16);
+  border-color: #008F00;
 }
-.insight-report-title {
+.insight-report-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  cursor: pointer;
+}
+.insight-header-btns {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.insight-report-title, .insight-header-title {
   font-weight: bold;
   font-size: 16px;
-  margin-bottom: 10px;
+  color: #008F00;
   display: flex;
   align-items: center;
   gap: 10px;
 }
-.insight-ai-label {
-  background: #ffe082;
-  color: #7c5c00;
-  border-radius: 4px;
-  padding: 2px 8px;
-  font-size: 12px;
-  margin-left: 4px;
-}
-.insight-refresh-btn {
-  margin-left: auto;
-  background: #fffde7;
-  border: 1px solid #ffe082;
-  color: #bfa100;
-  border-radius: 4px;
-  padding: 2px 12px;
-  font-size: 13px;
-  cursor: pointer;
-  transition: background 0.2s, color 0.2s;
-}
-.insight-refresh-btn:hover {
-  background: #ffe082;
-  color: #7c5c00;
-}
-.insight-report-toggle {
-  cursor: pointer;
-  color: #bfa100;
-  font-size: 13px;
-  margin-left: 8px;
-  user-select: none;
-  transition: color 0.2s;
-}
-.insight-report-toggle:hover {
-  color: #7c5c00;
-}
 .insight-report-content {
   margin-bottom: 10px;
   line-height: 1.8;
-  color: #5d4a00;
+  color: #008F00;
   font-size: 15px;
   text-align: left;
   word-break: break-word;
   padding: 6px 0 6px 0;
 }
+.insight-report-content--empty {
+  color: #b2e5b2;
+}
+.insight-report-content-duration {
+  color: #3a7a3a;
+}
 .insight-highlights {
-  margin: 0 0 10px 0;
-  padding-left: 22px;
-  color: #7c5c00;
-  font-size: 14px;
-  text-align: left;
+  color: #008F00;
 }
 .insight-special-concerns {
-  color: #d84315;
+  color: #e53935;
   font-weight: bold;
-  margin-top: 6px;
-  font-size: 14px;
-  text-align: left;
 }
 .insight-stats {
-  background: #fffde7;
-  border-radius: 6px;
+  background: #f6fff6;
+  border-radius: 8px;
   padding: 10px 14px 10px 14px;
   margin-bottom: 14px;
   font-size: 14px;
-  color: #7c5c00;
+  color: #008F00;
   line-height: 1.8;
   text-align: left;
   display: grid;
@@ -279,8 +152,7 @@ a:hover {
   column-gap: 10px;
 }
 .insight-stats-row-label {
-  font-weight: 600;
-  color: #bfa100;
+  color: #008F00;
   text-align: right;
   padding-right: 4px;
 }
@@ -288,43 +160,16 @@ a:hover {
   text-align: left;
   word-break: break-all;
 }
-/* 洞察卡片收起时内容隐藏 */
-.insight-report-collapsed .insight-report-content,
-.insight-report-collapsed .insight-highlights,
-.insight-report-collapsed .insight-special-concerns,
-.insight-report-collapsed .insight-stats {
-  display: none;
-}
-
-/* 即刻洞察按钮居右 */
-.insight-generate-btn {
-  display: flex;
-  justify-content: flex-end;
-  margin-bottom: 0;
-  margin-left: 16px;
-}
-
-/* loading/empty/error 状态 */
-#summary-report-box > div {
-  font-size: 14px;
-  padding: 16px;
-  text-align: left;
-}
-#summary-report-box .error {
-  color: #e53935;
-  background: #fff3f3;
-  border-radius: 4px;
-  padding: 8px 0;
-}
 
 /* 标签页样式 */
 .sidebar-tabs-wrap {
   display: flex;
   justify-content: stretch;
-  background: #fffbe8;
-  border-radius: 8px 8px 0 0;
-  border-bottom: 1.5px solid #f0e6c4;
-  margin-bottom: 8px;
+  background: #e6fbe6;
+  border-radius: 12px 12px 0 0;
+  border-bottom: 1.5px solid #b2e5b2;
+  margin-top: 18px;
+  margin-bottom: 12px;
   overflow: hidden;
   margin: -16px -16px 16px -16px;
 }
@@ -335,73 +180,186 @@ a:hover {
 }
 .tab {
   flex: 1 1 0;
-  padding: 10px 0 9px 0;
+  padding: 18px 0 9px 0;
   background: none;
   border: none;
   outline: none;
   font-size: 15px;
-  color: #bfa100;
-  font-weight: 500;
+  color: #008F00;
+  font-weight: 600;
   cursor: pointer;
   border-bottom: 2.5px solid transparent;
-  border-radius: 8px 8px 0 0;
-  transition: background 0.2s, color 0.2s, border-bottom 0.2s;
+  border-radius: 12px 12px 0 0;
+  transition: background 0.18s, color 0.18s, border-bottom 0.18s;
   width: 100%;
   text-align: center;
 }
 .tab.active {
-  color: #7c5c00;
-  background: #fffde7;
-  border-bottom: 2.5px solid #ffe082;
+  color: #fff;
+  background: #008F00;
+  border-bottom: 2.5px solid #008F00;
   font-weight: bold;
   z-index: 1;
 }
 .tab:not(.active):hover {
-  background: #fff9c4;
-  color: #a68a00;
+  background: #b2e5b2;
+  color: #006600;
 }
 
-/* 数据卡片 AI 服务标签样式，复用洞察报告样式 */
-.merged-card-ai-label {
-  background: #ffe082;
-  color: #7c5c00;
+/* AI 标签样式 */
+.merged-card-ai-label, .insight-ai-label {
+  background: #008F00;
+  color: #fff;
   border-radius: 4px;
-  padding: 2px 8px;
+  padding: 2px 10px;
   font-size: 12px;
-  margin-right: 4px;
+  margin: 10px 6px;
   display: inline-block;
   vertical-align: middle;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  line-height: 1.5em;
 }
+
+/* 容器与辅助样式 */
+.container {
+  padding: 16px;
+  overflow-x: hidden;
+  overflow-y: scroll;
+  min-height: 100vh;
+  max-height: 100vh;
+}
+#insight-report-box {
+  background: #f6fff6;
+  border-radius: 14px;
+  box-shadow: 0 2px 12px 0 #008f0011;
+  padding: 0;
+  margin-bottom: 6px;
+  min-width: 0;
+}
+#merged-view-box {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 1px 6px 0 #008f0011;
+  padding: 0;
+  margin-top: 0;
+  margin-bottom: 16px;
+  min-width: 0;
+}
+
+/* 按钮样式 */
+.insight-refresh-btn {
+  background: #e6fbe6;
+  border: 1.5px solid #b2e5b2;
+  color: #008F00;
+  border-radius: 6px;
+  padding: 3px 14px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.18s, color 0.18s, box-shadow 0.18s;
+}
+.insight-refresh-btn:hover {
+  background: #b2e5b2;
+  color: #006600;
+  box-shadow: 0 2px 8px 0 #008f0022;
+}
+.insight-report-toggle {
+  cursor: pointer;
+  color: #008F00;
+  font-size: 13px;
+  margin-left: 8px;
+  user-select: none;
+  transition: color 0.18s;
+}
+.insight-report-toggle:hover {
+  color: #006600;
+}
+
+/* 清除数据按钮品牌色样式 */
+#clearDataBtn {
+  background: linear-gradient(90deg, #e53935 0%, #ffbdbd 100%);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 10px 0;
+  font-size: 1em;
+  font-weight: 700;
+  cursor: pointer;
+  margin: 18px 0 0 0;
+  box-shadow: 0 2px 8px 0 #e5393522;
+  transition: background 0.18s, color 0.18s, box-shadow 0.18s;
+  width: 100%;
+  letter-spacing: 0.01em;
+}
+#clearDataBtn:hover {
+  background: linear-gradient(90deg, #b71c1c 0%, #ff5252 100%);
+  color: #fff;
+  box-shadow: 0 4px 16px 0 #e5393555;
+}
+
+/* 底部信息区样式优化 */
+.footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  color: #888;
+  margin-top: 18px;
+  padding-top: 12px;
+  border-top: 1px solid #e0e4ea;
+  background: none;
+}
+.footer-links {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+.footer a {
+  color: #008F00;
+  text-decoration: none;
+  font-weight: 500;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: background 0.18s, color 0.18s;
+}
+.footer a:hover {
+  background: #e6fbe6;
+  color: #006600;
+}
+
+/* merged-card-open 高亮样式 */
 .merged-card-open {
-  border: 1px solid #4caf50 !important;
-  background: linear-gradient(90deg, #e8f5e9 0%, #c8e6c9 100%) !important;
-  box-shadow: 0 2px 12px 0 #4caf5040;
+  border: 1.5px solid #008F00 !important;
+  background: linear-gradient(90deg, #e6fbe6 0%, #b2e5b2 100%) !important;
+  box-shadow: 0 2px 12px 0 #008f0033 !important;
   position: relative;
 }
-.insight-header-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 10px;
+
+.text-muted {
+  color: #b2e5b2 !important;
 }
-.insight-header-title {
-  font-weight: bold;
-  font-size: 16px;
-  color: #5d4a00;
+.text-error {
+  color: #e53935 !important;
 }
-.merged-card-tags-line {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin: 4px 0 0 0;
-  min-height: 22px;
+
+/* 响应式适配优化 */
+@media (max-width: 700px) {
+  .container {
+    padding: 10px 6px 10px 6px;
+  }
+  .insight-report-card {
+    padding: 10px 6px 8px 6px;
+  }
 }
-.merged-card-analyze-duration {
-  background: #f7f7fa;
-  color: #888;
-  border-radius: 4px;
-  padding: 2px 8px;
-  font-size: 12px;
-  display: inline-block;
-  vertical-align: middle;
+@media (max-width: 480px) {
+  .insight-report-card {
+    padding: 10px 4px 10px 4px;
+  }
+  .sidebar-tabs-wrap {
+    border-radius: 8px 8px 0 0;
+  }
+  .tab {
+    font-size: 13px;
+    padding: 18px 0 9px 0;
+  }
 }

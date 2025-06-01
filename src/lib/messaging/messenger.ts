@@ -1,6 +1,7 @@
 import { nanoid } from 'nanoid';
 import { Logger } from '../logger/logger.js';
 import { Message, MessageHandler, MessageListenerOptions, MessageTimeoutError, SendMessageOptions } from './message-types.js';
+import { config } from '../config/index.js';
 
 const logger = new Logger('Messenger');
 
@@ -191,7 +192,7 @@ export class Messenger {
         const index = handlers.findIndex(h => h.handler === handler);
         if (index !== -1) {
           handlers.splice(index, 1);
-          logger.debug(`已移除一个 "${type}" 消息处理器`);
+          logger.debug(`已移除一个 "${type}" 消消息处理器`);
         }
         
         if (handlers.length === 0) {
@@ -208,7 +209,16 @@ export class Messenger {
   ): Promise<R> {
     await this.ensureInitialized();
 
-    const { tabId, timeout = 30000, target } = options;
+    // 动态获取超时配置
+    let timeout = options.timeout;
+    if (typeof timeout !== 'number') {
+      try {
+        timeout = await config.get('requestTimeout') ?? 60000;
+      } catch {
+        timeout = 60000;
+      }
+    }
+    const { tabId, target } = options;
     const message: Message<T> = {
       type,
       payload,

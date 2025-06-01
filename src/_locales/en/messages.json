@@ -368,5 +368,440 @@
     "message": "AI 分析超时",
     "description": "从TS提取 (_Error): lib/artificial-intelligence/chrome-ai/chrome-ai-service.ts",
     "_untranslated": true
+  },
+  "ai_analyze_no_content": {
+    "message": "无内容可分析: {0}",
+    "description": "从TS提取 (_): background/event-handlers.ts",
+    "_untranslated": true
+  },
+  "ai_analyze_no_visit_record": {
+    "message": "未找到访问记录: {0}",
+    "description": "从TS提取 (_): background/event-handlers.ts",
+    "_untranslated": true
+  },
+  "ai_analyze_no_service": {
+    "message": "无可用 AI 服务",
+    "description": "从TS提取 (_Error): background/event-handlers.ts",
+    "_untranslated": true
+  },
+  "ai_analyze_error": {
+    "message": "分析异常: {0}",
+    "description": "从TS提取 (_): background/event-handlers.ts",
+    "_untranslated": true
+  },
+  "sidebar_summary_loading": {
+    "message": "汇总报告加载中...",
+    "description": "从TS提取 (_): sidebar/sidebar.ts",
+    "_untranslated": true
+  },
+  "sidebar_summary_empty": {
+    "message": "暂无汇总报告",
+    "description": "从TS提取 (_): sidebar/sidebar.ts",
+    "_untranslated": true
+  },
+  "sidebar_summary_title": {
+    "message": "汇总报告",
+    "description": "从TS提取 (_): sidebar/sidebar.ts",
+    "_untranslated": true
+  },
+  "sidebar_summary_refresh": {
+    "message": "刷新",
+    "description": "从TS提取 (_): sidebar/sidebar.ts",
+    "_untranslated": true
+  },
+  "sidebar_summary_stats_total": {
+    "message": "访问总数",
+    "description": "从TS提取 (_): sidebar/sidebar.ts",
+    "_untranslated": true
+  },
+  "sidebar_summary_stats_duration": {
+    "message": "总时长",
+    "description": "从TS提取 (_): sidebar/sidebar.ts",
+    "_untranslated": true
+  },
+  "sidebar_summary_stats_domains": {
+    "message": "涉及域名",
+    "description": "从TS提取 (_): sidebar/sidebar.ts",
+    "_untranslated": true
+  },
+  "sidebar_summary_stats_keywords": {
+    "message": "关键词",
+    "description": "从TS提取 (_): sidebar/sidebar.ts",
+    "_untranslated": true
+  },
+  "sidebar_summary_special": {
+    "message": "特别关注",
+    "description": "从TS提取 (_): sidebar/sidebar.ts",
+    "_untranslated": true
+  },
+  "sidebar_summary_refreshing": {
+    "message": "正在刷新...",
+    "description": "从TS提取 (_): sidebar/sidebar.ts",
+    "_untranslated": true
+  },
+  "sidebar_summary_error": {
+    "message": "汇总报告加载失败",
+    "description": "从TS提取 (_): sidebar/sidebar.ts",
+    "_untranslated": true
+  },
+  "sidebar_tab_today": {
+    "message": "今日",
+    "description": "从TS提取 (_): sidebar/sidebar.ts",
+    "_untranslated": true
+  },
+  "sidebar_tab_yesterday": {
+    "message": "昨日",
+    "description": "从TS提取 (_): sidebar/sidebar.ts",
+    "_untranslated": true
+  },
+  "sidebar_insight_generate": {
+    "message": "即刻洞察",
+    "description": "从TS提取 (_): sidebar/sidebar.ts",
+    "_untranslated": true
+  },
+  "sidebar_insight_generating": {
+    "message": "正在生成...",
+    "description": "从TS提取 (_): sidebar/sidebar.ts",
+    "_untranslated": true
+  },
+  "sidebar_insight_empty": {
+    "message": "暂无昨日洞察",
+    "description": "从TS提取 (_): sidebar/sidebar.ts",
+    "_untranslated": true
+  },
+  "sidebar_insight_stats_total": {
+    "message": "访问总数",
+    "description": "从TS提取 (_): sidebar/sidebar.ts",
+    "_untranslated": true
+  },
+  "sidebar_insight_stats_duration": {
+    "message": "总时长",
+    "description": "从TS提取 (_): sidebar/sidebar.ts",
+    "_untranslated": true
+  },
+  "sidebar_insight_stats_domains": {
+    "message": "涉及域名",
+    "description": "从TS提取 (_): sidebar/sidebar.ts",
+    "_untranslated": true
+  },
+  "sidebar_insight_stats_keywords": {
+    "message": "关键词",
+    "description": "从TS提取 (_): sidebar/sidebar.ts",
+    "_untranslated": true
+  },
+  "sidebar_insight_special": {
+    "message": "特别关注",
+    "description": "从TS提取 (_): sidebar/sidebar.ts",
+    "_untranslated": true
+  },
+  "sidebar_insight_error": {
+    "message": "昨日洞察加载失败",
+    "description": "从TS提取 (_): sidebar/sidebar.ts",
+    "_untranslated": true
+  },
+  "sidebar_card_times": {
+    "message": "次",
+    "description": "从TS提取 (_): sidebar/sidebar.ts",
+    "_untranslated": true
+  },
+  "sidebar_card_analyzing": {
+    "message": "正在进行 AI 分析",
+    "description": "从TS提取 (_): sidebar/sidebar.ts",
+    "_untranslated": true
+  },
+  "sidebar_card_analyze_duration": {
+    "message": "分析用时",
+    "description": "从TS提取 (_): sidebar/sidebar.ts",
+    "_untranslated": true
+  },
+  "sidebar_card_seconds": {
+    "message": "秒",
+    "description": "从TS提取 (_): sidebar/sidebar.ts",
+    "_untranslated": true
+  },
+  "ai_service_ollama": {
+    "message": "Ollama 本地",
+    "description": "从TS提取 (_): sidebar/sidebar.ts",
+    "_untranslated": true
+  },
+  "ai_service_chrome_ai": {
+    "message": "Chrome 内置 AI",
+    "description": "从TS提取 (_): sidebar/sidebar.ts",
+    "_untranslated": true
+  },
+  "ai_service_openai": {
+    "message": "OpenAI",
+    "description": "从TS提取 (_): sidebar/sidebar.ts",
+    "_untranslated": true
+  },
+  "ai_service_other": {
+    "message": "其它",
+    "description": "从TS提取 (_): sidebar/sidebar.ts",
+    "_untranslated": true
+  },
+  "ai_service_default": {
+    "message": "AI",
+    "description": "从TS提取 (_): sidebar/sidebar.ts",
+    "_untranslated": true
+  },
+  "sidebar_card_minutes": {
+    "message": "分钟",
+    "description": "从TS提取 (_): sidebar/sidebar.ts",
+    "_untranslated": true
+  },
+  "sidebar_insight_regenerate": {
+    "message": "重新生成",
+    "description": "从TS提取 (_): sidebar/sidebar.ts",
+    "_untranslated": true
+  },
+  "sidebar_card_duration": {
+    "message": "用时",
+    "description": "从TS提取 (_): sidebar/sidebar.ts",
+    "_untranslated": true
+  },
+  "sidebar_card_loading": {
+    "message": "加载中...",
+    "description": "从TS提取 (_): sidebar/sidebar.ts",
+    "_untranslated": true
+  },
+  "sidebar_card_empty": {
+    "message": "无数据",
+    "description": "从TS提取 (_): sidebar/sidebar.ts",
+    "_untranslated": true
+  },
+  "sidebar_card_ai_failed": {
+    "message": "AI 分析失败",
+    "description": "从TS提取 (_): sidebar/sidebar.ts",
+    "_untranslated": true
+  },
+  "sidebar_card_ai_empty": {
+    "message": "无分析结果",
+    "description": "从TS提取 (_): sidebar/sidebar.ts",
+    "_untranslated": true
+  },
+  "sidebar_card_seconds_short": {
+    "message": "s",
+    "description": "从TS提取 (_): sidebar/sidebar.ts",
+    "_untranslated": true
+  },
+  "sidebar_card_ai_timeout": {
+    "message": "分析超时",
+    "description": "从TS提取 (_): sidebar/sidebar.ts",
+    "_untranslated": true
+  },
+  "sidebar_clear_data_log": {
+    "message": "清除本地数据（不清除配置）",
+    "description": "从TS提取 (_): sidebar/sidebar.ts",
+    "_untranslated": true
+  },
+  "sidebar_clear_data_failed": {
+    "message": "清除数据失败",
+    "description": "从TS提取 (_): sidebar/sidebar.ts",
+    "_untranslated": true
+  },
+  "sidebar_clear_data_confirm": {
+    "message": "确定要清除所有本地数据吗？此操作无法撤销。",
+    "description": "从TS提取 (_): sidebar/sidebar.ts",
+    "_untranslated": true
+  },
+  "sidebar_version": {
+    "message": "版本：",
+    "description": "从TS提取 (_): sidebar/sidebar.ts",
+    "_untranslated": true
+  },
+  "sidebar_title": {
+    "message": "扩展侧边栏",
+    "description": "从HTML提取: sidebar/sidebar.html",
+    "_untranslated": true
+  },
+  "sidebar_clear_data": {
+    "message": "清除数据",
+    "description": "从HTML提取: sidebar/sidebar.html",
+    "_untranslated": true
+  },
+  "sidebar_help": {
+    "message": "帮助",
+    "description": "从HTML提取: sidebar/sidebar.html",
+    "_untranslated": true
+  },
+  "sidebar_open_options": {
+    "message": "",
+    "description": "从HTML提取: sidebar/sidebar.html",
+    "_untranslated": true
+  },
+  "popup_title": {
+    "message": "扩展弹出窗口",
+    "description": "从HTML提取: popup/popup.html",
+    "_untranslated": true
+  },
+  "options_title": {
+    "message": "扩展选项",
+    "description": "从HTML提取: options/options.html",
+    "_untranslated": true
+  },
+  "options_header_title": {
+    "message": "扩展设置",
+    "description": "从HTML提取: options/options.html",
+    "_untranslated": true
+  },
+  "config_request_timeout_label": {
+    "message": "API请求超时 (秒)",
+    "description": "从TS提取 (_): lib/config/configs.ts",
+    "_untranslated": true
+  },
+  "config_request_timeout_desc": {
+    "message": "设置网络请求的超时时间",
+    "description": "从TS提取 (_): lib/config/configs.ts",
+    "_untranslated": true
+  },
+  "config_section_general": {
+    "message": "常规设置",
+    "description": "从TS提取 (_): lib/config/configs.ts",
+    "_untranslated": true
+  },
+  "config_max_ai_result_length_label": {
+    "message": "AI分析结果最大长度",
+    "description": "从TS提取 (_): lib/config/configs.ts",
+    "_untranslated": true
+  },
+  "config_max_ai_result_length_desc": {
+    "message": "限制AI分析结果的最大字符数，防止内容过长影响体验",
+    "description": "从TS提取 (_): lib/config/configs.ts",
+    "_untranslated": true
+  },
+  "config_ai_service_label": {
+    "message": "AI服务配置",
+    "description": "从TS提取 (_): lib/config/configs.ts",
+    "_untranslated": true
+  },
+  "config_ai_service_desc": {
+    "message": "当前激活的 AI 服务配置，切换/编辑后自动同步到配置列表。",
+    "description": "从TS提取 (_): lib/config/configs.ts",
+    "_untranslated": true
+  },
+  "config_section_ai": {
+    "message": "AI 服务",
+    "description": "从TS提取 (_): lib/config/configs.ts",
+    "_untranslated": true
+  },
+  "config_ai_service_type_label": {
+    "message": "服务类型",
+    "description": "从TS提取 (_): lib/config/configs.ts",
+    "_untranslated": true
+  },
+  "config_ai_service_ollama": {
+    "message": "Ollama 本地",
+    "description": "从TS提取 (_): lib/config/configs.ts",
+    "_untranslated": true
+  },
+  "config_ai_service_chrome_ai": {
+    "message": "Chrome 内置 AI",
+    "description": "从TS提取 (_): lib/config/configs.ts",
+    "_untranslated": true
+  },
+  "config_ai_service_openai": {
+    "message": "OpenAI",
+    "description": "从TS提取 (_): lib/config/configs.ts",
+    "_untranslated": true
+  },
+  "config_ai_service_other": {
+    "message": "其它",
+    "description": "从TS提取 (_): lib/config/configs.ts",
+    "_untranslated": true
+  },
+  "config_ai_model_label": {
+    "message": "模型名称",
+    "description": "从TS提取 (_): lib/config/configs.ts",
+    "_untranslated": true
+  },
+  "config_ai_model_desc": {
+    "message": "如 llama2, gpt-3.5-turbo 等",
+    "description": "从TS提取 (_): lib/config/configs.ts",
+    "_untranslated": true
+  },
+  "config_ai_url_label": {
+    "message": "API 地址",
+    "description": "从TS提取 (_): lib/config/configs.ts",
+    "_untranslated": true
+  },
+  "config_ai_url_desc": {
+    "message": "自定义服务地址（如本地或企业 API）",
+    "description": "从TS提取 (_): lib/config/configs.ts",
+    "_untranslated": true
+  },
+  "config_ai_apikey_label": {
+    "message": "API 密钥",
+    "description": "从TS提取 (_): lib/config/configs.ts",
+    "_untranslated": true
+  },
+  "config_ai_apikey_desc": {
+    "message": "如需鉴权请填写",
+    "description": "从TS提取 (_): lib/config/configs.ts",
+    "_untranslated": true
+  },
+  "config_url_filter_label": {
+    "message": "网址过滤",
+    "description": "从TS提取 (_): lib/config/configs.ts",
+    "_untranslated": true
+  },
+  "config_url_filter_desc": {
+    "message": "可灵活配置哪些网址不分析或强制分析",
+    "description": "从TS提取 (_): lib/config/configs.ts",
+    "_untranslated": true
+  },
+  "config_section_url_filter": {
+    "message": "网址过滤",
+    "description": "从TS提取 (_): lib/config/configs.ts",
+    "_untranslated": true
+  },
+  "config_url_filter_exclude_types_label": {
+    "message": "排除类型",
+    "description": "从TS提取 (_): lib/config/configs.ts",
+    "_untranslated": true
+  },
+  "config_url_filter_exclude_types_desc": {
+    "message": "选择需要自动排除分析的网址类型",
+    "description": "从TS提取 (_): lib/config/configs.ts",
+    "_untranslated": true
+  },
+  "config_url_filter_intranet": {
+    "message": "内网地址（如 10.x/192.168.x/172.16-31.x/localhost）",
+    "description": "从TS提取 (_): lib/config/configs.ts",
+    "_untranslated": true
+  },
+  "config_url_filter_ip": {
+    "message": "纯IP地址",
+    "description": "从TS提取 (_): lib/config/configs.ts",
+    "_untranslated": true
+  },
+  "config_url_filter_port": {
+    "message": "非标准端口",
+    "description": "从TS提取 (_): lib/config/configs.ts",
+    "_untranslated": true
+  },
+  "config_url_filter_auth": {
+    "message": "需要基础认证的网址",
+    "description": "从TS提取 (_): lib/config/configs.ts",
+    "_untranslated": true
+  },
+  "config_url_filter_exclude_urls_label": {
+    "message": "手动排除网址",
+    "description": "从TS提取 (_): lib/config/configs.ts",
+    "_untranslated": true
+  },
+  "config_url_filter_exclude_urls_desc": {
+    "message": "每行一个，支持通配符/正则表达式，匹配到的将不会进行AI分析。",
+    "description": "从TS提取 (_): lib/config/configs.ts",
+    "_untranslated": true
+  },
+  "config_url_filter_include_urls_label": {
+    "message": "强制分析网址",
+    "description": "从TS提取 (_): lib/config/configs.ts",
+    "_untranslated": true
+  },
+  "config_url_filter_include_urls_desc": {
+    "message": "每行一个，支持通配符/正则表达式，优先于排除规则。",
+    "description": "从TS提取 (_): lib/config/configs.ts",
+    "_untranslated": true
   }
 }

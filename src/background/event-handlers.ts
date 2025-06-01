@@ -2,7 +2,6 @@
 // 统一管理 background 的所有消息和事件监听
 import { messenger } from '../lib/messaging/messenger.js';
 import { storage } from '../lib/storage/index.js';
-import { i18n } from '../lib/i18n/i18n.js';
 import { config } from '../lib/config/index.js';
 import {
   updateIcon,
@@ -23,6 +22,8 @@ import {
 import { getActiveAIService } from '../lib/artificial-intelligence/index.js';
 import { getCurrentAiConfig } from '../lib/artificial-intelligence/ai-config.js';
 import { AIManager } from '../lib/artificial-intelligence/ai-manager.js';
+import { Logger } from '../lib/logger/logger.js';
+import { _, _Error } from '../lib/i18n/i18n.js';
 
 // ====== 侧面板相关状态管理 ======
 let useSidePanel = false;
@@ -63,9 +64,6 @@ if (chrome && chrome.action && chrome.sidePanel) {
         }
       } catch {}
     }
-    // 侧边栏未打开，模拟原生弹窗行为（而不是 chrome.windows.create）
-    // 通过设置 default_popup 并移除 chrome.windows.create
-    // 这里什么都不做，交由 manifest 的 default_popup 控制
   });
 }
 
@@ -152,19 +150,22 @@ function notifySidePanelUpdate(type: 'visit' | 'ai') {
 }
 
 // 包装原有处理函数，任务流重构：访问记录和AI分析合并
-async function handlePageVisitRecordWithNotify(record: any, sender?: any) {
+async function handlePageVisitRecordWithNotify(record: any, sender?: any, isAnalyze: boolean = true) {
   // 1. 写入/更新访问记录（aiResult 为空或'正在进行 AI 分析'，visitCount递增，内容变化/刷新时重置aiResult）
   const result = await handlePageVisitRecord(record);
   notifySidePanelUpdate('visit');
-  // 2. 只要aiResult为空或'正在进行 AI 分析'，且mainContent存在，自动触发AI分析
-  if (record.mainContent && record.mainContent.length > 0 && (!record.aiResult || record.aiResult === '' || record.aiResult === '正在进行 AI 分析')) {
-    await handleMessengerAiAnalyzeRequestWithNotify({
-      url: record.url,
-      title: record.title,
-      content: record.mainContent,
-      id: record.id,
-      visitStartTime: record.visitStartTime
-    });
+  // 2. 只要 mainContent 存在且应分析，自动触发AI分析（兼容 content-script 传 content 字段的情况）
+  if (isAnalyze) {
+    const mainContent = record.content || record.mainContent;
+    if (mainContent && mainContent.length > 0 && (!record.aiResult || record.aiResult === '' || record.aiResult === '正在进行 AI 分析')) {
+      await handleMessengerAiAnalyzeRequestWithNotify({
+        url: record.url,
+        title: record.title,
+        content: mainContent,
+        id: record.id,
+        visitStartTime: record.visitStartTime
+      });
+    }
   }
   return result;
 }
@@ -175,8 +176,8 @@ async function handleMessengerAiAnalyzeRequestWithNotify(msg: any) {
   const visitStartTime = msg.payload?.visitStartTime || Date.now();
   const visitId = id || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`);
   if (!content) {
-    console.warn('[AI_ANALYZE] 拒绝分析：无内容', { url, visitId, visitStartTime });
-    return { ok: false, error: 'No content' };
+    logger.warn('ai_analyze_no_content', '无内容可分析: {0}', url);
+    return { ok: false, error: _('ai_analyze_no_content', '无内容可分析: {0}', url) };
   }
   const date = new Date(visitStartTime);
   const dayId = date.toISOString().slice(0, 10);
@@ -184,12 +185,12 @@ async function handleMessengerAiAnalyzeRequestWithNotify(msg: any) {
   let visits: any[] = (await storage.get<any[]>(key)) || [];
   const visit = visits.find(v => v.id === visitId);
   if (!visit) {
-    console.error('[AI_ANALYZE] 未找到访问记录', { url, visitId, visitStartTime, key, visitsLength: visits.length });
-    return { ok: false, error: 'No visit record found for AI analysis' };
+    logger.warn('ai_analyze_no_visit_record', '未找到访问记录: {0}', url);
+    return { ok: false, error: _('ai_analyze_no_visit_record', '未找到访问记录: {0}', url) };
   }
   // 只要aiResult为空或'正在进行 AI 分析'，才分析，否则直接返回
   if (visit.aiResult && visit.aiResult !== '' && visit.aiResult !== '正在进行 AI 分析') {
-    console.log('[AI_ANALYZE] 已有分析结果，跳过', { url, visitId });
+    logger.info('ai_analyze_skipped', '已有分析结果，跳过: {0}', url);
     return { ok: true, skipped: true, reason: 'already analyzed' };
   }
   await config.reload();
@@ -206,8 +207,8 @@ async function handleMessengerAiAnalyzeRequestWithNotify(msg: any) {
   const analyzeStart = Date.now();
   onProcessingStart();
   try {
-    if (!aiService) throw new Error('无可用 AI 服务');
-    console.log('[AI_ANALYZE] 开始分析', { url, visitId, aiServiceLabel, contentLength: content.length });
+    if (!aiService) throw new _Error('ai_analyze_no_service', '无可用 AI 服务', url);
+    logger.info('ai_analyze_started', '开始分析: {0}', url);
     const aiSummary = await aiService.summarizePage(url, content);
     const analyzeEnd = Date.now();
     const analyzeDuration = analyzeEnd - analyzeStart;
@@ -215,13 +216,13 @@ async function handleMessengerAiAnalyzeRequestWithNotify(msg: any) {
     onProcessingEnd();
     setTip(aiSummary.important);
     notifySidePanelUpdate('ai');
-    console.log('[AI_ANALYZE] 分析完成', { url, visitId, analyzeDuration, aiSummary });
+    logger.info('ai_analyze_completed', '分析完成: {0}', url);
     return { ok: true, aiContent: aiSummary, analyzeDuration, shouldNotify: aiSummary.important };
   } catch (e: any) {
     onProcessingEnd();
     setTip(true);
-    console.error('[AI_ANALYZE] 分析异常', { url, visitId, error: e?.message || String(e) });
-    return { ok: false, error: e?.message || String(e) };
+    logger.error('ai_analyze_error', '分析异常: {0}', url);
+    return { ok: false, error: _('ai_analyze_error', '分析异常: {0}', url) };
   }
 }
 
@@ -241,6 +242,18 @@ async function handleMessengerGenerateSummaryReport(msg: any) {
   return report || { summary: '' };
 }
 
+const logger = new Logger('background/event-handlers');
+
+// 兜底处理发往侧边栏但侧边栏可能未打开的消息，避免报错
+function handleNoop(_msg: any, sender?: chrome.runtime.MessageSender) {
+  // sender.url 只在页面上下文存在，background->content script 时可能为 undefined
+  if (!sender || !sender.url || !sender.url.includes('sidebar.html')) {
+    return { ok: true };
+  }
+  // 让消息继续传递到侧边栏页面
+  return false;
+}
+
 export function registerBackgroundEventHandlers() {
   // 移除图标点击事件的清除逻辑，彻底只允许通过消息清除
   // chrome.action.onClicked.addListener(() => {
@@ -257,7 +270,37 @@ export function registerBackgroundEventHandlers() {
   messenger.on('CLEAR_ICON_STATUS', handleMessengerClearIconStatus);
   messenger.on('GET_USE_SIDE_PANEL', handleGetUseSidePanel);
   messenger.on('SET_USE_SIDE_PANEL', handleSetUseSidePanel);
-  messenger.on('PAGE_VISIT_RECORD', handlePageVisitRecordWithNotify);
   messenger.on('GET_SUMMARY_REPORT', handleMessengerGetSummaryReport);
   messenger.on('GENERATE_SUMMARY_REPORT', handleMessengerGenerateSummaryReport);
+  messenger.on('SCROLL_TO_VISIT', handleNoop); // 兜底
+  messenger.on('SIDE_PANEL_UPDATE', handleNoop); // 兜底
+
+  // ========== 消息注册 ========== //
+  chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+    if (msg && msg.type === 'PAGE_VISIT_AND_ANALYZE') {
+      (async () => {
+        try {
+          await handlePageVisitRecordWithNotify(msg.payload, sender, true);
+          notifySidePanelUpdate('visit');
+          notifySidePanelUpdate('ai');
+          sendResponse && sendResponse({ ok: true });
+        } catch (e) {
+          sendResponse && sendResponse({ ok: false, error: String(e) });
+        }
+      })();
+      return true; // 异步响应
+    }
+    if (msg && msg.type === 'PAGE_VISIT_RECORD') {
+      (async () => {
+        try {
+          await handlePageVisitRecordWithNotify(msg.payload, sender, false);
+          notifySidePanelUpdate('visit');
+          sendResponse && sendResponse({ ok: true });
+        } catch (e) {
+          sendResponse && sendResponse({ ok: false, error: String(e) });
+        }
+      })();
+      return true;
+    }
+  });
 }

@@ -2,7 +2,7 @@ import { Logger } from '../lib/logger/logger.js';
 import { messenger } from '../lib/messaging/messenger.js';
 import { storage } from '../lib/storage/index.js';
 import { _ } from '../lib/i18n/i18n.js';
-import { isSystemUrl } from '../lib/browser-events/system-url.js';
+import { shouldAnalyzeUrl } from '../lib/browser-events/url-filter.js';
 
 const logger = new Logger('Sidebar');
 
@@ -12,12 +12,15 @@ const AI_CONFIG_CACHE_TTL = 60 * 1000; // 1分钟
 
 function showAnalyzeDuration(analyzeDuration: number) {
   if (typeof analyzeDuration !== 'number' || analyzeDuration <= 0) return '';
-  return `<span style='color:#888;font-size:11px;'>(分析用时 ${(analyzeDuration / 1000).toFixed(1)} 秒)</span>`;
+  // 只返回格式化秒数，不再加“分析用时”文字
+  return `<span class='insight-report-content-duration'>${(analyzeDuration / 1000).toFixed(1)}${_('sidebar_card_seconds', '秒')}</span>`;
 }
 
 // 合并访问记录和分析结果，优先用 id 匹配，兼容 url+visitStartTime
 // 已迁移为单表，直接用 visits 作为 analysis
-function mergeVisitsAndAnalysis(visits: any[]): any[] {
+async function mergeVisitsAndAnalysis(visits: any[]): Promise<any[]> {
+  // 只保留应分析的 url（异步过滤）
+  // 已由后台过滤，前端无需再异步 shouldAnalyzeUrl，可直接返回 visits
   return visits;
 }
 
@@ -27,10 +30,10 @@ async function getCurrentAiServiceLabel(): Promise<string> {
   if (aiConfigCache && (now - aiConfigCache.ts < AI_CONFIG_CACHE_TTL)) {
     const serviceId = aiConfigCache.value?.serviceId || 'ollama';
     const labelMap: Record<string, string> = {
-      'ollama': 'Ollama 本地',
-      'chrome-ai': 'Chrome 内置 AI',
-      'openai': 'OpenAI',
-      'other': '其它',
+      'ollama': _('ai_service_ollama', 'Ollama 本地'),
+      'chrome-ai': _('ai_service_chrome_ai', 'Chrome 内置 AI'),
+      'openai': _('ai_service_openai', 'OpenAI'),
+      'other': _('ai_service_other', '其它'),
     };
     return labelMap[serviceId] || serviceId;
   }
@@ -41,14 +44,14 @@ async function getCurrentAiServiceLabel(): Promise<string> {
     const serviceId = resp?.value?.serviceId || 'ollama';
     // 本地映射
     const labelMap: Record<string, string> = {
-      'ollama': 'Ollama 本地',
-      'chrome-ai': 'Chrome 内置 AI',
-      'openai': 'OpenAI',
-      'other': '其它',
+      'ollama': _('ai_service_ollama', 'Ollama 本地'),
+      'chrome-ai': _('ai_service_chrome_ai', 'Chrome 内置 AI'),
+      'openai': _('ai_service_openai', 'OpenAI'),
+      'other': _('ai_service_other', '其它'),
     };
     return labelMap[serviceId] || serviceId;
   } catch {
-    return 'AI';
+    return _('ai_service_default', 'AI');
   }
 }
 
@@ -56,22 +59,22 @@ async function getCurrentAiServiceLabel(): Promise<string> {
 async function renderSummaryReport(root: HTMLElement, dayId: string) {
   const summaryBox = document.getElementById('summary-report-box');
   if (!summaryBox) return;
-  summaryBox.innerHTML = `<div style="color:#888;padding:12px 0;">${_('sidebar.summary.loading', '汇总报告加载中...')}</div>`;
+  summaryBox.innerHTML = `<div style="color:#888;padding:12px 0;">${_('sidebar_summary_loading', '汇总报告加载中...')}</div>`;
   messenger.send('GET_SUMMARY_REPORT', { dayId }).then((resp) => {
     if (!resp || (!resp.summaries && !resp.summary && !resp.suggestions)) {
-      summaryBox.innerHTML = `<div style=\"color:#888;padding:12px 0;\">${_('sidebar.summary.empty', '暂无汇总报告')}</div>`;
+      summaryBox.innerHTML = `<div style=\"color:#888;padding:12px 0;\">${_('sidebar_summary_empty', '暂无汇总报告')}</div>`;
       return;
     }
     // 新结构优先
     const { summaries, suggestions, aiServiceLabel, stats, summary, highlights, specialConcerns } = resp;
     let html = `<div class='summary-report-card'>`;
-    html += `<div class='summary-report-title'>${_('sidebar.summary.title', '汇总报告')} <span class='summary-ai-label'>${aiServiceLabel || ''}</span> <button id='refreshSummaryBtn' class='summary-refresh-btn'>${_('sidebar.summary.refresh', '刷新')}</button></div>`;
+    html += `<div class='summary-report-title'>${_('sidebar_summary_title', '汇总报告')} <span class='summary-ai-label'>${aiServiceLabel || ''}</span> <button id='refreshSummaryBtn' class='summary-refresh-btn'>${_('sidebar_summary_refresh', '刷新')}</button></div>`;
     if (stats) {
       html += `<div class='summary-stats'>
-        <div class='summary-stats-row-label'>${_('sidebar.summary.stats.total', '访问总数')}</div><div class='summary-stats-row-value'>${stats.total}</div>
-        <div class='summary-stats-row-label'>${_('sidebar.summary.stats.duration', '总时长')}</div><div class='summary-stats-row-value'>${(stats.totalDuration/1000/60).toFixed(1)} 分钟</div>
-        <div class='summary-stats-row-label'>${_('sidebar.summary.stats.domains', '涉及域名')}</div><div class='summary-stats-row-value'>${stats.domains && stats.domains.length ? stats.domains.join('，') : '-'}</div>
-        <div class='summary-stats-row-label'>${_('sidebar.summary.stats.keywords', '关键词')}</div><div class='summary-stats-row-value'>${stats.keywords && stats.keywords.length ? stats.keywords.slice(0, 10).join('，') : '-'}</div>
+        <div class='summary-stats-row-label'>${_('sidebar_summary_stats_total', '访问总数')}</div><div class='summary-stats-row-value'>${stats.total}</div>
+        <div class='summary-stats-row-label'>${_('sidebar_summary_stats_duration', '总时长')}</div><div class='summary-stats-row-value'>${(stats.totalDuration/1000/60).toFixed(1)}${_('sidebar_card_minutes', '分钟')}</div>
+        <div class='summary-stats-row-label'>${_('sidebar_summary_stats_domains', '涉及域名')}</div><div class='summary-stats-row-value'>${stats.domains && stats.domains.length ? stats.domains.join('，') : '-'}</div>
+        <div class='summary-stats-row-label'>${_('sidebar_summary_stats_keywords', '关键词')}</div><div class='summary-stats-row-value'>${stats.keywords && stats.keywords.length ? stats.keywords.slice(0, 10).join('，') : '-'}</div>
       </div>`;
     }
     // 汇总主内容
@@ -89,7 +92,7 @@ async function renderSummaryReport(root: HTMLElement, dayId: string) {
         html += `<ul class='summary-highlights'>${highlights.map((h) => `<li>${h}</li>`).join('')}</ul>`;
       }
       if (specialConcerns && Array.isArray(specialConcerns) && specialConcerns.length) {
-        html += `<div class='summary-special-concerns'>${_('sidebar.summary.special', '特别关注')}: ${specialConcerns.map((c) => c).join('，')}</div>`;
+        html += `<div class='summary-special-concerns'>${_('sidebar_summary_special', '特别关注')}: ${specialConcerns.map((c) => c).join('，')}</div>`;
       }
     }
     html += `</div>`;
@@ -97,13 +100,13 @@ async function renderSummaryReport(root: HTMLElement, dayId: string) {
     const refreshBtn = document.getElementById('refreshSummaryBtn');
     if (refreshBtn) {
       refreshBtn.onclick = async () => {
-        summaryBox.innerHTML = `<div style='color:#888;padding:12px 0;'>${_('sidebar.summary.refreshing', '正在刷新...')}</div>`;
+        summaryBox.innerHTML = `<div style='color:#888;padding:12px 0;'>${_('sidebar_summary_refreshing', '正在刷新...')}</div>`;
         await messenger.send('GENERATE_SUMMARY_REPORT', { dayId, force: true });
         setTimeout(() => renderSummaryReport(root, dayId), 1200);
       };
     }
   }).catch(() => {
-    summaryBox.innerHTML = `<div style='color:#e53935;padding:12px 0;'>${_('sidebar.summary.error', '汇总报告加载失败')}</div>`;
+    summaryBox.innerHTML = `<div style='color:#e53935;padding:12px 0;'>${_('sidebar_summary_error', '汇总报告加载失败')}</div>`;
   });
 }
 
@@ -117,8 +120,8 @@ function renderSidebarTabs(root: HTMLElement) {
   root.innerHTML = `
     <div class='sidebar-tabs-wrap'>
       <div class='tabs'>
-        <button id='tab-today' class='sidebar-tab tab'>${_('sidebar.tab.today', '今日')}</button>
-        <button id='tab-yesterday' class='sidebar-tab tab'>${_('sidebar.tab.yesterday', '昨日')}</button>
+        <button id='tab-today' class='sidebar-tab tab'>${_('sidebar_tab_today', '今日')}</button>
+        <button id='tab-yesterday' class='sidebar-tab tab'>${_('sidebar_tab_yesterday', '昨日')}</button>
       </div>
     </div>
     <div id='insight-report-box'></div>
@@ -150,40 +153,36 @@ function renderSidebarTabs(root: HTMLElement) {
 
 // 洞察报告渲染（今日/昨日）
 async function renderInsightReport(box: HTMLElement, dayId: string, tab: 'today' | 'yesterday') {
-  box.innerHTML = '';
-  if (tab === 'today') {
-    // 今日默认仅显示按钮，按钮居右
-    box.innerHTML = `<div class='insight-report-card'>
-      <div class='insight-report-title'>${_('sidebar.insight.today', '今日洞察')}</div>
-      <div class='insight-generate-btn'><button id='generateTodayInsightBtn'>${_('sidebar.insight.generate', '即刻洞察')}</button></div>
+  let startTime = 0;
+  // 折叠状态持久化key
+  const collapsedKey = `insightCollapsed_${tab}`;
+  // 渲染卡片头部（标题+按钮同行）
+  function renderHeader(aiServiceLabel = '', isToday = false, showGenerate = true) {
+    return `<div class='insight-report-header' id='insight-header-row'>
+      <div class='insight-report-title'>${_(isToday ? 'sidebar_insight_today' : 'sidebar_insight_yesterday', isToday ? '今日洞察' : '昨日洞察')}</div>
+      <div class='insight-header-btns'>
+        <button id='regenerateInsightBtn'>${_('sidebar_insight_regenerate', '重新生成')}</button>
+        ${isToday && showGenerate ? `<button id='generateTodayInsightBtn'>${_('sidebar_insight_generate', '即刻洞察')}</button>` : ''}
+        <span class='insight-ai-label'>${aiServiceLabel || ''}</span>
+      </div>
     </div>`;
-    const btn = document.getElementById('generateTodayInsightBtn');
-    if (btn) {
-      btn.onclick = async () => {
-        box.innerHTML = `<div style='color:#888;padding:12px 0;'>${_('sidebar.insight.generating', '正在生成...')}</div>`;
-        await messenger.send('GENERATE_SUMMARY_REPORT', { dayId, force: true });
-        setTimeout(() => renderInsightReport(box, dayId, tab), 1200);
-      };
-    }
-    // 不自动加载今日洞察
-    return;
   }
-  // 昨日洞察直接加载
-  box.innerHTML = `<div style='color:#888;padding:12px 0;'>${_('sidebar.insight.loading', '昨日洞察加载中...')}</div>`;
-  messenger.send('GET_SUMMARY_REPORT', { dayId }).then((resp) => {
-    if (!resp || (!resp.summaries && !resp.summary && !resp.suggestions)) {
-      box.innerHTML = `<div style=\"color:#888;padding:12px 0;\">${_('sidebar.insight.empty', '暂无昨日洞察')}</div>`;
-      return;
+  // 渲染内容区
+  function renderContent(resp: any, generating = false, duration = 0) {
+    if (generating) {
+      return `<div class='insight-report-content insight-report-content--empty'>${_('sidebar_insight_generating', '正在生成...')}${duration > 0 ? `<span class='insight-report-content-duration'>(${_('sidebar_card_duration', '用时')} ${(duration/1000).toFixed(1)}${_('sidebar_card_seconds', '秒')})</span>` : ''}</div>`;
     }
-    const { summaries, suggestions, aiServiceLabel, stats, summary, highlights, specialConcerns } = resp;
-    let html = `<div class='insight-report-card'>`;
-    html += `<div class='insight-report-title'>${_('sidebar.insight.yesterday', '昨日洞察')} <span class='insight-ai-label'>${aiServiceLabel || ''}</span></div>`;
+    if (!resp || (!resp.summaries && !resp.summary && !resp.suggestions)) {
+      return `<div class='insight-report-content insight-report-content--empty'>${_('sidebar_insight_empty', '暂无洞察')}</div>`;
+    }
+    const { summaries, suggestions, stats, summary, highlights, specialConcerns } = resp;
+    let html = '';
     if (stats) {
       html += `<div class='insight-stats'>
-        <div class='insight-stats-row-label'>${_('sidebar.insight.stats.total', '访问总数')}</div><div class='insight-stats-row-value'>${stats.total}</div>
-        <div class='insight-stats-row-label'>${_('sidebar.insight.stats.duration', '总时长')}</div><div class='insight-stats-row-value'>${(stats.totalDuration/1000/60).toFixed(1)} 分钟</div>
-        <div class='insight-stats-row-label'>${_('sidebar.insight.stats.domains', '涉及域名')}</div><div class='insight-stats-row-value'>${stats.domains && stats.domains.length ? stats.domains.join('，') : '-'}</div>
-        <div class='insight-stats-row-label'>${_('sidebar.insight.stats.keywords', '关键词')}</div><div class='insight-stats-row-value'>${stats.keywords && stats.keywords.length ? stats.keywords.slice(0, 10).join('，') : '-'}</div>
+        <div class='insight-stats-row-label'>${_('sidebar_insight_stats_total', '访问总数')}</div><div class='insight-stats-row-value'>${stats.total}</div>
+        <div class='insight-stats-row-label'>${_('sidebar_insight_stats_duration', '总时长')}</div><div class='insight-stats-row-value'>${(stats.totalDuration/1000/60).toFixed(1)}${_('sidebar_card_minutes', '分钟')}</div>
+        <div class='insight-stats-row-label'>${_('sidebar_insight_stats_domains', '涉及域名')}</div><div class='insight-stats-row-value'>${stats.domains && stats.domains.length ? stats.domains.join('，') : '-'}</div>
+        <div class='insight-stats-row-label'>${_('sidebar_insight_stats_keywords', '关键词')}</div><div class='insight-stats-row-value'>${stats.keywords && stats.keywords.length ? stats.keywords.slice(0, 10).join('，') : '-'}</div>
       </div>`;
     }
     if (summaries && Array.isArray(summaries) && summaries.length) {
@@ -198,22 +197,138 @@ async function renderInsightReport(box: HTMLElement, dayId: string, tab: 'today'
         html += `<ul class='insight-highlights'>${highlights.map((h) => `<li>${h}</li>`).join('')}</ul>`;
       }
       if (specialConcerns && Array.isArray(specialConcerns) && specialConcerns.length) {
-        html += `<div class='insight-special-concerns'>${_('sidebar.insight.special', '特别关注')}: ${specialConcerns.map((c) => c).join('，')}</div>`;
+        html += `<div class='insight-special-concerns'>${_('sidebar_insight_special', '特别关注')}: ${specialConcerns.map((c) => c).join('，')}</div>`;
       }
     }
-    html += `</div>`;
-    box.innerHTML = html;
+    return html;
+  }
+  // 折叠状态，优先读取本地存储
+  let collapsed = false;
+  try {
+    const stored = localStorage.getItem(collapsedKey);
+    if (stored === '1') collapsed = true;
+  } catch {}
+  // 渲染主流程
+  let aiServiceLabel = '';
+  if (tab === 'today') {
+    // 今日洞察：先查数据
+    const resp = await messenger.send('GET_SUMMARY_REPORT', { dayId }).catch(() => null);
+    aiServiceLabel = resp?.aiServiceLabel || '';
+    const showGenerate = !(resp && (resp.summaries || resp.summary || resp.suggestions));
+    box.innerHTML = `<div class='insight-report-card${collapsed ? ' insight-report-collapsed' : ''}'>
+      ${renderHeader(aiServiceLabel, true, showGenerate)}
+      <div id='insight-content-box' style='${collapsed ? 'display:none;' : ''}'>${renderContent(resp)}</div>
+    </div>`;
+    // 折叠/展开事件
+    const headerRow = document.getElementById('insight-header-row');
+    if (headerRow) {
+      headerRow.onclick = (e) => {
+        if ((e.target as HTMLElement).tagName === 'BUTTON') return;
+        collapsed = !collapsed;
+        // 持久化
+        try { localStorage.setItem(collapsedKey, collapsed ? '1' : '0'); } catch {}
+        const card = headerRow.closest('.insight-report-card');
+        const contentBox = document.getElementById('insight-content-box');
+        if (card && contentBox) {
+          card.classList.toggle('insight-report-collapsed', collapsed);
+          contentBox.style.display = collapsed ? 'none' : '';
+        }
+      };
+    }
+    // 绑定按钮
+    const genBtn = document.getElementById('generateTodayInsightBtn');
+    if (genBtn) {
+      genBtn.onclick = async () => {
+        startTime = Date.now();
+        const contentBox = document.getElementById('insight-content-box');
+        if (contentBox) contentBox.innerHTML = renderContent(null, true, 0);
+        await messenger.send('GENERATE_SUMMARY_REPORT', { dayId, force: true });
+        // 轮询刷新，直到有新数据或超时
+        let waited = 0;
+        let lastResp = null;
+        while (waited < 20000) {
+          await new Promise(r => setTimeout(r, 800));
+          lastResp = await messenger.send('GET_SUMMARY_REPORT', { dayId }).catch(() => null);
+          if (lastResp && (lastResp.summaries || lastResp.summary || lastResp.suggestions)) break;
+          if (contentBox) contentBox.innerHTML = renderContent(null, true, Date.now() - startTime);
+          waited += 800;
+        }
+        if (contentBox) contentBox.innerHTML = renderContent(lastResp, false, Date.now() - startTime);
+        // 生成后隐藏即刻洞察按钮
+        renderInsightReport(box, dayId, tab);
+      };
+    }
+    // 重新生成按钮
+    const regenBtn = document.getElementById('regenerateInsightBtn');
+    if (regenBtn) {
+      regenBtn.onclick = async () => {
+        if (genBtn) genBtn.click();
+      };
+    }
+    return;
+  }
+  // 昨日洞察
+  box.innerHTML = `<div class='insight-report-card${collapsed ? ' insight-report-collapsed' : ''}'>
+    ${renderHeader('', false, false)}
+    <div id='insight-content-box' style='${collapsed ? 'display:none;' : ''}'>${renderContent(null, true, 0)}</div>
+  </div>`;
+  // 折叠/展开事件
+  const headerRow = document.getElementById('insight-header-row');
+  if (headerRow) {
+    headerRow.onclick = (e) => {
+      if ((e.target as HTMLElement).tagName === 'BUTTON') return;
+      collapsed = !collapsed;
+      // 持久化
+      try { localStorage.setItem(collapsedKey, collapsed ? '1' : '0'); } catch {}
+      const card = headerRow.closest('.insight-report-card');
+      const contentBox = document.getElementById('insight-content-box');
+      if (card && contentBox) {
+        card.classList.toggle('insight-report-collapsed', collapsed);
+        contentBox.style.display = collapsed ? 'none' : '';
+      }
+    };
+  }
+  // 先显示 loading
+  const contentBox = document.getElementById('insight-content-box');
+  startTime = Date.now();
+  messenger.send('GET_SUMMARY_REPORT', { dayId }).then((resp) => {
+    aiServiceLabel = resp?.aiServiceLabel || '';
+    if (contentBox) contentBox.innerHTML = renderContent(resp, false, Date.now() - startTime);
+    // 更新 header AI label
+    const header = box.querySelector('.insight-ai-label');
+    if (header) header.textContent = aiServiceLabel;
   }).catch(() => {
-    box.innerHTML = `<div style='color:#e53935;padding:12px 0;'>${_('sidebar.insight.error', '昨日洞察加载失败')}</div>`;
+    if (contentBox) contentBox.innerHTML = `<div style='color:#e53935;padding:12px 0;'>${_('sidebar_insight_error', '昨日洞察加载失败')}</div>`;
   });
+  // 重新生成按钮
+  const regenBtn = document.getElementById('regenerateInsightBtn');
+  if (regenBtn) {
+    regenBtn.onclick = async () => {
+      startTime = Date.now();
+      if (contentBox) contentBox.innerHTML = renderContent(null, true, 0);
+      await messenger.send('GENERATE_SUMMARY_REPORT', { dayId, force: true });
+      // 轮询刷新，直到有新数据或超时
+      let waited = 0;
+      let lastResp = null;
+      while (waited < 20000) {
+        await new Promise(r => setTimeout(r, 800));
+        lastResp = await messenger.send('GET_SUMMARY_REPORT', { dayId }).catch(() => null);
+        if (lastResp && (lastResp.summaries || lastResp.summary || lastResp.suggestions)) break;
+        if (contentBox) contentBox.innerHTML = renderContent(null, true, Date.now() - startTime);
+        waited += 800;
+      }
+      if (contentBox) contentBox.innerHTML = renderContent(lastResp, false, Date.now() - startTime);
+    };
+  }
 }
 
 // 访问数据卡片渲染，今日标签下高亮当前打开标签页
 async function renderMergedView(root: HTMLElement, dayId: string, tab: 'today' | 'yesterday') {
   clearAllAnalyzingTimers(); // 渲染前清理所有分析中计时器，防止泄漏
-  root.innerHTML = '<div style="color:#888;padding:16px;">加载中...</div>';
+  root.innerHTML = '<div class="text-muted" style="padding:16px;">'+_('sidebar_card_loading', '加载中...')+'</div>';
+  // 恢复 GET_VISITS 消息调用
   const [visits, tabs] = await Promise.all([
-    messenger.send('GET_VISITS', { dayId }).then(r => r?.visits || []).catch(() => []), // 后台已用 browsing_visits_
+    messenger.send('GET_VISITS', { dayId }).then(r => r?.visits || []).catch(() => []),
     (tab === 'today' && typeof chrome !== 'undefined' && chrome.tabs) ? new Promise<any[]>(resolve => {
       chrome.tabs.query({}, resolve);
     }) : Promise.resolve([])
@@ -222,12 +337,13 @@ async function renderMergedView(root: HTMLElement, dayId: string, tab: 'today' |
   if (tab === 'today' && Array.isArray(tabs)) {
     openTabUrls = tabs.map(t => t.url && typeof t.url === 'string' ? t.url.split('#')[0] : '').filter(Boolean);
   }
-  let merged = mergeVisitsAndAnalysis(visits).filter(item => {
+  let merged = await mergeVisitsAndAnalysis(visits);
+  merged = merged.filter(item => {
     return !!(item && (item.title || item.url));
   });
   merged = merged.slice().sort((a, b) => (b.visitStartTime || 0) - (a.visitStartTime || 0));
   if (!merged.length) {
-    root.innerHTML = '<div style="color:#888;padding:16px;">无数据</div>';
+    root.innerHTML = '<div class="text-muted" style="padding:16px;">'+_('sidebar_card_empty', '无数据')+'</div>';
     return;
   }
   root.innerHTML = merged.map((item, idx) => {
@@ -254,25 +370,25 @@ async function renderMergedView(root: HTMLElement, dayId: string, tab: 'today' |
         aiContent += `<ul class='ai-highlights'>${jsonObj.highlights.map((h: string) => `<li>${h}</li>`).join('')}</ul>`;
       }
       if (jsonObj.specialConcerns && Array.isArray(jsonObj.specialConcerns) && jsonObj.specialConcerns.length) {
-        aiContent += `<div class='ai-special_concerns'>特别关注：${jsonObj.specialConcerns.map((c: string) => c).join('，')}</div>`;
+        aiContent += `<div class='ai-special_concerns'>${_('sidebar_insight_special', '特别关注')}：${jsonObj.specialConcerns.map((c: string) => c).join('，')}</div>`;
       }
     } else if (typeof rawText === 'string') {
-      if (rawText && rawText !== '正在进行 AI 分析' && rawText !== '') {
-        if (rawText.startsWith('AI 分析失败')) {
+      if (rawText && rawText !== _('sidebar_card_analyzing', '正在进行 AI 分析') && rawText !== '') {
+        if (rawText.startsWith(_('sidebar_card_ai_failed', 'AI 分析失败'))) {
           aiContent = `<div class='ai-failed'>${rawText.replace(/\n/g, '<br>')}</div>`;
         } else {
           aiContent = `<div class='ai-plain'>${rawText.replace(/\n/g, '<br>')}</div>`;
         }
-      } else if ((rawText === '正在进行 AI 分析' || rawText === '') && !isStructured) {
+      } else if ((rawText === _('sidebar_card_analyzing', '正在进行 AI 分析') || rawText === '') && !isStructured) {
         // 统一分析中分支，始终用标签+计时器，且只在分析中时插入计时器
         const analyzingId = `analyzing-timer-${idx}`;
         let aiServiceLabel = item.aiServiceLabel || '';
         let visitCountLabel = '';
         if (item.visitCount && item.visitCount > 1) {
-          visitCountLabel = `<span class='merged-card-visit-count'>（${item.visitCount}次）</span>`;
+          visitCountLabel = `<span class='merged-card-visit-count'>（${item.visitCount}${_('sidebar_card_times', '次')}）</span>`;
         }
         const aiLabelHtml = `<span class='merged-card-ai-label' id='ai-label-${idx}'>${aiServiceLabel}${visitCountLabel}</span>`;
-        aiContent = `${aiLabelHtml}<span class='ai-analyzing' id='${analyzingId}'>正在进行 AI 分析</span>`;
+        aiContent = `${aiLabelHtml}<span class='ai-analyzing' id='${analyzingId}'>${_('sidebar_card_analyzing', '正在进行 AI 分析')}</span>`;
         setTimeout(() => {
           const el = document.getElementById(analyzingId);
           if (el && item.visitStartTime) {
@@ -280,10 +396,10 @@ async function renderMergedView(root: HTMLElement, dayId: string, tab: 'today' |
           }
         }, 0);
       } else {
-        aiContent = `<span class='ai-empty'>[无分析结果]</span>`;
+        aiContent = `<span class='ai-empty'>[${_('sidebar_card_ai_empty', '无分析结果')}]</span>`;
       }
     } else {
-      aiContent = `<span class='ai-empty'>[无分析结果]</span>`;
+      aiContent = `<span class='ai-empty'>[${_('sidebar_card_ai_empty', '无分析结果')}]</span>`;
     }
     if (item.analyzeDuration && item.analyzeDuration > 0) {
       durationStr = showAnalyzeDuration(item.analyzeDuration);
@@ -300,12 +416,12 @@ async function renderMergedView(root: HTMLElement, dayId: string, tab: 'today' |
     </div>`;
     const urlLine = `<div class='merged-card-url-line'>
       <a href='${item.url || ''}' target='_blank' class='merged-card-url'>${item.url || ''}</a>
-      <div class='merged-card-duration'>${durationStr}</div>
+      <!-- 分析用时不再显示在 URL 行 -->
     </div>`;
     // 访问次数标签
     let visitCountLabel = '';
     if (item.visitCount && item.visitCount > 1) {
-      visitCountLabel = `<span class='merged-card-visit-count'>${item.visitCount}${_('sidebar.card.times', '次')}</span>`;
+      visitCountLabel = `<span class='merged-card-visit-count'>${item.visitCount}${_('sidebar_card_times', '次')}</span>`;
     }
     // AI服务标签
     let aiLabelHtml = '';
@@ -315,21 +431,21 @@ async function renderMergedView(root: HTMLElement, dayId: string, tab: 'today' |
     // 分析用时标签（精简，仅数字+单位）
     let analyzeDurationLabel = '';
     if (item.analyzeDuration && item.analyzeDuration > 0) {
-      analyzeDurationLabel = `<span class='merged-card-analyze-duration'>${(item.analyzeDuration / 1000).toFixed(1)}s</span>`;
+      analyzeDurationLabel = `<span class='merged-card-analyze-duration'>${(item.analyzeDuration / 1000).toFixed(1)}${_('sidebar_card_seconds_short', 's')}</span>`;
     }
-    // 标签区（并列展示）
+    // 标签区（并列展示，放在 AI 标签旁）
     let cardTagsLine = '';
     if (aiLabelHtml || visitCountLabel || analyzeDurationLabel) {
-      cardTagsLine = `<div class='merged-card-tags-line'>${aiLabelHtml}${visitCountLabel}${analyzeDurationLabel}</div>`;
+      cardTagsLine = `<div class='merged-card-tags-line'>${aiLabelHtml}${analyzeDurationLabel}${visitCountLabel}</div>`;
     }
     // aiContent 渲染后不再追加 cardTagsLine，分析中时标签区和计时器只在底部渲染
     let aiContentWithLabel = '';
     let showTags = true;
-    if (rawText === '正在进行 AI 分析' || rawText === '') {
+    if (rawText === _('sidebar_card_analyzing', '正在进行 AI 分析') || rawText === '') {
       // 分析中：只渲染计时器内容，不渲染标签区
       showTags = false;
       const analyzingId = `analyzing-timer-${idx}`;
-      aiContentWithLabel = `<span id='${analyzingId}' class='ai-analyzing'>${_('sidebar.card.analyzing', '正在进行 AI 分析')}</span>`;
+      aiContentWithLabel = `<span id='${analyzingId}' class='ai-analyzing'>${_('sidebar_card_analyzing', '正在进行 AI 分析')}</span>`;
       setTimeout(() => {
         const el = document.getElementById(analyzingId);
         if (el && item.visitStartTime) {
@@ -432,14 +548,14 @@ function startAnalyzingTimer({ el, item, dayId, root, tab, aiLabelHtml }: {
     const now = Date.now();
     const seconds = Math.floor((now - item.visitStartTime) / 1000);
     if (seconds >= 60) {
-      el.innerHTML = aiLabelHtml + `<span class='ai-failed'>分析超时（已用时 ${seconds} 秒）</span>`;
+      el.innerHTML = aiLabelHtml + `<span class='ai-failed'>${_('sidebar_card_ai_timeout', '分析超时')}（${_('sidebar_card_duration', '已用时')} ${seconds} ${_('sidebar_card_seconds', '秒')}）</span>`;
       const failedEl = el.querySelector('.ai-failed');
-      if (failedEl) failedEl.setAttribute('style', 'color:#e53935;');
+      if (failedEl) failedEl.classList.add('text-error');
       if (timer !== undefined) clearInterval(timer);
       analyzingTimers.delete(key);
       return;
     }
-    el.innerHTML = aiLabelHtml + `<span class='ai-analyzing'>正在进行 AI 分析（已用时 ${seconds} 秒）</span>`;
+    el.innerHTML = aiLabelHtml + `<span class='ai-analyzing'>${_('sidebar_card_analyzing', '正在进行 AI 分析')}（${_('sidebar_card_duration', '已用时')} ${seconds} ${_('sidebar_card_seconds', '秒')}）</span>`;
   };
   updateTextLocal();
   timer = setInterval(() => {
@@ -451,7 +567,7 @@ function startAnalyzingTimer({ el, item, dayId, root, tab, aiLabelHtml }: {
 
 async function clearMergedViewData(root: HTMLElement) {
   try {
-    logger.info('清除本地数据（不清除配置）');
+    logger.info(_('sidebar_clear_data_log', '清除本地数据（不清除配置）'));
     // 只清除 browsing_visits_、browsing_summary_、highlight_records_、page_snapshots_、record_logs_ 等业务数据，保留 config
     const allKeys = await storage.keys();
     const keepPrefixes = ['extension_config', 'app_config', 'config', 'settings']; // 可能的配置表前缀
@@ -461,10 +577,10 @@ async function clearMergedViewData(root: HTMLElement) {
     );
     await Promise.all(keysToRemove.map(k => storage.remove(k)));
     messenger.send('DATA_CLEARED'); // fire-and-forget，无需等待响应
-    root.innerHTML = '<div style="color:#888;padding:16px;">无数据</div>';
+    root.innerHTML = '<div class="text-muted" style="padding:16px;">'+_('sidebar_card_empty', '无数据')+'</div>';
   } catch (error) {
-    logger.error('sidebar.clear_data_failed', '清除数据失败', error);
-    root.innerHTML = '<div style="color:#e53935;padding:16px;">清除失败</div>';
+    logger.error('sidebar_clear_data_failed', _('sidebar_clear_data_failed', '清除数据失败'), error);
+    root.innerHTML = '<div class="text-error" style="padding:16px;">'+_('sidebar_clear_data_failed', '清除失败')+'</div>';
   }
 }
 
@@ -481,7 +597,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const clearBtn = document.getElementById('clearDataBtn') as HTMLButtonElement;
     if (clearBtn) {
       clearBtn.onclick = async () => {
-        if (confirm('确定要清除所有本地数据吗？此操作无法撤销。')) {
+        if (confirm(_('sidebar_clear_data_confirm', '确定要清除所有本地数据吗？此操作无法撤销。'))) {
           await clearMergedViewData(root);
         }
       };
@@ -507,7 +623,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const versionInfoEl = document.getElementById('versionInfo') as HTMLElement;
   if (versionInfoEl) {
     const manifest = chrome.runtime.getManifest();
-    versionInfoEl.textContent = `版本：${manifest.version}`;
+    versionInfoEl.textContent = `${_('sidebar_version', '版本：')}${manifest.version}`;
   }
 });
 
@@ -543,25 +659,31 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       if (mergedBox) renderMergedView(mergedBox, dayId, currentTab);
     }
   }
-  // SCROLL_TO_VISIT 消息：找不到卡片时直接忽略
+  // SCROLL_TO_VISIT 消息：滚动并高亮并展开对应卡片
   if (msg && msg.type === 'SCROLL_TO_VISIT' && msg.payload && msg.payload.url) {
     setTimeout(() => {
-      const url = msg.payload.url;
+      const url = msg.payload.url.split('#')[0];
       try {
         const links = document.querySelectorAll('.merged-card-url');
-        let found = false;
         links.forEach((link) => {
-          if (isSystemUrl(url)) return;
-          if (link instanceof HTMLAnchorElement && link.href.split('#')[0] === url.split('#')[0]) {
-            const cardContent = link.closest('.merged-card-content') as HTMLElement;
-            if (cardContent && cardContent.style.display === 'none') {
-              cardContent.style.display = 'block';
+          const href = link.getAttribute('href')?.split('#')[0] || '';
+          if (href === url) {
+            const card = link.closest('.merged-card');
+            if (card) {
+              card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              card.classList.add('merged-card-scroll-focus');
+              setTimeout(() => card.classList.remove('merged-card-scroll-focus'), 1600);
+              // 展开卡片内容
+              const header = card.querySelector('.merged-card-header') as HTMLElement;
+              if (header && header.dataset.entryId) {
+                const contentBox = document.getElementById(header.dataset.entryId);
+                if (contentBox) {
+                  contentBox.style.display = 'block';
+                }
+              }
             }
-            cardContent?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            found = true;
           }
         });
-        // 不再输出警告，未找到直接忽略
       } catch (err) {
         // 忽略异常
       }
