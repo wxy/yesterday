@@ -77,8 +77,11 @@ if (chrome && chrome.tabs && chrome.sidePanel) {
 
 async function handleMessengerGetVisits(msg: any) {
   const dayId = msg.payload?.dayId;
-  if (!dayId) return { dayId: '', visits: [], found: false };
-  return await getVisitsByDay(dayId);
+  if (!dayId) return { visits: [] };
+  const key = `browsing_visits_${dayId}`;
+  return storage.get<any[]>(key).then((visits) => ({ visits: visits || [] }));
+  //if (!dayId) return { dayId: '', visits: [], found: false };
+  //return await getVisitsByDay(dayId);
 }
 
 function handleMessengerGetAiAnalysis(msg: any) {

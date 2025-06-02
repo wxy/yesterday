@@ -2,7 +2,7 @@
 // src/background/visit-ai.ts
 import { storage } from '../lib/storage/index.js';
 import { Logger } from '../lib/logger/logger.js';
-import { shouldAnalyzeUrl } from '../lib/browser-events/url-filter.js';
+import { shouldAnalyzeUrl } from '../lib/utils/url-utils.js';
 import { config } from '../lib/config/index.js';
 import { messenger } from '../lib/messaging/messenger.js';
 import { AIManager } from '../lib/artificial-intelligence/ai-manager.js';

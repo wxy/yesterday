@@ -30,7 +30,6 @@ export async function renderInsightReport(box: HTMLElement, dayId: string, tab: 
   // 新数据结构：report 字段下才有 stats/summary/suggestions
   const report = resp && resp.report ? resp.report : null;
   // 修正：始终从 report 读取 aiServiceLabel/duration
-  console.log('[renderInsightReport] 获取洞察报告', { dayId, report });
   let aiServiceLabel = report && report.aiServiceLabel ? report.aiServiceLabel : '';
   let duration = report && typeof report.duration === 'number' ? report.duration : 0;
   if (aiLabelEl) aiLabelEl.textContent = aiServiceLabel ? `🤖 ${aiServiceLabel}` : '';
