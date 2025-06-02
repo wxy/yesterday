@@ -2,7 +2,7 @@ import { Logger } from '../lib/logger/logger.js';
 import { messenger } from '../lib/messaging/messenger.js';
 import { storage } from '../lib/storage/index.js';
 import { _ } from '../lib/i18n/i18n.js';
-import { shouldAnalyzeUrl } from '../lib/browser-events/url-filter.js';
+import { shouldAnalyzeUrl } from '../lib/utils/url-utils.js';
 import { config } from '../lib/config/index.js';
 import { renderMergedView, updateOpenTabHighlight, mergeVisitsAndAnalysis, startAnalyzingTimer } from './merged-view.js';
 import { renderInsightReport } from './insight-report.js'; // 暂时屏蔽洞察报告相关

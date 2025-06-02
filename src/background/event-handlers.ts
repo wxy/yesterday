@@ -75,11 +75,10 @@ if (chrome && chrome.tabs && chrome.sidePanel) {
 
 // ====== messenger 消息处理函数 ======
 
-function handleMessengerGetVisits(msg: any) {
+async function handleMessengerGetVisits(msg: any) {
   const dayId = msg.payload?.dayId;
-  if (!dayId) return { visits: [] };
-  const key = `browsing_visits_${dayId}`;
-  return storage.get<any[]>(key).then((visits) => ({ visits: visits || [] }));
+  if (!dayId) return { dayId: '', visits: [], found: false };
+  return await getVisitsByDay(dayId);
 }
 
 function handleMessengerGetAiAnalysis(msg: any) {
@@ -138,16 +137,21 @@ async function handlePageVisitRecordWithNotify(record: any, sender?: any, isAnal
 async function handleMessengerAiAnalyzeRequestWithNotify(msg: any) {
   const { url, title, content, id } = msg.payload || msg;
   const visitStartTime = msg.payload?.visitStartTime || Date.now();
-  const visitId = id || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`);
   // dayId 优先
   let dayId = msg.payload?.dayId;
   if (!dayId) {
     const date = new Date(visitStartTime);
     dayId = date.toISOString().slice(0, 10);
   }
+  if (!id) {
+    logger.warn('ai_analyze_no_visit_record', 'AI 分析请求缺少 id，无法查找访问记录: {0}', url);
+    return { ok: false, error: _('ai_analyze_no_visit_record', 'AI 分析请求缺少 id，无法查找访问记录: {0}', url) };
+  }
+  const visitId = id;
   const key = `browsing_visits_${dayId}`;
   let visits: any[] = (await storage.get<any[]>(key)) || [];
   const visit = visits.find(v => v.id === visitId);
+
   if (!visit) {
     logger.warn('ai_analyze_no_visit_record', '未找到访问记录: {0}', url);
     return { ok: false, error: _('ai_analyze_no_visit_record', '未找到访问记录: {0}', url) };
@@ -172,7 +176,7 @@ async function handleMessengerAiAnalyzeRequestWithNotify(msg: any) {
   onProcessingStart();
   try {
     if (!aiService) throw new _Error('ai_analyze_no_service', '无可用 AI 服务', url);
-    logger.info('ai_analyze_started', '开始分析: {0}', url);
+    logger.info('开始分析: {0}', url);
     const aiSummary = await aiService.summarizePage(url, content);
     const analyzeEnd = Date.now();
     const analyzeDuration = analyzeEnd - analyzeStart;
@@ -180,7 +184,7 @@ async function handleMessengerAiAnalyzeRequestWithNotify(msg: any) {
     onProcessingEnd();
     setTip(aiSummary.important);
     notifySidePanelUpdate('ai');
-    logger.info('ai_analyze_completed', '分析完成: {0}', url);
+    logger.info('分析完成: {0}', url);
     return { ok: true, aiContent: aiSummary, analyzeDuration, shouldNotify: aiSummary.important };
   } catch (e: any) {
     onProcessingEnd();
