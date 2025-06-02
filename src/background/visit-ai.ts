@@ -286,3 +286,37 @@ export async function generateSimpleReport(dayId: string, force = false) {
   logger.info(`[简化报告] 已生成并缓存 ${dayId} 的报告`, data);
   return data;
 }
+
+// 跨日清理与日报生成任务
+export async function handleCrossDayCleanup() {
+  const now = new Date();
+  const todayId = now.toISOString().slice(0, 10);
+  const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  const yesterdayId = yesterday.toISOString().slice(0, 10);
+
+  // 1. 删除昨日之前的访问数据及分析
+  const allKeys = await storage.keys();
+  const visitKeys = allKeys.filter(k => k.startsWith('browsing_visits_'));
+  for (const key of visitKeys) {
+    const day = key.replace('browsing_visits_', '');
+    if (day < yesterdayId) {
+      await storage.remove(key);
+    }
+  }
+  // 2. 删除昨日之前的日报（洞察）
+  const reportKeys = allKeys.filter(k => k.startsWith('app:browsing_summary_'));
+  for (const key of reportKeys) {
+    const day = key.replace('app:browsing_summary_', '');
+    if (day < yesterdayId) {
+      await storage.remove(key);
+    }
+  }
+  // 3. 对昨日数据进行分析，生成洞察日报
+  await generateSimpleReport(yesterdayId, true);
+  // 4. 通知侧边栏刷新（如果已打开）
+  if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+    chrome.runtime.sendMessage({ type: 'SIDE_PANEL_UPDATE' });
+  }
+}
+
+// 在跨日判断处调用 handleCrossDayCleanup()

@@ -1,6 +1,9 @@
 import { messenger } from '../lib/messaging/messenger.js';
 import { _ } from '../lib/i18n/i18n.js';
 
+// 全局折叠状态缓存
+const insightCollapseState: Record<string, boolean> = {};
+
 // 洞察报告渲染（仅显示，不自动生成）
 export async function renderInsightReport(box: HTMLElement, dayId: string, tab: 'today' | 'yesterday') {
   // 只读取数据库，不触发生成
@@ -174,6 +177,22 @@ export async function renderInsightReport(box: HTMLElement, dayId: string, tab: 
       `;
       document.head.appendChild(style);
     }
+  }
+  // 折叠/展开功能
+  const header = box.querySelector('.insight-report-header') as HTMLElement;
+  const contentBoxWrap = box.querySelector('.insight-content-box') as HTMLElement;
+  // 用 dayId+tab 作为唯一 key
+  const collapseKey = `${dayId}_${tab}`;
+  let collapsed = insightCollapseState[collapseKey] || false;
+  if (header && contentBoxWrap) {
+    header.style.cursor = 'pointer';
+    // 初始渲染时恢复折叠状态
+    contentBoxWrap.style.display = collapsed ? 'none' : '';
+    header.onclick = () => {
+      collapsed = !collapsed;
+      contentBoxWrap.style.display = collapsed ? 'none' : '';
+      insightCollapseState[collapseKey] = collapsed;
+    };
   }
   generateBtn.onclick = async () => {
     generateBtn.disabled = true;
