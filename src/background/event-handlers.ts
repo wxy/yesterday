@@ -16,14 +16,15 @@ import {
   handlePageVisitRecord,
   updateVisitAiResult,
   getVisitsByDay,
-  getSummaryReport,
-  generateSummaryReport
+  getSimpleReport,
+  generateSimpleReport
 } from './visit-ai.js';
-import { getActiveAIService } from '../lib/artificial-intelligence/index.js';
-import { getCurrentAiConfig } from '../lib/artificial-intelligence/ai-config.js';
+
 import { AIManager } from '../lib/artificial-intelligence/ai-manager.js';
 import { Logger } from '../lib/logger/logger.js';
 import { _, _Error } from '../lib/i18n/i18n.js';
+
+const logger = new Logger('background/event-handlers');
 
 // ====== 侧面板相关状态管理 ======
 let useSidePanel = false;
@@ -70,14 +71,6 @@ if (chrome && chrome.tabs && chrome.sidePanel) {
       });
     }
   });
-}
-
-// ========== 右键菜单：切换侧边栏显示方式 ==========
-// 已由 Chrome 原生侧边栏菜单接管，无需自定义 contextMenus 逻辑
-
-// 监听 useSidePanel 状态变化，动态更新菜单勾选
-function updateSidePanelMenu(checked: boolean) {
-  // 已由 Chrome 原生侧边栏菜单接管，无需自定义
 }
 
 // ====== messenger 消息处理函数 ======
@@ -201,7 +194,7 @@ async function handleMessengerAiAnalyzeRequestWithNotify(msg: any) {
 async function handleMessengerGetSummaryReport(msg: any) {
   const dayId = msg.payload?.dayId;
   if (!dayId) return { summary: '' };
-  const report = await getSummaryReport(dayId);
+  const report = await getSimpleReport(dayId);
   return report || { summary: '' };
 }
 
@@ -209,11 +202,11 @@ async function handleMessengerGenerateSummaryReport(msg: any) {
   const dayId = msg.payload?.dayId;
   const force = !!msg.payload?.force;
   if (!dayId) return { summary: '' };
-  const report = await generateSummaryReport(dayId, force);
+  const report = await generateSimpleReport(dayId, force);
   return report || { summary: '' };
 }
 
-const logger = new Logger('background/event-handlers');
+
 
 // 兜底处理发往侧边栏但侧边栏可能未打开的消息，避免报错
 function handleNoop(_msg: any, sender?: chrome.runtime.MessageSender) {

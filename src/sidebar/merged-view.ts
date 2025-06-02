@@ -134,10 +134,10 @@ export async function renderMergedView(root: HTMLElement, dayId: string, tab: 't
       } else if ((rawText === _('sidebar_card_analyzing', '正在进行 AI 分析') || rawText === '') && !isStructured) {
         // 统一分析中分支，始终用标签+计时器，且只在分析中时插入计时器
         const analyzingId = `analyzing-timer-${idx}`;
-        let aiServiceLabel = item.aiServiceLabel || '';
+        let aiServiceLabel = '🤖' + (item.aiServiceLabel || '');
         let visitCountLabel = '';
         if (item.visitCount && item.visitCount > 1) {
-          visitCountLabel = `<span class='merged-card-visit-count'>（${item.visitCount}${_('sidebar_card_times', '次')}）</span>`;
+          visitCountLabel = `<span class='merged-card-visit-count'>🛞 ${item.visitCount}${_('sidebar_card_times', '次')}</span>`;
         }
         const aiLabelHtml = `<span class='merged-card-ai-label' id='ai-label-${idx}'>${aiServiceLabel}${visitCountLabel}</span>`;
         aiContent = `${aiLabelHtml}<span class='ai-analyzing' id='${analyzingId}'>${_('sidebar_card_analyzing', '正在进行 AI 分析')}</span>`;
@@ -154,7 +154,7 @@ export async function renderMergedView(root: HTMLElement, dayId: string, tab: 't
       aiContent = `<span class='ai-empty'>[${_('sidebar_card_ai_empty', '无分析结果')}]</span>`;
     }
     if (item.analyzeDuration && item.analyzeDuration > 0) {
-      durationStr = `<span class='insight-report-content-duration'>${(item.analyzeDuration / 1000).toFixed(1)}${_('sidebar_card_seconds', '秒')}</span>`;
+      durationStr = `<span class='insight-report-content-duration'>${(item.analyzeDuration / 1000).toFixed(1)}${_('sidebar_card_seconds_short', 's')}</span>`;
     }
     // 今日标签下，若 url 在 openTabUrls 中则高亮
     let cardClass = 'merged-card';
@@ -173,17 +173,17 @@ export async function renderMergedView(root: HTMLElement, dayId: string, tab: 't
     // 访问次数标签
     let visitCountLabel = '';
     if (item.visitCount && item.visitCount > 1) {
-      visitCountLabel = `<span class='merged-card-visit-count'>${item.visitCount}${_('sidebar_card_times', '次')}</span>`;
+      visitCountLabel = `<span class='merged-card-visit-count'>🛞 ${item.visitCount}${_('sidebar_card_times', '次')}</span>`;
     }
     // AI服务标签
     let aiLabelHtml = '';
     if (item.aiServiceLabel) {
-      aiLabelHtml = `<span class='merged-card-ai-label'>${item.aiServiceLabel}</span>`;
+      aiLabelHtml = `<span class='merged-card-ai-label'>🤖 ${item.aiServiceLabel}</span>`;
     }
     // 分析用时标签（精简，仅数字+单位）
     let analyzeDurationLabel = '';
     if (item.analyzeDuration && item.analyzeDuration > 0) {
-      analyzeDurationLabel = `<span class='merged-card-analyze-duration'>${(item.analyzeDuration / 1000).toFixed(1)}${_('sidebar_card_seconds_short', 's')}</span>`;
+      analyzeDurationLabel = `<span class='merged-card-analyze-duration'>⌛️ ${(item.analyzeDuration / 1000).toFixed(1)}${_('sidebar_card_seconds_short', 's')}</span>`;
     }
     // 标签区（并列展示，放在 AI 标签旁）
     let cardTagsLine = '';

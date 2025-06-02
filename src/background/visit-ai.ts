@@ -5,7 +5,7 @@ import { Logger } from '../lib/logger/logger.js';
 import { shouldAnalyzeUrl } from '../lib/browser-events/url-filter.js';
 import { config } from '../lib/config/index.js';
 import { messenger } from '../lib/messaging/messenger.js';
-
+import { AIManager } from '../lib/artificial-intelligence/ai-manager.js';
 const logger = new Logger('visit-ai');
 
 export const VISIT_KEEP_DAYS = 7;
@@ -208,41 +208,28 @@ export async function cleanupOldVisits() {
   }
 }
 
-// ===== 汇总报告相关 =====
-import { AIManager } from '../lib/artificial-intelligence/ai-manager.js';
+// ===== 简化洞察报告相关 =====
+
 
 /**
- * 获取指定日期的汇总报告（优先本地缓存，若无则自动触发生成）
+ * 获取指定日期的简化洞察报告（只读缓存，不自动生成）
+ * 返回结构：{ dayId, report: { stats, summary, suggestions } }
  */
-export async function getSummaryReport(dayId: string) {
-  const key = `browsing_summary_${dayId}`; // 原 summary_${dayId}
-  let summary = await storage.get<any>(key);
-  if (summary && summary.summary) return summary;
-  // 若无缓存，自动生成
-  summary = await generateSummaryReport(dayId, false);
-  return summary;
+export async function getSimpleReport(dayId: string) {
+  const key = `app:browsing_summary_${dayId}`;
+  const cached = await storage.get<any>(key);
+  return cached && cached.report ? { dayId, report: cached.report } : null;
 }
 
 /**
- * 生成指定日期的汇总报告（可强制刷新）
+ * 生成指定日期的简化洞察报告（只保留统计、简要总结、建议）
+ * force=true 时强制生成
  */
-export async function generateSummaryReport(dayId: string, force = false) {
-  const key = `browsing_summary_${dayId}`; // 原 summary_${dayId}
-  // 优先读取超时配置，保证前端和AI调用一致
-  let requestTimeout = 30000;
-  let aiConfig = { serviceId: 'ollama' };
-  let aiServiceLabel = 'AI';
-  try {
-    const allConfig = await config.getAll();
-    if (allConfig && allConfig['aiServiceConfig']) aiConfig = allConfig['aiServiceConfig'];
-    if (allConfig && allConfig['requestTimeout']) requestTimeout = allConfig['requestTimeout'];
-    aiServiceLabel = aiConfig.serviceId === 'chrome-ai' ? 'Chrome AI' : (aiConfig.serviceId === 'ollama' ? 'Ollama' : aiConfig.serviceId);
-  } catch {}
-
+export async function generateSimpleReport(dayId: string, force = false) {
+  const key = `app:browsing_summary_${dayId}`;
   if (!force) {
     const cached = await storage.get<any>(key);
-    // 兼容老数据结构
-    if (cached && (cached.summaries || cached.summary)) return cached;
+    if (cached && cached.report) return { dayId, report: cached.report };
   }
   // 获取访问记录
   const visits = await getVisitsByDay(dayId);
@@ -254,27 +241,48 @@ export async function generateSummaryReport(dayId: string, force = false) {
   const keywords = Array.from(new Set(visits.flatMap(v => (v.title || '').split(/\s|,|，|。|\.|;|；/).filter(Boolean))));
   const totalDuration = visits.reduce((sum, v) => sum + (v.analyzeDuration || 0), 0);
   const stats = { total, totalDuration, domains, keywords };
-  // 转换为 PageAISummary[]
-  const pageSummaries = visits.map(v => {
-    if (typeof v.aiResult === 'object' && v.aiResult && v.aiResult.summary) return v.aiResult;
-    // 兼容字符串类型
-    return { summary: typeof v.aiResult === 'string' ? v.aiResult : '', highlights: [], important: false };
-  });
-  // 统一调用 generateDailyReport
-  let report: any = null;
+  let summary = '';
+  let suggestions: string[] = [];
+  let aiServiceLabel = 'AI';
+  let duration = 0;
   try {
-    const aiService = await AIManager.instance.getAvailableService(aiConfig.serviceId);
+    const aiService = await AIManager.instance.getAvailableService();
+    let requestTimeout = 20000;
+    try {
+      const allConfig = await config.getAll();
+      if (allConfig && allConfig['requestTimeout']) requestTimeout = allConfig['requestTimeout'];
+      // 读取 AI 配置，获取服务名
+      const aiConfig = allConfig && typeof allConfig['aiServiceConfig'] === 'object' ? allConfig['aiServiceConfig'] as { serviceId?: string } : { serviceId: 'ollama' };
+      const labelMap: Record<string, string> = {
+        'ollama': 'Ollama 本地',
+        'chrome-ai': 'Chrome 内置 AI',
+        'openai': 'OpenAI',
+        'other': '其它',
+      };
+      aiServiceLabel = aiConfig && aiConfig.serviceId ? (labelMap[aiConfig.serviceId] || aiConfig.serviceId || 'AI') : 'AI';
+    } catch {}
     if (aiService && aiService.generateDailyReport) {
-      report = await aiService.generateDailyReport(dayId, pageSummaries, { timeout: requestTimeout });
-    } else {
-      logger.warn('未找到可用的 AI 服务或该服务不支持日报生成', { aiConfig });
+      const pageSummaries = visits.map(v => ({
+        summary: v.title || '',
+        highlights: [],
+        important: false,
+        mainContent: v.mainContent || ''
+      }));
+      const t0 = Date.now();
+      const aiResult = await aiService.generateDailyReport(dayId, pageSummaries, { timeout: requestTimeout });
+      duration = Date.now() - t0;
+      if (aiResult.summaries && Array.isArray(aiResult.summaries)) {
+        summary = aiResult.summaries.map((s: any) => s.summary).join('\n');
+      }
+      suggestions = aiResult.suggestions || [];
     }
   } catch (err) {
-    logger.error('生成日报时调用 AI 服务失败', err);
+    logger.error('生成简化洞察报告失败', err);
   }
-  // 写入缓存
-  const summaryData = { dayId, stats, report, visits, pageSummaries };
-  await storage.set(key, summaryData);
-  logger.info(`[汇总报告] 已生成并缓存 ${dayId} 的汇总报告`);
-  return summaryData;
+  // 新增：写入 aiServiceLabel 和 duration 字段
+  const report = { stats, summary, suggestions, aiServiceLabel, duration };
+  const data = { dayId, report };
+  await storage.set(key, data);
+  logger.info(`[简化报告] 已生成并缓存 ${dayId} 的报告`, data);
+  return data;
 }

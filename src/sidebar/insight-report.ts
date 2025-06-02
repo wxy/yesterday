@@ -1,29 +1,44 @@
 import { messenger } from '../lib/messaging/messenger.js';
 import { _ } from '../lib/i18n/i18n.js';
 
-// 洞察报告渲染（今日/昨日）
+// 洞察报告渲染（仅显示，不自动生成）
 export async function renderInsightReport(box: HTMLElement, dayId: string, tab: 'today' | 'yesterday') {
-  let startTime = 0;
-  const collapsedKey = `insightCollapsed_${tab}`;
-  function renderHeader(aiServiceLabel = '', isToday = false, showGenerate = true) {
-    return `<div class='insight-report-header' id='insight-header-row'>
-      <div class='insight-report-title'>${_(isToday ? 'sidebar_insight_today' : 'sidebar_insight_yesterday', isToday ? '今日洞察' : '昨日洞察')}</div>
-      <div class='insight-header-btns'>
-        <button id='regenerateInsightBtn'>${_('sidebar_insight_regenerate', '重新生成')}</button>
-        ${isToday && showGenerate ? `<button id='generateTodayInsightBtn'>${_('sidebar_insight_generate', '即刻洞察')}</button>` : ''}
-        <span class='insight-ai-label'>${aiServiceLabel || ''}</span>
-      </div>
-    </div>`;
-  }
-  function renderContent(resp: any, generating = false, duration = 0) {
-    if (generating) {
-      return `<div class='insight-report-content insight-report-content--empty'>${_('sidebar_insight_generating', '正在生成...')}${duration > 0 ? `<span class='insight-report-content-duration'>(${_('sidebar_card_duration', '用时')} ${(duration/1000).toFixed(1)}${_('sidebar_card_seconds', '秒')})</span>` : ''}</div>`;
-    }
-    if (!resp || (!resp.summaries && !resp.summary && !resp.suggestions)) {
-      return `<div class='insight-report-content insight-report-content--empty'>${_('sidebar_insight_empty', '暂无洞察')}</div>`;
-    }
-    const { summaries, suggestions, stats, summary, highlights, specialConcerns } = resp;
+  // 只读取数据库，不触发生成
+  box.innerHTML = `<div class='insight-report-card insight-report-card--modern'>
+    <div class='insight-report-header'>
+      <div class='insight-report-title'>${_(tab === 'today' ? 'sidebar_insight_today' : 'sidebar_insight_yesterday', tab === 'today' ? '今日洞察' : '昨日洞察')}</div>
+      <button id='insight-generate-btn' class='insight-generate-btn'>${_('sidebar_insight_generate_now', '即刻洞察')}</button>
+    </div>
+    <div id='insight-content-box' class='insight-content-box'>${_('sidebar_insight_loading', '加载中...')}</div>
+    <div class='insight-report-footer'>
+      <span id='insight-ai-label' class='insight-ai-label insight-footer-label'></span>
+      <span id='insight-duration-label' class='insight-duration-label insight-footer-label'></span>
+    </div>
+  </div>`;
+  const contentBox = document.getElementById('insight-content-box');
+  const generateBtn = document.getElementById('insight-generate-btn') as HTMLButtonElement;
+  const aiLabelEl = document.getElementById('insight-ai-label');
+  const durationLabelEl = document.getElementById('insight-duration-label');
+  let resp: any = null;
+  try {
+    resp = await messenger.send('GET_SUMMARY_REPORT', { dayId });
+  } catch {}
+  if (!contentBox) return;
+  // 新数据结构：report 字段下才有 stats/summary/suggestions
+  const report = resp && resp.report ? resp.report : null;
+  // 修正：始终从 report 读取 aiServiceLabel/duration
+  console.log('[renderInsightReport] 获取洞察报告', { dayId, report });
+  let aiServiceLabel = report && report.aiServiceLabel ? report.aiServiceLabel : '';
+  let duration = report && typeof report.duration === 'number' ? report.duration : 0;
+  if (aiLabelEl) aiLabelEl.textContent = aiServiceLabel ? `🤖 ${aiServiceLabel}` : '';
+  if (durationLabelEl) durationLabelEl.textContent = duration > 0 ? `⌛️${(duration/1000).toFixed(1)}s` : '';
+  if (!report || (!report.summary && (!report.suggestions || report.suggestions.length === 0))) {
+    contentBox.innerHTML = `<div class='insight-report-content insight-report-content--empty'>${_('sidebar_insight_empty', '暂无洞察')}</div>`;
+    generateBtn.innerHTML = _('sidebar_insight_generate_now', '即刻洞察');
+    generateBtn.disabled = false;
+  } else {
     let html = '';
+    const { stats, summary, suggestions } = report;
     if (stats) {
       html += `<div class='insight-stats'>
         <div class='insight-stats-row-label'>${_('sidebar_insight_stats_total', '访问总数')}</div><div class='insight-stats-row-value'>${stats.total}</div>
@@ -32,128 +47,144 @@ export async function renderInsightReport(box: HTMLElement, dayId: string, tab: 
         <div class='insight-stats-row-label'>${_('sidebar_insight_stats_keywords', '关键词')}</div><div class='insight-stats-row-value'>${stats.keywords && stats.keywords.length ? stats.keywords.slice(0, 10).join('，') : '-'}</div>
       </div>`;
     }
-    if (summaries && Array.isArray(summaries) && summaries.length) {
-      html += `<div class='insight-report-content'>${summaries.map(s => s.summary).join('<br>')}</div>`;
-    } else if (summary) {
+    if (summary) {
       html += `<div class='insight-report-content'>${summary}</div>`;
     }
-    if (suggestions && Array.isArray(suggestions) && suggestions.length) {
-      html += `<ul class='insight-highlights'>${suggestions.map((s) => `<li>${s}</li>`).join('')}</ul>`;
-    } else {
-      if (highlights && Array.isArray(highlights) && highlights.length) {
-        html += `<ul class='insight-highlights'>${highlights.map((h) => `<li>${h}</li>`).join('')}</ul>`;
-      }
-      if (specialConcerns && Array.isArray(specialConcerns) && specialConcerns.length) {
-        html += `<div class='insight-special-concerns'>${_('sidebar_insight_special', '特别关注')}: ${specialConcerns.map((c) => c).join('，')}</div>`;
-      }
+    if (suggestions && suggestions.length) {
+      html += `<ul class='insight-highlights'>${suggestions.map((s: string) => `<li>${s}</li>`).join('')}</ul>`;
     }
-    return html;
-  }
-  let collapsed = false;
-  try {
-    const stored = localStorage.getItem(collapsedKey);
-    if (stored === '1') collapsed = true;
-  } catch {}
-  let aiServiceLabel = '';
-  if (tab === 'today') {
-    const resp = await messenger.send('GET_SUMMARY_REPORT', { dayId }).catch(() => null);
-    aiServiceLabel = resp?.aiServiceLabel || '';
-    const hasReport = !!(resp && (
-      (Array.isArray(resp.summaries) && resp.summaries.length > 0) ||
-      (typeof resp.summary === 'string' && resp.summary.trim() !== '') ||
-      (Array.isArray(resp.suggestions) && resp.suggestions.length > 0)
-    ));
-    const showGenerate = !hasReport;
-    box.innerHTML = `<div class='insight-report-card${collapsed ? ' insight-report-collapsed' : ''}'>
-      ${renderHeader(aiServiceLabel, true, showGenerate)}
-      <div id='insight-content-box' style='${collapsed ? 'display:none;' : ''}'>${renderContent(resp)}</div>
-    </div>`;
-    const headerRow = document.getElementById('insight-header-row');
-    if (headerRow) {
-      headerRow.onclick = (e) => {
-        if ((e.target as HTMLElement).tagName === 'BUTTON') return;
-        collapsed = !collapsed;
-        try { localStorage.setItem(collapsedKey, collapsed ? '1' : '0'); } catch {}
-        const card = headerRow.closest('.insight-report-card');
-        const contentBox = document.getElementById('insight-content-box');
-        if (card && contentBox) {
-          card.classList.toggle('insight-report-collapsed', collapsed);
-          contentBox.style.display = collapsed ? 'none' : '';
+    contentBox.innerHTML = html;
+    // 生成完成后按钮恢复为“重新生成”
+    generateBtn.innerHTML = _('sidebar_insight_regenerate', '重新生成');
+    generateBtn.disabled = false;
+    // CSS 美化：header 左右布局，footer 标签风格与数据卡片一致
+    if (!document.getElementById('insight-regen-spinner-style')) {
+      const style = document.createElement('style');
+      style.id = 'insight-regen-spinner-style';
+      style.textContent = `
+        .insight-report-card--modern {
+          background: #fff;
+          border-radius: 10px;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+          padding: 18px 20px 10px 20px;
+          margin: 12px 0 18px 0;
+          border: 1px solid #e0e0e0;
         }
-      };
-    }
-    const genBtn = document.getElementById('generateTodayInsightBtn');
-    if (genBtn) {
-      genBtn.onclick = async () => {
-        startTime = Date.now();
-        const contentBox = document.getElementById('insight-content-box');
-        if (contentBox) contentBox.innerHTML = renderContent(null, true, 0);
-        await messenger.send('GENERATE_SUMMARY_REPORT', { dayId, force: true });
-        let waited = 0;
-        let lastResp = null;
-        while (waited < 20000) {
-          await new Promise(r => setTimeout(r, 800));
-          lastResp = await messenger.send('GET_SUMMARY_REPORT', { dayId }).catch(() => null);
-          if (lastResp && (lastResp.summaries || lastResp.summary || lastResp.suggestions)) break;
-          if (contentBox) contentBox.innerHTML = renderContent(null, true, Date.now() - startTime);
-          waited += 800;
+        .insight-report-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 10px;
         }
-        if (contentBox) contentBox.innerHTML = renderContent(lastResp, false, Date.now() - startTime);
-        renderInsightReport(box, dayId, tab);
-      };
+        .insight-report-title {
+          font-size: 1.1em;
+          font-weight: bold;
+          color: #1976d2;
+          flex: 1;
+          text-align: left;
+        }
+        .insight-generate-btn {
+          background: #2196f3;
+          color: #fff;
+          border: none;
+          border-radius: 5px;
+          padding: 4px 14px;
+          font-size: 0.98em;
+          margin-left: 10px;
+          cursor: pointer;
+          transition: background 0.2s;
+        }
+        .insight-generate-btn:disabled {
+          background: #bdbdbd;
+          cursor: not-allowed;
+        }
+        .insight-content-box {
+          margin-top: 8px;
+        }
+        .insight-report-footer {
+          display: flex;
+          align-items: center;
+          justify-content: flex-end;
+          gap: 12px;
+          margin-top: 10px;
+          min-height: 22px;
+        }
+        .insight-footer-label {
+          font-size: 12px;
+          border-radius: 4px;
+          padding: 2px 8px;
+          margin-left: 0;
+          margin-right: 0;
+          line-height: 1.6;
+          display: inline-block;
+        }
+        .insight-ai-label {
+          color: #1976d2;
+          font-weight: 500;
+          background: #e3f2fd;
+          border: 1px solid #bbdefb;
+        }
+        .insight-duration-label {
+          color: #888;
+          background: #f5f7fa;
+          border: 1px solid #e0e0e0;
+        }
+        .insight-regen-spinner {
+          display: inline-block;
+          width: 18px;
+          height: 18px;
+          border: 2px solid #bbb;
+          border-top: 2px solid #2196f3;
+          border-radius: 50%;
+          animation: insight-spin 0.8s linear infinite;
+          vertical-align: middle;
+        }
+        @keyframes insight-spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        .insight-stats {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px 18px;
+          margin-bottom: 8px;
+        }
+        .insight-stats-row-label {
+          color: #888;
+          min-width: 60px;
+          font-size: 0.97em;
+        }
+        .insight-stats-row-value {
+          color: #333;
+          font-weight: 500;
+          margin-right: 12px;
+        }
+        .insight-report-content {
+          margin: 8px 0 6px 0;
+          font-size: 1em;
+          color: #222;
+        }
+        .insight-highlights {
+          margin: 0 0 0 18px;
+          color: #1976d2;
+        }
+        .insight-highlights li {
+          margin-bottom: 2px;
+        }
+      `;
+      document.head.appendChild(style);
     }
-    const regenBtn = document.getElementById('regenerateInsightBtn');
-    if (regenBtn) {
-      regenBtn.onclick = async () => {
-        if (genBtn) genBtn.click();
-      };
-    }
-    return;
   }
-  box.innerHTML = `<div class='insight-report-card${collapsed ? ' insight-report-collapsed' : ''}'>
-    ${renderHeader('', false, false)}
-    <div id='insight-content-box' style='${collapsed ? 'display:none;' : ''}'>${renderContent(null, true, 0)}</div>
-  </div>`;
-  const headerRow = document.getElementById('insight-header-row');
-  if (headerRow) {
-    headerRow.onclick = (e) => {
-      if ((e.target as HTMLElement).tagName === 'BUTTON') return;
-      collapsed = !collapsed;
-      try { localStorage.setItem(collapsedKey, collapsed ? '1' : '0'); } catch {}
-      const card = headerRow.closest('.insight-report-card');
-      const contentBox = document.getElementById('insight-content-box');
-      if (card && contentBox) {
-        card.classList.toggle('insight-report-collapsed', collapsed);
-        contentBox.style.display = collapsed ? 'none' : '';
-      }
-    };
-  }
-  const contentBox = document.getElementById('insight-content-box');
-  startTime = Date.now();
-  messenger.send('GET_SUMMARY_REPORT', { dayId }).then((resp) => {
-    aiServiceLabel = resp?.aiServiceLabel || '';
-    if (contentBox) contentBox.innerHTML = renderContent(resp, false, Date.now() - startTime);
-    const header = box.querySelector('.insight-ai-label');
-    if (header) header.textContent = aiServiceLabel;
-  }).catch(() => {
-    if (contentBox) contentBox.innerHTML = `<div style='color:#e53935;padding:12px 0;'>${_('sidebar_insight_error', '昨日洞察加载失败')}</div>`;
-  });
-  const regenBtn = document.getElementById('regenerateInsightBtn');
-  if (regenBtn) {
-    regenBtn.onclick = async () => {
-      startTime = Date.now();
-      if (contentBox) contentBox.innerHTML = renderContent(null, true, 0);
-      await messenger.send('GENERATE_SUMMARY_REPORT', { dayId, force: true });
-      let waited = 0;
-      let lastResp = null;
-      while (waited < 20000) {
-        await new Promise(r => setTimeout(r, 800));
-        lastResp = await messenger.send('GET_SUMMARY_REPORT', { dayId }).catch(() => null);
-        if (lastResp && (lastResp.summaries || lastResp.summary || lastResp.suggestions)) break;
-        if (contentBox) contentBox.innerHTML = renderContent(null, true, Date.now() - startTime);
-        waited += 800;
-      }
-      if (contentBox) contentBox.innerHTML = renderContent(lastResp, false, Date.now() - startTime);
-    };
-  }
+  generateBtn.onclick = async () => {
+    generateBtn.disabled = true;
+    generateBtn.innerHTML = `<span class='insight-regen-spinner'></span>`;
+    contentBox.innerHTML = `<div class='insight-report-content insight-report-content--empty'>${_('sidebar_insight_generating', '正在生成...')}</div>`;
+    const t0 = Date.now();
+    await messenger.send('GENERATE_SUMMARY_REPORT', { dayId, force: true });
+    const t1 = Date.now();
+    // 生成后刷新
+    await renderInsightReport(box, dayId, tab);
+    // 生成用时显示（此处为兜底，实际刷新后会由新数据覆盖）
+    if (durationLabelEl) durationLabelEl.textContent = `⏱${((t1-t0)/1000).toFixed(1)}s`;
+  };
 }

@@ -5,7 +5,7 @@ import { _ } from '../lib/i18n/i18n.js';
 import { shouldAnalyzeUrl } from '../lib/browser-events/url-filter.js';
 import { config } from '../lib/config/index.js';
 import { renderMergedView, updateOpenTabHighlight, mergeVisitsAndAnalysis, startAnalyzingTimer } from './merged-view.js';
-// import { renderInsightReport } from './insight-report.js'; // 暂时屏蔽洞察报告相关
+import { renderInsightReport } from './insight-report.js'; // 暂时屏蔽洞察报告相关
 
 const logger = new Logger('Sidebar');
 
@@ -57,7 +57,7 @@ function renderSidebarTabs(root: HTMLElement) {
     currentTab = tab;
     setActiveTab(tab);
     const dayId = getActiveDayId(tab);
-    // if (insightBox) renderInsightReport(insightBox, dayId, tab); // 洞察报告相关已屏蔽
+    if (insightBox) renderInsightReport(insightBox, dayId, tab); // 洞察报告相关已屏蔽
     if (mergedBox) await renderMergedView(mergedBox, dayId, tab);
     // updateOpenTabHighlight(tab); // 由 merged-view 内部处理
   }
@@ -66,7 +66,7 @@ function renderSidebarTabs(root: HTMLElement) {
   // 默认显示今日，初始化也用活跃日
   setActiveTab('today');
   const todayId = getActiveDayId('today');
-  // if (insightBox) renderInsightReport(insightBox, todayId, 'today'); // 洞察报告相关已屏蔽
+  if (insightBox) renderInsightReport(insightBox, todayId, 'today'); // 洞察报告相关已屏蔽
   if (mergedBox) renderMergedView(mergedBox, todayId, 'today');
 }
 
@@ -140,12 +140,12 @@ messenger.on('SIDE_PANEL_UPDATE', (msg) => {
   }
   const updateType = msg.payload && msg.payload.updateType;
   if (updateType === 'ai') {
-    // if (insightBox) renderInsightReport(insightBox, dayId, currentTab); // 洞察报告相关已屏蔽
+    if (insightBox) renderInsightReport(insightBox, dayId, currentTab);
     if (mergedBox) renderMergedView(mergedBox, dayId, currentTab);
   } else if (updateType === 'visit' && mergedBox) {
     renderMergedView(mergedBox, dayId, currentTab);
   } else {
-    // if (insightBox) renderInsightReport(insightBox, dayId, currentTab); // 洞察报告相关已屏蔽
+    if (insightBox) renderInsightReport(insightBox, dayId, currentTab);
     if (mergedBox) renderMergedView(mergedBox, dayId, currentTab);
   }
 });
@@ -175,8 +175,8 @@ messenger.on('SCROLL_TO_VISIT', (msg) => {
             }
           }
         });
-      } catch (err) {
-        // 忽略异常
+      } catch (e) {
+        logger.error('滚动到访问记录时出错', e);
       }
     }, 300);
   }

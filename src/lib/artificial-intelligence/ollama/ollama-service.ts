@@ -191,7 +191,7 @@ export class OllamaService extends AIBaseService {
    */
   async generateDailyReport(date: string, pageSummaries: PageAISummary[], options?: { timeout?: number }): Promise<DailyAIReport> {
     this.logger.info(_('ai_ollama_report', 'Ollama 正在生成日报: {0}', date));
-    const timeout = options?.timeout ?? 30000;
+    const timeout = options?.timeout ?? 60000;
     try {
       // 拼接结构化 prompt
       const metaPrompt =
