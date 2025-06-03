@@ -6,33 +6,13 @@ import { shouldAnalyzeUrl } from '../lib/utils/url-utils.js';
 import { config } from '../lib/config/index.js';
 import { messenger } from '../lib/messaging/messenger.js';
 import { AIManager } from '../lib/artificial-intelligence/ai-manager.js';
+import { crossDayIdleThresholdMs, globalConfig } from './background.js';
 const logger = new Logger('visit-ai');
 
 export const VISIT_KEEP_DAYS = 7;
 
 // ====== 全局活跃时间判断逻辑 ======
 let lastActiveTime = 0;
-
-// ====== 全局跨日空闲阈值配置（单位 ms） ======
-let crossDayIdleThresholdMs = 6 * 60 * 60 * 1000; // 默认 6 小时
-async function updateCrossDayIdleThreshold() {
-  try {
-    const allConfig = await config.getAll();
-    if (allConfig && typeof allConfig['crossDayIdleThreshold'] === 'number') {
-      crossDayIdleThresholdMs = allConfig['crossDayIdleThreshold'] * 60 * 60 * 1000;
-    }
-  } catch {}
-}
-// 启动时立即加载一次
-updateCrossDayIdleThreshold();
-// 监听配置变更（如有事件总线可用）
-if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.onChanged) {
-  chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === 'local' && changes.yesterday_config) {
-      updateCrossDayIdleThreshold();
-    }
-  });
-}
 
 let aiServiceAvailable = true;
 // 通过 messenger 监听 AI_SERVICE_UNAVAILABLE
@@ -152,6 +132,10 @@ export async function handlePageVisitRecord(data: any) {
     }
     if (updated) {
       await storage.set(key, visits);
+      // 新增：访问记录写入后主动通知侧边栏刷新，显示“正在分析中”
+      if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+        chrome.runtime.sendMessage({ type: 'SIDE_PANEL_UPDATE', payload: { updateType: 'visit' } });
+      }
     }
     await cleanupOldVisits();
     return { status: existed ? (isRefresh ? 'refresh' : 'repeat') : 'new' };

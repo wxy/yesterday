@@ -77,9 +77,38 @@ async function checkLocalAIServicesAndNotify() {
   }
 }
 
+async function updateGlobalConfig() {
+  try {
+    const allConfig = await config.getAll();
+    globalConfig = allConfig || {};
+    if (globalConfig && typeof globalConfig['crossDayIdleThreshold'] === 'number') {
+      crossDayIdleThresholdMs = globalConfig['crossDayIdleThreshold'] * 60 * 60 * 1000;
+    } else {
+      crossDayIdleThresholdMs = 6 * 60 * 60 * 1000;
+    }
+  } catch {
+    // 保持默认值
+  }
+}
+
 // 初始化日志系统（Logger 可能不需要显式初始化，创建实例即可）
 const logger = new Logger('background');
 logger.info('后台脚本启动');
+
+// ====== 全局配置缓存及监听 ======
+export let globalConfig: any = {};
+export let crossDayIdleThresholdMs = 6 * 60 * 60 * 1000; // 默认 6 小时
+
+// 启动时立即加载一次配置
+updateGlobalConfig();
+// 监听配置变更，自动刷新全局配置
+if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.onChanged) {
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === 'local' && changes.yesterday_config) {
+      updateGlobalConfig();
+    }
+  });
+}
 
 // 启动初始化流程
 initializeSubsystems().then(() => {
