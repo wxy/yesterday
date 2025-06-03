@@ -43,13 +43,13 @@ window.addEventListener('beforeunload', async () => {
   const pageInfo = capturePageInfo();
   pageInfo.duration = duration;
   pageInfo.visitEndTime = visitEndTime;
-  // 只发送访问记录，不触发分析
+  // 只发送 UPDATE_PAGE_VISIT，结构与主入口一致，id 始终为访问唯一 id
   if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
     try {
       chrome.runtime.sendMessage({
         type: 'UPDATE_PAGE_VISIT',
         payload: pageInfo,
-        id: visitId, // 保证和页面信息 id 一致
+        id: pageInfo.id, // 统一 id 字段
         source: 'content',
         timestamp: Date.now()
       });
@@ -57,7 +57,6 @@ window.addEventListener('beforeunload', async () => {
       if (e && String(e).includes('Extension context invalidated')) {
         // 静默屏蔽
       } else {
-        // 增强错误日志
         console.error('[Yesterday][ContentScript] sendMessage failed:', {
           type: 'UPDATE_PAGE_VISIT',
           url: window.location.href,
@@ -69,7 +68,7 @@ window.addEventListener('beforeunload', async () => {
   }
 });
 
-// 内容脚本：采集页面内容并通过后台进行本地 Ollama AI 分析
+// 内容脚本主入口：只允许发送 PAGE_VISIT_AND_ANALYZE
 (function() {
   function getPageContent() {
     const title = document.title;
@@ -112,7 +111,7 @@ window.addEventListener('beforeunload', async () => {
               ...pageInfo,
               content: pageContent
             },
-            id: visitId, // 保证和页面信息 id 一致
+            id: pageInfo.id, // 统一 id 字段
             source: 'content',
             timestamp: Date.now()
           });
@@ -164,11 +163,10 @@ window.addEventListener('beforeunload', async () => {
       mainContent: extractMainContent(),
       visitStartTime: lastVisitStartTime,
       id: lastVisitId,
-      isRefresh, // 新增
-      dayId // 新增
+      isRefresh,
+      dayId
     };
     const pageContent = `${document.title}\n${document.body ? document.body.innerText.slice(0, 2000) : ''}`;
-    // 统一发送 PAGE_VISIT_AND_ANALYZE，由后台处理记录和分析
     if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
       try {
         chrome.runtime.sendMessage({
@@ -177,12 +175,11 @@ window.addEventListener('beforeunload', async () => {
             ...pageInfo,
             content: pageContent
           },
-          id: visitId, // 保证和页面信息 id 一致
+          id: pageInfo.id, // 统一 id 字段
           source: 'content',
           timestamp: Date.now()
         });
       } catch (e) {
-        // 增强错误日志，包含消息类型、目标、URL等上下文
         console.error('[Yesterday][ContentScript] sendMessage failed:', {
           type: 'PAGE_VISIT_AND_ANALYZE',
           url: location.href,

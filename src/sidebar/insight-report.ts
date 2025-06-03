@@ -5,6 +5,7 @@ import { _ } from '../lib/i18n/i18n.js';
 const insightCollapseState: Record<string, boolean> = {};
 
 // 洞察报告渲染（仅显示，不自动生成）
+// 注意：本模块与访问记录/AI分析主链路解耦，所有数据只读，不影响主表结构和消息流
 export async function renderInsightReport(box: HTMLElement, dayId: string, tab: 'today' | 'yesterday') {
   // 只读取数据库，不触发生成
   box.innerHTML = `<div class='insight-report-card insight-report-card--modern'>

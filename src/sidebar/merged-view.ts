@@ -1,11 +1,8 @@
 import { messenger } from '../lib/messaging/messenger.js';
 import { _ } from '../lib/i18n/i18n.js';
 
-// 合并访问记录和分析结果，优先用 id 匹配，兼容 url+visitStartTime
-// 已迁移为单表，直接用 visits 作为 analysis
-async function mergeVisitsAndAnalysis(visits: any[]): Promise<any[]> {
-  // 只保留应分析的 url（异步过滤）
-  // 已由后台过滤，前端无需再异步 shouldAnalyzeUrl，可直接返回 visits
+// 访问记录与AI分析已合并为单表，前端只通过 GET_VISITS 获取数据
+function mergeVisitsAndAnalysis(visits: any[]): any[] {
   return visits;
 }
 

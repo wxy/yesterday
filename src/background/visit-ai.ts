@@ -40,6 +40,21 @@ messenger.on('AI_SERVICE_UNAVAILABLE', (msg) => {
   aiServiceAvailable = false;
 });
 
+/* 访问记录与 AI 分析相关逻辑
+ * 1. handlePageVisitRecord(data): 处理页面访问记录，存储到 visits_ 表
+ * 2. updateVisitAiResult(url, visitStartTime, aiResult, analyzeDuration, id): 更新访问记录的 AI 分析结果
+ * 3. getVisitsByDay(dayId): 获取指定日期的访问记录
+ * 4. cleanupOldVisits(): 清理过期访问记录
+ * 5. getSimpleReport(dayId): 获取指定日期的简化洞察报告（只读缓存）
+ * 6. generateSimpleReport(dayId, force): 生成指定日期的简化洞察报告（只保留统计、简要总结、建议）
+ * 7. handleCrossDayCleanup(): 跨日清理与日报生成任务
+ */
+
+/**
+ * 处理页面访问记录，存储到 visits_ 表
+ * @param data 页面访问记录数据，可能是 { url, title, mainContent, visitStartTime, id, isRefresh } 结构
+ * @returns 
+ */
 export async function handlePageVisitRecord(data: any) {
   try {
     if (!aiServiceAvailable) {
@@ -146,8 +161,15 @@ export async function handlePageVisitRecord(data: any) {
   }
 }
 
-// 移除 ai_analysis 相关逻辑，所有分析结果直接写入 visits_ 表
-
+/**
+ * 更新访问记录的 AI 分析结果
+ * @param url 访问的 URL
+ * @param visitStartTime 访问开始时间戳
+ * @param aiResult AI 分析结果，可以是字符串或对象
+ * @param analyzeDuration 分析耗时（毫秒）
+ * @param id 访问记录的唯一 ID
+ * @param aiServiceLabel 本次分析所用 AI 服务的标签（可选）
+ */
 export async function updateVisitAiResult(
   url: string,
   visitStartTime: number,
@@ -177,8 +199,10 @@ export async function updateVisitAiResult(
     }
     if (updated) {
       await storage.set(key, visits);
-      logger.info(`[AI] 已更新访问记录的 aiResult`, { url, dayId, id });
-      logger.info(`[AI] 分析结果内容`, { id, aiResult });
+      // 新增：分析结果写入后主动通知侧边栏刷新
+      if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+        chrome.runtime.sendMessage({ type: 'SIDE_PANEL_UPDATE', payload: { updateType: 'ai' } });
+      }
     } else {
     }
   } catch (err) {
@@ -186,11 +210,20 @@ export async function updateVisitAiResult(
   }
 }
 
+/**
+ * 获取指定日期的访问记录
+ * @param dayId 
+ */
 export async function getVisitsByDay(dayId: string) {
   const key = `browsing_visits_${dayId}`; // 原 visits_${dayId}
   return (await storage.get<any[]>(key)) || [];
 }
 
+/**
+ * 清理过期访问记录
+ * 保留最近 VISIT_KEEP_DAYS 天的访问记录
+ * 过期的将被删除
+ */
 export async function cleanupOldVisits() {
   try {
     const allKeys: string[] = await storage.keys();
@@ -213,7 +246,8 @@ export async function cleanupOldVisits() {
 
 /**
  * 获取指定日期的简化洞察报告（只读缓存，不自动生成）
- * 返回结构：{ dayId, report: { stats, summary, suggestions } }
+ * @param dayId 日期字符串（如 '2024-05-29'）
+ * @returns 如果存在缓存报告，返回 { dayId, report: { stats, summary, suggestions } }，否则返回 null  
  */
 export async function getSimpleReport(dayId: string) {
   const key = `app:browsing_summary_${dayId}`;
@@ -287,7 +321,13 @@ export async function generateSimpleReport(dayId: string, force = false) {
   return data;
 }
 
-// 跨日清理与日报生成任务
+/**
+ * 处理跨日清理和日报生成
+ * 1. 删除昨日之前的访问数据及分析
+ * 2. 删除昨日之前的日报（洞察）
+ * 3. 对昨日数据进行分析，生成洞察日报
+ * 4. 通知侧边栏刷新（如果已打开）  
+ */
 export async function handleCrossDayCleanup() {
   const now = new Date();
   const todayId = now.toISOString().slice(0, 10);
@@ -319,4 +359,81 @@ export async function handleCrossDayCleanup() {
   }
 }
 
-// 在跨日判断处调用 handleCrossDayCleanup()
+/**
+ * 统一处理页面访问记录及自动AI分析（主业务入口，供 event-handlers 调用）
+ * @param record 访问记录对象
+ * @param options { isAnalyze, sourceType }
+ */
+export async function handlePageVisitAndMaybeAnalyze(record: any, options: { isAnalyze?: boolean, sourceType?: string } = {}) {
+  // 统一取 payload 里的主数据
+  const visit = record && record.payload && typeof record.payload === 'object' ? record.payload : record;
+  // 1. 写入/更新访问记录
+  const result = await handlePageVisitRecord(record);
+  // 2. 只要 mainContent 存在且应分析，自动触发AI分析
+  if (options.isAnalyze !== false) {
+    const mainContent = visit.content || visit.mainContent;
+    if (mainContent && mainContent.length > 0 && (!visit.aiResult || visit.aiResult === '' || visit.aiResult === '正在进行 AI 分析')) {
+      await analyzeVisitRecordById({
+        url: visit.url,
+        title: visit.title,
+        content: mainContent,
+        id: visit.id,
+        visitStartTime: visit.visitStartTime
+      });
+    }
+  }
+  return result;
+}
+
+/**
+ * 只做AI分析，写回结果（供 event-handlers 调用）
+ * @param msg 包含 url、id、content、visitStartTime 等
+ */
+export async function analyzeVisitRecordById(msg: any) {
+  const { url, title, content, id } = msg.payload || msg;
+  const visitStartTime = msg.payload?.visitStartTime || msg.visitStartTime || Date.now();
+  let dayId = msg.payload?.dayId || msg.dayId;
+  if (!dayId) {
+    const date = new Date(visitStartTime);
+    dayId = date.toISOString().slice(0, 10);
+  }
+  if (!id) {
+    logger.warn('ai_analyze_no_visit_record', 'AI 分析请求缺少 id，无法查找访问记录: {0}', url);
+    return { ok: false, error: 'AI 分析请求缺少 id，无法查找访问记录' };
+  }
+  const visitId = id;
+  const key = `browsing_visits_${dayId}`;
+  let visits: any[] = (await storage.get<any[]>(key)) || [];
+  const visit = visits.find(v => v.id === visitId);
+  if (!visit) {
+    logger.warn('ai_analyze_no_visit_record', '未找到访问记录: {0}', url);
+    return { ok: false, error: '未找到访问记录' };
+  }
+  if (visit.aiResult && visit.aiResult !== '' && visit.aiResult !== '正在进行 AI 分析') {
+    logger.info('ai_analyze_skipped', '已有分析结果，跳过: {0}', url);
+    return { ok: true, skipped: true, reason: 'already analyzed' };
+  }
+  await config.reload();
+  const allConfig: any = await config.getAll();
+  const aiConfig = allConfig && allConfig['aiServiceConfig'] ? allConfig['aiServiceConfig'] : { serviceId: 'ollama' };
+  const aiService = await AIManager.instance.getAvailableService(aiConfig.serviceId);
+  const labelMap: Record<string, string> = {
+    'ollama': 'Ollama 本地',
+    'chrome-ai': 'Chrome 内置 AI',
+    'openai': 'OpenAI',
+    'other': '其它',
+  };
+  const aiServiceLabel = labelMap[aiConfig.serviceId] || aiConfig.serviceId || 'AI';
+  const analyzeStart = Date.now();
+  try {
+    if (!aiService) throw new Error('无可用 AI 服务');
+    const aiSummary = await aiService.summarizePage(url, content);
+    const analyzeEnd = Date.now();
+    const analyzeDuration = analyzeEnd - analyzeStart;
+    await updateVisitAiResult(url, visitStartTime, aiSummary, analyzeDuration, visitId, aiServiceLabel);
+    return { ok: true, aiContent: aiSummary, analyzeDuration };
+  } catch (e: any) {
+    logger.error('ai_analyze_error', '分析异常: {0}', url);
+    return { ok: false, error: '分析异常' };
+  }
+}

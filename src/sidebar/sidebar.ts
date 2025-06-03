@@ -150,6 +150,9 @@ messenger.on('SIDE_PANEL_UPDATE', (msg) => {
   }
 });
 
+// 侧边栏只通过 GET_VISITS 获取数据，所有刷新只走 SIDE_PANEL_UPDATE
+// analysis/多表相关逻辑已彻底移除，所有访问/分析数据均由 merged-view 渲染
+
 messenger.on('SCROLL_TO_VISIT', (msg) => {
   if (msg && msg.payload && msg.payload.url) {
     setTimeout(() => {

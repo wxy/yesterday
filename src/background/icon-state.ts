@@ -13,6 +13,9 @@ const processingFrames = [
   { "16": "../assets/icons/logo-blink-16.png", "48": "../assets/icons/logo-blink-48.png" }
 ];
 
+// 所有图标/显示灯状态变更必须通过本模块唯一入口（updateIcon/onProcessingStart/onProcessingEnd/setTip/setReport/setError/clearAllIconStatus）
+// 禁止前端/内容脚本直接操作 chrome.action.setIcon 等 API，确保链路唯一
+
 export function updateIcon() {
   if (hasError) {
     chrome.action.setIcon({
