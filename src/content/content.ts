@@ -3,6 +3,21 @@ const visitStartTime = Date.now();
 // 生成唯一访问 id
 const visitId = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
+// ========== 活跃日逻辑支持 ==========
+let lastActiveTime = Date.now();
+function getActiveDayId(now: number, lastActive: number, tab: 'today' | 'yesterday' = 'today') {
+  const SIX_HOURS = 6 * 60 * 60 * 1000;
+  let base = now;
+  if (now - lastActive < SIX_HOURS) {
+    base = lastActive;
+  }
+  if (tab === 'today') {
+    return new Date(base).toISOString().slice(0, 10);
+  } else {
+    return new Date(base - 86400000).toISOString().slice(0, 10);
+  }
+}
+
 // 直接使用原生API，避免依赖自定义库
 
 // 提取页面主要内容（初版用body文本，后续可用Readability优化）
@@ -28,17 +43,22 @@ window.addEventListener('beforeunload', async () => {
   const pageInfo = capturePageInfo();
   pageInfo.duration = duration;
   pageInfo.visitEndTime = visitEndTime;
-  // 只发送访问记录，不触发分析
+  // 只发送 UPDATE_PAGE_VISIT，结构与主入口一致，id 始终为访问唯一 id
   if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
     try {
-      chrome.runtime.sendMessage({ type: 'PAGE_VISIT_RECORD', payload: pageInfo });
+      chrome.runtime.sendMessage({
+        type: 'UPDATE_PAGE_VISIT',
+        payload: pageInfo,
+        id: pageInfo.id, // 统一 id 字段
+        source: 'content',
+        timestamp: Date.now()
+      });
     } catch (e) {
       if (e && String(e).includes('Extension context invalidated')) {
         // 静默屏蔽
       } else {
-        // 增强错误日志
         console.error('[Yesterday][ContentScript] sendMessage failed:', {
-          type: 'PAGE_VISIT_RECORD',
+          type: 'UPDATE_PAGE_VISIT',
           url: window.location.href,
           error: e
         });
@@ -48,7 +68,7 @@ window.addEventListener('beforeunload', async () => {
   }
 });
 
-// 内容脚本：采集页面内容并通过后台进行本地 Ollama AI 分析
+// 内容脚本主入口：只允许发送 PAGE_VISIT_AND_ANALYZE
 (function() {
   function getPageContent() {
     const title = document.title;
@@ -57,31 +77,31 @@ window.addEventListener('beforeunload', async () => {
   }
 
   async function main() {
+    // 生成唯一 id 和访问时间
+    lastActiveTime = Date.now();
+    const thisVisitId = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    const thisVisitStartTime = Date.now();
+    let isRefresh = false;
     try {
-      console.log('[Yesterday] starting');
-      // 生成唯一 id 和访问时间
-      const thisVisitId = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-      const thisVisitStartTime = Date.now();
-      // 判断是否为刷新
-      let isRefresh = false;
-      try {
-        if (performance && performance.getEntriesByType) {
-          const nav = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming;
-          if (nav && nav.type === 'reload') isRefresh = true;
-        } else if (performance && (performance as any).navigation) {
-          if ((performance as any).navigation.type === 1) isRefresh = true;
-        }
-      } catch {}
-      // 先发送访问记录
+      if (performance && performance.getEntriesByType) {
+        const nav = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming;
+        if (nav && nav.type === 'reload') isRefresh = true;
+      } else if (performance && (performance as any).navigation) {
+        if ((performance as any).navigation.type === 1) isRefresh = true;
+      }
+    } catch {}
+    // 延迟3秒后再发送访问记录和分析请求
+    setTimeout(() => {
+      const dayId = getActiveDayId(thisVisitStartTime, lastActiveTime, 'today');
       const pageInfo = {
         url: location.href,
         title: document.title,
         mainContent: extractMainContent(),
         visitStartTime: thisVisitStartTime,
         id: thisVisitId,
-        isRefresh // 新增
+        isRefresh,
+        dayId
       };
-      // 只发送一次 PAGE_VISIT_AND_ANALYZE，由后台判断是否分析
       const pageContent = getPageContent();
       if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
         try {
@@ -90,10 +110,12 @@ window.addEventListener('beforeunload', async () => {
             payload: {
               ...pageInfo,
               content: pageContent
-            }
+            },
+            id: pageInfo.id, // 统一 id 字段
+            source: 'content',
+            timestamp: Date.now()
           });
         } catch (e) {
-          // 增强错误日志
           console.error('[Yesterday][ContentScript] sendMessage failed:', {
             type: 'PAGE_VISIT_AND_ANALYZE',
             url: location.href,
@@ -101,9 +123,7 @@ window.addEventListener('beforeunload', async () => {
           });
         }
       }
-    } catch (err) {
-      console.error('[Yesterday] main 执行异常:', err);
-    }
+    }, 3000);
   }
 
   if (document.readyState === 'complete' || document.readyState === 'interactive') {
@@ -122,6 +142,7 @@ window.addEventListener('beforeunload', async () => {
 
   function sendVisitAndAnalyze() {
     // 生成新访问id和时间
+    lastActiveTime = Date.now();
     lastVisitId = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
     lastVisitStartTime = Date.now();
     // 判断是否为刷新
@@ -134,6 +155,7 @@ window.addEventListener('beforeunload', async () => {
         if ((performance as any).navigation.type === 1) isRefresh = true;
       }
     } catch {}
+    const dayId = getActiveDayId(lastVisitStartTime, lastActiveTime, 'today');
     // 采集访问记录和内容
     const pageInfo = {
       url: location.href,
@@ -141,10 +163,10 @@ window.addEventListener('beforeunload', async () => {
       mainContent: extractMainContent(),
       visitStartTime: lastVisitStartTime,
       id: lastVisitId,
-      isRefresh // 新增
+      isRefresh,
+      dayId
     };
     const pageContent = `${document.title}\n${document.body ? document.body.innerText.slice(0, 2000) : ''}`;
-    // 统一发送 PAGE_VISIT_AND_ANALYZE，由后台处理记录和分析
     if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
       try {
         chrome.runtime.sendMessage({
@@ -152,10 +174,12 @@ window.addEventListener('beforeunload', async () => {
           payload: {
             ...pageInfo,
             content: pageContent
-          }
+          },
+          id: pageInfo.id, // 统一 id 字段
+          source: 'content',
+          timestamp: Date.now()
         });
       } catch (e) {
-        // 增强错误日志，包含消息类型、目标、URL等上下文
         console.error('[Yesterday][ContentScript] sendMessage failed:', {
           type: 'PAGE_VISIT_AND_ANALYZE',
           url: location.href,

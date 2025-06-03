@@ -8,18 +8,20 @@ body {
   background: #f6fff6;
 }
 
-.popup-container {
-  padding: 18px 14px 18px 14px;
+.container {
+  /* 外层容器，适配弹窗布局 */
+  padding: 0;
 }
 
 .popup-card {
-  padding: 18px 16px 16px 16px;
-  max-width: 380px;
+  padding: 18px 18px 12px 18px;
+  max-width: 340px;
+  min-width: 220px;
   background: #fff;
   border-radius: 12px;
   box-shadow: 0 2px 12px 0 rgba(0,143,0,0.10);
-  border: 1.5px solid #b2e5b2;
-  margin: 12px;
+  border: 1px solid #b2e5b2;
+  margin: 8px;
   transition: box-shadow 0.18s, border-color 0.18s;
 }
 .popup-card:hover {
@@ -45,6 +47,7 @@ body {
   color: #3a7a3a;
   font-size: 11px;
 }
+
 .ai-summary {
   font-weight: bold;
   margin-bottom: 4px;
@@ -85,25 +88,29 @@ body {
   font-size: 11px;
 }
 
-/* 按钮美化 */
-.popup-btn, .primary-button {
-  background: linear-gradient(90deg, #008F00 0%, #43e543 100%);
-  color: #fff;
-  border: none;
-  border-radius: 6px;
-  padding: 8px 22px;
-  font-size: 1em;
+/* 重要卡片样式 */
+.ai-important-card {
+  border: 1px solid #FFC10A !important;
+  background: linear-gradient(90deg,#fffbe6 0%,#fffde4 100%) !important;
+  box-shadow: 0 4px 18px 0 #ffe06655 !important;
+}
+.ai-important-flag {
+  color: #FFC10A;
+  font-size: 13px;
+  margin: 4px 0 0 0;
   font-weight: 700;
-  cursor: pointer;
-  margin-right: 10px;
-  transition: background 0.18s, color 0.18s, box-shadow 0.18s;
-  box-shadow: 0 2px 8px 0 #008f0022;
   letter-spacing: 0.01em;
 }
-.popup-btn:hover, .primary-button:hover {
-  background: linear-gradient(90deg, #006600 0%, #00c800 100%);
-  color: #fff;
-  box-shadow: 0 4px 16px 0 #008f0033;
+
+/* AI 服务不可用提示 */
+.ai-service-unavailable {
+  color: #e53935;
+  background: #fffbe6;
+  border-radius: 6px;
+  padding: 10px 16px;
+  margin: 8px 12px;
+  font-size: 14px;
+  font-weight: 600;
 }
 
 /* 其它弹窗专用样式可在此扩展 */

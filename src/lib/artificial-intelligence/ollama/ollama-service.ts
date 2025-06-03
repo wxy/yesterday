@@ -56,7 +56,7 @@ function parseJsonWithPreprocess(text: string, logger: any): any {
       return JSON5.parse(jsonText);
     }
   } catch (e) {
-    logger?.warn('[Ollama JSON5 本地预处理解析失败]', e);
+    logger.info('[Ollama JSON5 本地预处理解析失败]： {0}', { raw: text, jsonText, error: e });
   }
   return null;
 }
@@ -93,13 +93,37 @@ export class OllamaService extends AIBaseService {
   }
 
   async isAvailable(): Promise<boolean> {
-    try {
-      await chatWithOllama({ messages: [{ role: 'user', content: 'ping' }] });
-      return true;
-    } catch (e: any) {
-      this.logger.warn(_('ai_ollama_unavailable', 'Ollama 服务不可用: {0}', e && (e.message || String(e))));
-      return false;
+    const maxRetry = 3;
+    const showUrl = 'http://localhost:11434/api/show';
+    for (let i = 0; i < maxRetry; i++) {
+      try {
+        // 正确用 POST 检查模型可用性
+        const resp = await fetch(showUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ model: DEFAULT_MODEL })
+        });
+        if (resp.ok) {
+          this.logger.debug('Ollama 可用（/api/show POST 检查）');
+          return true;
+        } else {
+          this.logger.warn(`Ollama 检查失败（/api/show POST 检查）状态码: ${resp.status}`);
+        }
+      } catch (e: any) {
+        this.logger.warn(`Ollama 检查异常（/api/show POST 检查）`, e);
+      }
+      // 降级用 chatWithOllama
+      try {
+        await chatWithOllama({ messages: [{ role: 'user', content: 'ping' }] });
+        this.logger.debug('Ollama 可用（chatWithOllama ping 检查）');
+        return true;
+      } catch (e: any) {
+        this.logger.warn(_('ai_ollama_unavailable', `Ollama 服务可用性检测失败(第${i+1}次): {0}`, e && (e.message || String(e))));
+      }
+      if (i < maxRetry - 1) await new Promise(res => setTimeout(res, 200));
     }
+    this.logger.warn(_('ai_ollama_unavailable', 'Ollama 服务不可用: {0}', '连续多次检测失败'));
+    return false;
   }
 
   async summarizePage(url: string, content: string): Promise<PageAISummary> {
@@ -167,7 +191,7 @@ export class OllamaService extends AIBaseService {
    */
   async generateDailyReport(date: string, pageSummaries: PageAISummary[], options?: { timeout?: number }): Promise<DailyAIReport> {
     this.logger.info(_('ai_ollama_report', 'Ollama 正在生成日报: {0}', date));
-    const timeout = options?.timeout ?? 30000;
+    const timeout = options?.timeout ?? 60000;
     try {
       // 拼接结构化 prompt
       const metaPrompt =

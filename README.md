@@ -1,167 +1,69 @@
-# Chrome 扩展脚手架
+# 昨日/Yesterday
 
-这是一个用于快速开发 Chrome 扩展的脚手架项目，基于 TypeScript 和现代化工具链构建。
+> 智能浏览洞察 Chrome 扩展 | AI-powered Browsing Insights Extension
 
-## 功能特性
+[English](docs/README-en.md) | [简体中文](docs/README-zh_CN.md)
 
-- 🚀 **TypeScript 支持** - 完整的类型支持和代码提示
-- 📦 **模块化架构** - 松耦合的组件设计，易于扩展和维护
-- 💾 **存储系统** - 统一的存储接口，支持多种存储后端
-- 🌐 **国际化** - 内置的多语言支持系统
-- 📝 **日志系统** - 灵活的日志记录与管理
-- 📮 **消息系统** - 简化的通信机制，处理不同上下文间的通信
-- ⚙️ **配置系统** - 集中化的配置管理
-- 🔄 **浏览器事件系统** - 简化的事件处理机制
+直观洞察你的每日网页访问与信息流动，AI 智能分析与高亮重点，助你高效回顾与管理浏览历史。
 
-## 快速开始
+---
 
-1. 创建新项目
+![Yesterday Logo](src/assets/icons/logo-default-48.png)
 
-```bash
-# 初始化新项目
-npx create-chrome-extension my-extension
+![TypeScript](https://img.shields.io/badge/language-TypeScript-blue?style=for-the-badge&color=2196F4)
+![MIT License](https://img.shields.io/badge/license-MIT-green?style=for-the-badge&color=4caf50)
+![Supported Locales](https://img.shields.io/badge/Supported%20Locales-en|zh_CN-blue?style=for-the-badge&color=8bc34a)
 
-# 或者使用脚本直接从仓库创建
-node scripts/create-project.js
-```
+---
 
-2. 开发
+## 简介 | Introduction
 
-```bash
-# 安装依赖
-npm install
+“昨日/Yesterday”是一款基于 AI 的 Chrome 扩展，自动记录每日网页访问历史，智能分析你的浏览行为，生成个性化洞察报告，并以美观的卡片形式高亮展示重要内容。支持侧边栏与弹窗双视图，配置变更与 AI 服务状态实时联动，助你高效回顾与管理每日信息。
 
-# 开发模式构建
-npm run dev
+Yesterday is an AI-powered Chrome extension that automatically records your daily browsing history, analyzes your behavior, and generates personalized insight reports. Important content is highlighted in a beautiful card UI. Both sidebar and popup views are supported, with real-time config and AI service status sync.
 
-# 生产构建
-npm run build
-```
+---
 
-3. 加载扩展
+## 快速入口 | Quick Links
 
-- 打开 Chrome 浏览器，导航到 chrome://extensions
-- 启用 "开发者模式"
-- 点击 "加载已解压的扩展"，选择 `dist` 目录
+- [简体中文使用说明](docs/README-zh_CN.md)
+- [English User Guide](docs/README-en.md)
 
-## 项目架构
+---
 
-```bash
-├── src/                      # 源代码目录
-│   ├── manifest.json         # 扩展清单
-│   ├── background/           # 后台脚本
-│   ├── content/              # 内容脚本
-│   ├── popup/                # 弹出窗口
-│   ├── options/              # 选项页面
-│   ├── assets/               # 静态资源
-│   ├── _locales/             # 国际化资源
-│   └── lib/                  # 共享库
-│       ├── config/           # 配置系统
-│       ├── storage/          # 存储系统
-│       ├── i18n/             # 国际化系统
-│       ├── logger/           # 日志系统
-│       ├── messaging/        # 消息系统
-│       └── browser-events/   # 浏览器事件系统
-├── webpack/                  # Webpack 配置
-├── dist/                     # 构建输出
-└── examples/                 # 示例代码
-```
+## 主要特性 | Features
 
-## 核心模块
+- **自动记录访问历史 / Auto Logging**
+- **AI 智能内容分析 / AI-powered Analysis**
+- **洞察报告生成 / Insight Reports**
+- **重要内容高亮 / Highlighting**
+- **全局配置联动 / Global Config Sync**
+- **AI 服务状态提示 / AI Service Status Warning**
+- **极简美观 UI / Minimal & Beautiful UI**
+- **隐私友好 / Privacy Friendly**
 
-### 存储系统
+---
 
-提供统一的数据存取接口，支持多种存储后端：
+## 多语言 | Internationalization
 
-- Chrome 本地存储 (chrome.storage.local)
-- Chrome 同步存储 (chrome.storage.sync)
-- IndexedDB
-- Web Storage (localStorage/sessionStorage)
-- 内存存储
+- 简体中文（zh_CN）
+- English (en)
 
-```javascript
-import { storage } from './lib/storage/index.js';
+---
 
-// 存储数据
-await storage.set('key', { value: 'data' });
+## 贡献 | Contributing
 
-// 获取数据
-const data = await storage.get('key');
+欢迎贡献代码、报告问题或提出新功能建议。
 
-// 监听变化
-storage.onChange('key', (newValue, oldValue) => {
-  console.log(`值从 ${oldValue} 变为 ${newValue}`);
-});
-```
+Contributions, issues and feature requests are welcome!
 
-### 国际化系统
+---
 
-简化多语言支持的实现：
-
-```javascript
-import { i18n } from './lib/i18n/i18n.js';
-
-// 获取翻译文本
-const message = i18n.getMessage('messageKey');
-
-// 带参数的翻译
-const greeting = i18n.getMessage('greeting', ['用户名']);
-```
-
-### 日志系统
-
-增强的日志记录功能：
-
-```javascript
-import { logger } from './lib/logger/logger.js';
-
-logger.debug('详细信息', { data: 'some data' });
-logger.info('普通信息');
-logger.warn('警告信息');
-logger.error('错误信息', new Error('发生错误'));
-```
-
-### 消息系统
-
-简化不同上下文间的通信：
-
-```javascript
-import { messenger } from './lib/messaging/messenger.js';
-
-// 在内容脚本中发送消息到后台
-const response = await messenger.sendToBackground('action', { data: value });
-
-// 在后台脚本中监听消息
-messenger.onMessage('action', async (data, sender) => {
-  return { result: 'success', data: processedData };
-});
-```
-
-### 配置系统
-
-集中化的配置管理：
-
-```javascript
-import { config } from './lib/config/index.js';
-
-// 读取配置
-const logLevel = config.get('logging.level');
-
-// 更新配置
-config.update({
-  logging: {
-    level: 'debug',
-    console: true
-  }
-});
-```
-
-### 贡献
-
-欢迎贡献代码、报告问题或提出新功能建议。请参阅 贡献指南 了解详情。
-
-### 许可证
+## 许可证 | License
 
 MIT
 
-<!-- 示例代码如有涉及 key 命名，建议统一为 browsing_visits_、browsing_summary_、highlight_records_、page_snapshots_、record_logs_。 -->
+---
+
+> 详细功能、安装、开发、常见问题等请见对应语言的 README 文件。
+> For details, installation, development, FAQ, see the language-specific README above.

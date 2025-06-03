@@ -42,6 +42,20 @@ export const configs: Record<string, ConfigDefinitionItem> = {
       step: 1
     } as ConfigUI.NumberUIMetadata
   },
+  // ===== 跨日空闲阈值 =====
+  'crossDayIdleThreshold': {
+    type: Number,
+    default: 6,
+    ui: {
+      type: 'number',
+      label: _('config_cross_day_idle_threshold_label', '跨日空闲阈值 (小时)'),
+      description: _('config_cross_day_idle_threshold_desc', '连续空闲超过该时长后，新的访问将被计入新的一天。可选范围 1-12 小时。'),
+      section: _('config_section_general', '常规设置'),
+      min: 1,
+      max: 12,
+      step: 1
+    } as ConfigUI.NumberUIMetadata
+  },
 
   // ===== AI 服务配置 =====
   'aiServiceConfig': {

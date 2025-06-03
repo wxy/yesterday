@@ -80,6 +80,7 @@ export class ChromeAIService extends AIBaseService {
       this.logger.warn(_('ai_chrome_unavailable', 'Chrome AI 不可用: {0}', avail.reason || '未知原因'));
       return false;
     }
+    this.logger.debug('Chrome AI 可用');
     return true;
   }
 
@@ -155,7 +156,7 @@ export class ChromeAIService extends AIBaseService {
    */
   async generateDailyReport(date: string, pageSummaries: PageAISummary[], options?: { timeout?: number }): Promise<DailyAIReport> {
     this.logger.info(_('ai_chrome_report', 'Chrome AI 正在生成日报: {0}', date));
-    const timeout = options?.timeout ?? 30000;
+    const timeout = options?.timeout ?? 60000;
     try {
       const summaryText = pageSummaries.map((s, i) => `页面${i + 1}: ${s.summary}`).join('\n');
       // 构造 prompt，调用 chromeAiSummarize

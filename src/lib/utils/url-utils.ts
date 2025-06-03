@@ -29,6 +29,17 @@ function wildcardToRegExp(pattern: string): RegExp {
   return new RegExp('^' + escaped + '$', 'i');
 }
 
+// 通用 URL 归一化方法
+export function normalizeUrl(url: string): string {
+  try {
+    const u = new URL(url);
+    u.hash = '';
+    return u.toString();
+  } catch {
+    return url.split('#')[0];
+  }
+}
+
 // 判断url是否命中包含/排除规则
 export async function shouldAnalyzeUrl(url: string): Promise<boolean> {
   if (!url || typeof url !== 'string') return false;

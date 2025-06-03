@@ -12,11 +12,12 @@ import { browserEvents } from '../lib/browser-events/index.js';
 import { config } from '../lib/config/index.js';
 // 修改消息系统导入方式 - 使用默认导出
 import messageBus, { setupMessageHandlers } from '../lib/messaging/index.js';
+import { messenger } from '../lib/messaging/messenger.js';
 import { registerBackgroundEventHandlers } from './event-handlers.js';
+import { AIManager } from '../lib/artificial-intelligence/ai-manager.js';
 
-// 初始化日志系统（Logger 可能不需要显式初始化，创建实例即可）
-const logger = new Logger('background');
-logger.info('后台脚本启动');
+let aiServiceAvailable = true;
+let aiServiceStatus: Record<string, boolean> = {};
 
 /**
  * 初始化所有子系统
@@ -46,6 +47,10 @@ async function initializeSubsystems() {
     // 6. 设置消息处理器 (注册处理函数)
     await setupMessageHandlers();
     logger.info('消息处理器已配置完成');
+
+    // 7. 注册所有本地 AI 服务（只在后台注册，解耦具体服务实现）
+    await AIManager.registerAllBuiltInServices();
+    logger.info('所有本地 AI 服务已注册');
     
     // 所有系统初始化完成
     logger.info('所有子系统初始化完成');
@@ -54,12 +59,70 @@ async function initializeSubsystems() {
   }
 }
 
-// 注册所有 background 事件和消息监听
-registerBackgroundEventHandlers();
+async function checkLocalAIServicesAndNotify() {
+  const result = await AIManager.checkAllLocalServicesAvailable();
+  aiServiceAvailable = result.available;
+  aiServiceStatus = result.details;
+  if (!result.available) {
+    // 设置扩展图标为警告
+    if (typeof chrome !== 'undefined' && chrome.action && chrome.runtime) {
+      chrome.action.setIcon({ path: {
+        16: '../assets/icons/logo-warn-16.png',
+        48: '../assets/icons/logo-warn-48.png',
+        128: '../assets/icons/logo-warn.png',
+      }});
+    }
+    // 广播详细状态（改为 messenger）
+    await messenger.sendWithoutResponse('AI_SERVICE_UNAVAILABLE', { details: result.details }).catch(() => {});
+  }
+}
+
+async function updateGlobalConfig() {
+  try {
+    const allConfig = await config.getAll();
+    globalConfig = allConfig || {};
+    if (globalConfig && typeof globalConfig['crossDayIdleThreshold'] === 'number') {
+      crossDayIdleThresholdMs = globalConfig['crossDayIdleThreshold'] * 60 * 60 * 1000;
+    } else {
+      crossDayIdleThresholdMs = 6 * 60 * 60 * 1000;
+    }
+  } catch {
+    // 保持默认值
+  }
+}
+
+// 初始化日志系统（Logger 可能不需要显式初始化，创建实例即可）
+const logger = new Logger('background');
+logger.info('后台脚本启动');
+
+// ====== 全局配置缓存及监听 ======
+export let globalConfig: any = {};
+export let crossDayIdleThresholdMs = 6 * 60 * 60 * 1000; // 默认 6 小时
+
+// 启动时立即加载一次配置
+updateGlobalConfig();
+// 监听配置变更，自动刷新全局配置
+if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.onChanged) {
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === 'local' && changes.yesterday_config) {
+      updateGlobalConfig();
+    }
+  });
+}
 
 // 启动初始化流程
 initializeSubsystems().then(() => {
   logger.info('后台脚本初始化完成，扩展已准备就绪');
+  // 初始化完成后再注册所有后台事件和消息监听
+  registerBackgroundEventHandlers();
+  // 初始化完成后再检测 AI 服务可用性
+  if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onInstalled) {
+    chrome.runtime.onInstalled.addListener(() => {
+      checkLocalAIServicesAndNotify();
+    });
+  }
+  // 启动时也检测一次
+  checkLocalAIServicesAndNotify();
 }).catch(error => {
   logger.error('扩展初始化失败:', error);
 });
