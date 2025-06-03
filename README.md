@@ -6,6 +6,8 @@
 
 直观洞察你的每日网页访问与信息流动，AI 智能分析与高亮重点，助你高效回顾与管理浏览历史。
 
+Intuitively visualize and understand your daily web visits and information flow. AI-powered analysis and highlighting help you efficiently review and manage your browsing history.
+
 ---
 
 ![Yesterday Logo](src/assets/icons/logo-default-48.png)
@@ -66,4 +68,5 @@ MIT
 ---
 
 > 详细功能、安装、开发、常见问题等请见对应语言的 README 文件。
+> 
 > For details, installation, development, FAQ, see the language-specific README above.
