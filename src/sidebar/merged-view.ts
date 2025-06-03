@@ -108,11 +108,15 @@ export async function renderMergedView(root: HTMLElement, dayId: string, tab: 't
       try {
         jsonObj = JSON.parse(rawText);
         isStructured = true;
-      } catch {}
+      } catch (e) {
+        console.error('[AI内容解析] JSON.parse 失败', { rawText, error: e });
+      }
     } else if (rawText && typeof rawText === 'object') {
       jsonObj = rawText;
       isStructured = true;
     }
+    // 判断是否重要
+    const isImportant = (jsonObj && jsonObj.important === true) || (item.aiResult && typeof item.aiResult === 'object' && item.aiResult.important === true);
     if (isStructured && jsonObj) {
       aiContent = `<div class='ai-summary'>${jsonObj.summary || ''}</div>`;
       if (jsonObj.highlights && Array.isArray(jsonObj.highlights) && jsonObj.highlights.length) {
@@ -120,6 +124,9 @@ export async function renderMergedView(root: HTMLElement, dayId: string, tab: 't
       }
       if (jsonObj.specialConcerns && Array.isArray(jsonObj.specialConcerns) && jsonObj.specialConcerns.length) {
         aiContent += `<div class='ai-special_concerns'>${_('sidebar_insight_special', '特别关注')}：${jsonObj.specialConcerns.map((c: string) => c).join('，')}</div>`;
+      }
+      if (isImportant) {
+        aiContent += `<div class='ai-important-flag'>⚠️ 该内容被标记为重要</div>`;
       }
     } else if (typeof rawText === 'string') {
       if (rawText && rawText !== _('sidebar_card_analyzing', '正在进行 AI 分析') && rawText !== '') {
@@ -157,6 +164,9 @@ export async function renderMergedView(root: HTMLElement, dayId: string, tab: 't
     let cardClass = 'merged-card';
     if (tab === 'today' && item.url && openTabUrls.includes(item.url.split('#')[0])) {
       cardClass += ' merged-card-open';
+    }
+    if (isImportant) {
+      cardClass += ' ai-important-card';
     }
     const visitTime = item.visitStartTime ? new Date(item.visitStartTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
     const titleLine = `<div class='merged-card-title-line'>

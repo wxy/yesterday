@@ -56,7 +56,7 @@ function parseJsonWithPreprocess(text: string, logger: any): any {
       return JSON5.parse(jsonText);
     }
   } catch (e) {
-    logger?.warn('[Ollama JSON5 本地预处理解析失败]', e);
+    logger.info('[Ollama JSON5 本地预处理解析失败]： {0}', { raw: text, jsonText, error: e });
   }
   return null;
 }

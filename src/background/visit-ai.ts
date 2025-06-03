@@ -234,7 +234,7 @@ export async function cleanupOldVisits() {
  * @returns 如果存在缓存报告，返回 { dayId, report: { stats, summary, suggestions } }，否则返回 null  
  */
 export async function getSimpleReport(dayId: string) {
-  const key = `app:browsing_summary_${dayId}`;
+  const key = `browsing_summary_${dayId}`;
   const cached = await storage.get<any>(key);
   return cached && cached.report ? { dayId, report: cached.report } : null;
 }
@@ -244,7 +244,7 @@ export async function getSimpleReport(dayId: string) {
  * force=true 时强制生成
  */
 export async function generateSimpleReport(dayId: string, force = false) {
-  const key = `app:browsing_summary_${dayId}`;
+  const key = `browsing_summary_${dayId}`;
   if (!force) {
     const cached = await storage.get<any>(key);
     if (cached && cached.report) return { dayId, report: cached.report };
@@ -302,6 +302,10 @@ export async function generateSimpleReport(dayId: string, force = false) {
   const data = { dayId, report };
   await storage.set(key, data);
   logger.info(`[简化报告] 已生成并缓存 ${dayId} 的报告`, data);
+  // 新增：生成后主动通知侧边栏刷新洞察卡片
+  if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+    chrome.runtime.sendMessage({ type: 'SIDE_PANEL_UPDATE', payload: { updateType: 'ai' } });
+  }
   return data;
 }
 
@@ -328,9 +332,9 @@ export async function handleCrossDayCleanup() {
     }
   }
   // 2. 删除昨日之前的日报（洞察）
-  const reportKeys = allKeys.filter(k => k.startsWith('app:browsing_summary_'));
+  const reportKeys = allKeys.filter(k => k.startsWith('browsing_summary_'));
   for (const key of reportKeys) {
-    const day = key.replace('app:browsing_summary_', '');
+    const day = key.replace('browsing_summary_', '');
     if (day < yesterdayId) {
       await storage.remove(key);
     }

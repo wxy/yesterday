@@ -15,6 +15,10 @@ export class JsonSerializer implements StorageSerializer {
    * 反序列化数据
    */
   deserialize<T>(data: string): T {
-    return JSON.parse(data) as T;
+    try {
+      return JSON.parse(data) as T;
+    } catch (e) {
+      throw new Error(`[JSON序列化] 反序列化失败: ${e instanceof Error ? e.message : e}, 原始内容: ${data}`);
+    }
   }
 }

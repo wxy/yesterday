@@ -64,7 +64,12 @@ export class WebStorageAdapter extends BaseStorageAdapter {
       if (item === null) {
         return null;
       }
-      return JSON.parse(item) as T;
+      try {
+        return JSON.parse(item) as T;
+      } catch (e) {
+        this.logger.error(`[localStorage] 反序列化失败: ${e instanceof Error ? e.message : e}, 原始内容: ${item}`);
+        return null;
+      }
     } catch (e) {
       this.logger.error(`无法获取存储项: ${key}`, e);
       return null;
