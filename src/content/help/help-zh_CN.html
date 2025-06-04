@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>昨日扩展使用帮助</title>
+  <link rel="stylesheet" href="../../assets/styles/global.css">
+  <link rel="stylesheet" href="../../assets/styles/help.css">
+</head>
+<body>
+  <div class="help-container">
+    <div class="help-title">
+      <img src="../../assets/icons/logo-default-48.png" class="help-logo" alt="Yesterday Logo">
+      <h1>昨日/Yesterday 扩展使用帮助</h1>
+    </div>
+    <h2>简介</h2>
+    <p>“昨日/Yesterday”是一款基于 AI 的 Chrome 浏览器扩展，自动记录每日网页访问历史，智能分析你的浏览行为，生成个性化洞察报告，并以美观的卡片形式高亮展示重要内容。支持侧边栏与弹窗双视图，配置变更与 AI 服务状态实时联动。</p>
+    <h2>安装与启动</h2>
+    <ol>
+      <li>打开 Chrome 浏览器，访问 <a href="https://chrome.google.com/webstore/category/extensions" target="_blank">Chrome 网上应用店</a>。</li>
+      <li>搜索“昨日”或“Yesterday”，进入扩展详情页。</li>
+      <li>点击“添加至 Chrome”按钮，按提示完成安装。</li>
+      <li>安装后，浏览器右上角会出现“昨日”图标。</li>
+    </ol>
+    <h2>功能总览</h2>
+    <ul>
+      <li><b>自动记录访问历史</b>：无需手动操作，自动采集每日网页访问记录。</li>
+      <li><b>AI 智能内容分析</b>：本地/远程 AI 服务对访问内容进行摘要、分类、重点提取。</li>
+      <li><b>洞察报告生成</b>：一键生成“昨日/今日”浏览洞察，结构化展示重点信息。</li>
+      <li><b>重要内容高亮</b>：AI 识别的重要卡片自动高亮，支持弹窗与侧边栏一致展示。</li>
+      <li><b>全局配置联动</b>：支持全局配置变更自动刷新，前后端联动一致。</li>
+      <li><b>AI 服务状态提示</b>：本地 AI 不可用时，前端弹窗/侧边栏均有明显提示，扩展图标同步警告。</li>
+      <li><b>极简美观 UI</b>：卡片式信息流，支持高亮、分区、结构化展示，样式统一且可扩展。</li>
+      <li><b>隐私友好</b>：所有数据本地存储，AI 分析可选本地或自定义服务。</li>
+    </ul>
+    <h2>如何使用</h2>
+    <h3>1. 弹窗视图</h3>
+    <ul>
+      <li>点击浏览器右上角“昨日”图标，弹出今日重要访问与 AI 洞察卡片。</li>
+      <li>重要内容会自动高亮。</li>
+      <li>若本地 AI 服务不可用，弹窗顶部会有明显提示。</li>
+    </ul>
+    <h3>2. 侧边栏视图</h3>
+    <ul>
+      <li>右键点击扩展图标，选择“在侧边栏中打开”，或使用快捷键（如 Ctrl+Shift+Y）。</li>
+      <li>侧边栏支持“今日”与“昨日”切换，浏览全部访问记录与洞察报告。</li>
+      <li>重要卡片同样高亮显示。</li>
+      <li>关闭的标签页，其卡片背景会变白，便于区分。</li>
+      <li>洞察报告区可一键刷新。</li>
+    </ul>
+    <h3>3. 配置与选项</h3>
+    <ul>
+      <li>在扩展管理页点击“详细信息”→“扩展选项”，可进入配置页面。</li>
+      <li>支持自定义 AI 服务地址、分析策略、数据存储方式等。</li>
+      <li>配置变更后，弹窗和侧边栏会自动刷新。</li>
+    </ul>
+    <h3>4. AI 服务状态</h3>
+    <ul>
+      <li>扩展会自动检测本地 AI 服务可用性。</li>
+      <li>若不可用，扩展图标变为警告色，弹窗/侧边栏顶部会有详细提示。</li>
+      <li>可在选项页切换为远程 AI 服务。</li>
+    </ul>
+    <div class="faq">
+      <h2>常见问题</h2>
+      <ul>
+        <li><b>AI 分析不可用？</b><br>检查本地 AI 服务是否启动，或切换为远程服务。</li>
+        <li><b>数据隐私？</b><br>所有数据默认仅存储在本地，不上传云端。</li>
+        <li><b>如何反馈/贡献？</b><br>欢迎在 GitHub 提交 issue 或 PR。</li>
+      </ul>
+    </div>
+    <h2>联系与支持</h2>
+    <p>如有疑问或建议，请访问项目主页或在 GitHub 提交反馈。</p>
+    <div class="footer-links" style="margin-top:32px;">
+      <!-- 动态生成所有可用语言切换入口 -->
+      <span id="help-lang-switch"></span>
+    </div>
+  </div>
+</body>
+</html>
+<script>
+(async function() {
+  // 动态生成语言切换
+  const langSwitch = document.getElementById('help-lang-switch');
+  if (!langSwitch) return;
+  let locales = [];
+  try {
+    locales = await fetch('../../_locales/locales.json').then(r => r.json());
+  } catch {}
+  if (!Array.isArray(locales) || locales.length === 0) {
+    locales = [
+      { value: 'zh_CN', label: '简体中文' },
+      { value: 'en', label: 'English' }
+    ];
+  }
+  // 当前页面语言
+  const current = 'zh_CN';
+  langSwitch.innerHTML = locales.map(l =>
+    l.value === current
+      ? `<span style='color:#888;'>当前为${l.label}</span>`
+      : `<a href='help-${l.value}.html' style='margin-right:16px;'>${l.label}</a>`
+  ).join('');
+})();
+</script>

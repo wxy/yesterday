@@ -238,7 +238,7 @@ body {
   min-width: 0;
 }
 #merged-view-box {
-  background: #fff;
+  background: none;
   border-radius: 12px;
   box-shadow: 0 1px 6px 0 #008f0011;
   padding: 0;
@@ -300,6 +300,7 @@ body {
 .icon-btn {
     background: transparent;
     border: none;
+    cursor: pointer;
 }
 /* 底部信息区样式优化 */
 .footer {
@@ -374,4 +375,12 @@ body {
     font-size: 13px;
     padding: 18px 0 9px 0;
   }
+}
+
+/* tab-closed 状态样式 */
+.merged-card.tab-closed {
+  background: #fff !important;
+}
+.merged-card.ai-important-card.tab-closed {
+  background: #fff !important;
 }

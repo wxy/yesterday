@@ -295,76 +295,12 @@
     "message": "AI 分析超时",
     "description": "从TS提取 (_Error): lib/artificial-intelligence/chrome-ai/chrome-ai-service.ts"
   },
-  "ai_analyze_no_content": {
-    "message": "无内容可分析: {0}",
-    "description": "从TS提取 (_): background/event-handlers.ts"
-  },
-  "ai_analyze_no_visit_record": {
-    "message": "未找到访问记录: {0}",
-    "description": "从TS提取 (_): background/event-handlers.ts"
-  },
-  "ai_analyze_no_service": {
-    "message": "无可用 AI 服务",
-    "description": "从TS提取 (_Error): background/event-handlers.ts"
-  },
-  "ai_analyze_error": {
-    "message": "分析异常: {0}",
-    "description": "从TS提取 (_): background/event-handlers.ts"
-  },
-  "sidebar_summary_loading": {
-    "message": "汇总报告加载中...",
-    "description": "从TS提取 (_): sidebar/sidebar.ts"
-  },
-  "sidebar_summary_empty": {
-    "message": "暂无汇总报告",
-    "description": "从TS提取 (_): sidebar/sidebar.ts"
-  },
-  "sidebar_summary_title": {
-    "message": "汇总报告",
-    "description": "从TS提取 (_): sidebar/sidebar.ts"
-  },
-  "sidebar_summary_refresh": {
-    "message": "刷新",
-    "description": "从TS提取 (_): sidebar/sidebar.ts"
-  },
-  "sidebar_summary_stats_total": {
-    "message": "访问总数",
-    "description": "从TS提取 (_): sidebar/sidebar.ts"
-  },
-  "sidebar_summary_stats_duration": {
-    "message": "总时长",
-    "description": "从TS提取 (_): sidebar/sidebar.ts"
-  },
-  "sidebar_summary_stats_domains": {
-    "message": "涉及域名",
-    "description": "从TS提取 (_): sidebar/sidebar.ts"
-  },
-  "sidebar_summary_stats_keywords": {
-    "message": "关键词",
-    "description": "从TS提取 (_): sidebar/sidebar.ts"
-  },
-  "sidebar_summary_special": {
-    "message": "特别关注",
-    "description": "从TS提取 (_): sidebar/sidebar.ts"
-  },
-  "sidebar_summary_refreshing": {
-    "message": "正在刷新...",
-    "description": "从TS提取 (_): sidebar/sidebar.ts"
-  },
-  "sidebar_summary_error": {
-    "message": "汇总报告加载失败",
-    "description": "从TS提取 (_): sidebar/sidebar.ts"
-  },
   "sidebar_tab_today": {
     "message": "今日",
     "description": "从TS提取 (_): sidebar/sidebar.ts"
   },
   "sidebar_tab_yesterday": {
     "message": "昨日",
-    "description": "从TS提取 (_): sidebar/sidebar.ts"
-  },
-  "sidebar_insight_generate": {
-    "message": "即刻洞察",
     "description": "从TS提取 (_): sidebar/sidebar.ts"
   },
   "sidebar_insight_generating": {
@@ -395,10 +331,6 @@
     "message": "特别关注",
     "description": "从TS提取 (_): sidebar/sidebar.ts"
   },
-  "sidebar_insight_error": {
-    "message": "昨日洞察加载失败",
-    "description": "从TS提取 (_): sidebar/sidebar.ts"
-  },
   "sidebar_card_times": {
     "message": "次",
     "description": "从TS提取 (_): sidebar/sidebar.ts"
@@ -407,32 +339,8 @@
     "message": "正在进行 AI 分析",
     "description": "从TS提取 (_): sidebar/sidebar.ts"
   },
-  "sidebar_card_analyze_duration": {
-    "message": "分析用时",
-    "description": "从TS提取 (_): sidebar/sidebar.ts"
-  },
   "sidebar_card_seconds": {
     "message": "秒",
-    "description": "从TS提取 (_): sidebar/sidebar.ts"
-  },
-  "ai_service_ollama": {
-    "message": "Ollama 本地",
-    "description": "从TS提取 (_): sidebar/sidebar.ts"
-  },
-  "ai_service_chrome_ai": {
-    "message": "Chrome 内置 AI",
-    "description": "从TS提取 (_): sidebar/sidebar.ts"
-  },
-  "ai_service_openai": {
-    "message": "OpenAI",
-    "description": "从TS提取 (_): sidebar/sidebar.ts"
-  },
-  "ai_service_other": {
-    "message": "其它",
-    "description": "从TS提取 (_): sidebar/sidebar.ts"
-  },
-  "ai_service_default": {
-    "message": "AI",
     "description": "从TS提取 (_): sidebar/sidebar.ts"
   },
   "sidebar_card_minutes": {
@@ -444,7 +352,7 @@
     "description": "从TS提取 (_): sidebar/sidebar.ts"
   },
   "sidebar_card_duration": {
-    "message": "用时",
+    "message": "已用时",
     "description": "从TS提取 (_): sidebar/sidebar.ts"
   },
   "sidebar_card_loading": {
@@ -469,14 +377,6 @@
   },
   "sidebar_card_ai_timeout": {
     "message": "分析超时",
-    "description": "从TS提取 (_): sidebar/sidebar.ts"
-  },
-  "sidebar_clear_data_log": {
-    "message": "清除本地数据（不清除配置）",
-    "description": "从TS提取 (_): sidebar/sidebar.ts"
-  },
-  "sidebar_clear_data_failed": {
-    "message": "清除数据失败",
     "description": "从TS提取 (_): sidebar/sidebar.ts"
   },
   "sidebar_clear_data_confirm": {
@@ -516,7 +416,7 @@
     "description": "从HTML提取: options/options.html"
   },
   "config_request_timeout_label": {
-    "message": "API请求超时 (秒)",
+    "message": "API 请求超时 (秒)",
     "description": "从TS提取 (_): lib/config/configs.ts"
   },
   "config_request_timeout_desc": {
@@ -528,11 +428,11 @@
     "description": "从TS提取 (_): lib/config/configs.ts"
   },
   "config_max_ai_result_length_label": {
-    "message": "AI分析结果最大长度",
+    "message": "AI 分析结果最大长度",
     "description": "从TS提取 (_): lib/config/configs.ts"
   },
   "config_max_ai_result_length_desc": {
-    "message": "限制AI分析结果的最大字符数，防止内容过长影响体验",
+    "message": "限制 AI 分析结果的最大字符数，防止内容过长影响体验",
     "description": "从TS提取 (_): lib/config/configs.ts"
   },
   "config_ai_service_label": {
@@ -642,5 +542,29 @@
   "config_url_filter_include_urls_desc": {
     "message": "每行一个，支持通配符/正则表达式，优先于排除规则。",
     "description": "从TS提取 (_): lib/config/configs.ts"
+  },
+  "sidebar_insight_generate_now": {
+    "message": "即刻洞察",
+    "description": "从TS提取 (_): sidebar/insight-report.ts"
+  },
+  "sidebar_insight_loading": {
+    "message": "加载中...",
+    "description": "从TS提取 (_): sidebar/insight-report.ts"
+  },
+  "config_cross_day_idle_threshold_label": {
+    "message": "跨日空闲阈值 (小时)",
+    "description": "从TS提取 (_): lib/config/configs.ts"
+  },
+  "config_cross_day_idle_threshold_desc": {
+    "message": "连续空闲超过该时长后，新的访问将被计入新的一天。可选范围 1-12 小时。",
+    "description": "从TS提取 (_): lib/config/configs.ts"
+  },
+  "ai_service_available": {
+    "message": "可用",
+    "description": "从TS提取 (_): lib/artificial-intelligence/ai-manager.ts"
+  },
+  "ai_service_unavailable": {
+    "message": "不可用",
+    "description": "从TS提取 (_): lib/artificial-intelligence/ai-manager.ts"
   }
 }

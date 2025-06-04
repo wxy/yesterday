@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Yesterday Extension Help</title>
+  <link rel="stylesheet" href="../../assets/styles/global.css">
+  <link rel="stylesheet" href="../../assets/styles/help.css">
+  <style>
+    /* 样式已移至 help.css */
+  </style>
+</head>
+<body>
+  <div class="help-container">
+    <div class="help-title">
+      <img src="../../assets/icons/logo-default-48.png" class="help-logo" alt="Yesterday Logo">
+      <h1>Yesterday Extension User Guide</h1>
+    </div>
+    <h2>Introduction</h2>
+    <p>Yesterday is an AI-powered Chrome extension that automatically records your daily browsing history, analyzes your behavior, and generates personalized insight reports. Important content is highlighted in a beautiful card UI. Both sidebar and popup views are supported, with real-time config and AI service status sync.</p>
+    <h2>Installation & Getting Started</h2>
+    <ol>
+      <li>Open Chrome and go to the <a href="https://chrome.google.com/webstore/category/extensions" target="_blank">Chrome Web Store</a>.</li>
+      <li>Search for "Yesterday" and open the extension details page.</li>
+      <li>Click the "Add to Chrome" button and follow the prompts to complete installation.</li>
+      <li>After installation, the "Yesterday" icon will appear in the top-right corner of Chrome.</li>
+    </ol>
+    <h2>Features Overview</h2>
+    <ul>
+      <li><b>Auto Logging</b>: Automatically records your daily browsing history.</li>
+      <li><b>AI-powered Analysis</b>: Summarizes, classifies, and highlights key points using local or remote AI services.</li>
+      <li><b>Insight Reports</b>: One-click to generate daily insight reports with structured highlights.</li>
+      <li><b>Highlighting</b>: Important cards identified by AI are automatically highlighted in both popup and sidebar.</li>
+      <li><b>Global Config Sync</b>: All config changes trigger auto-refresh, keeping frontend and backend in sync.</li>
+      <li><b>AI Service Status Warning</b>: When local AI is unavailable, both popup/sidebar show clear warnings and the extension icon changes.</li>
+      <li><b>Minimal & Beautiful UI</b>: Card-based info stream, unified and extensible styles, with highlight and structured display.</li>
+      <li><b>Privacy Friendly</b>: All data is stored locally; AI analysis can use local or custom services.</li>
+    </ul>
+    <h2>How to Use</h2>
+    <h3>1. Popup View</h3>
+    <ul>
+      <li>Click the "Yesterday" icon in the top-right of Chrome to open the popup with today's highlights and AI insights.</li>
+      <li>Important content is automatically highlighted.</li>
+      <li>If local AI is unavailable, a clear warning appears at the top of the popup.</li>
+    </ul>
+    <h3>2. Sidebar View</h3>
+    <ul>
+      <li>Right-click the extension icon and select "Open in sidebar", or use the shortcut (e.g. Ctrl+Shift+Y).</li>
+      <li>Switch between "Today" and "Yesterday" tabs to browse all visits and insight reports.</li>
+      <li>Important cards are also highlighted.</li>
+      <li>Cards for closed tabs have a white background for easy distinction.</li>
+      <li>The insight report area supports one-click refresh.</li>
+    </ul>
+    <h3>3. Options & Settings</h3>
+    <ul>
+      <li>In the extension management page, click "Details" → "Extension options" to open the settings page.</li>
+      <li>You can customize AI service address, analysis strategy, data storage, etc.</li>
+      <li>After changing settings, the popup and sidebar will auto-refresh.</li>
+    </ul>
+    <h3>4. AI Service Status</h3>
+    <ul>
+      <li>The extension automatically checks the availability of local AI services.</li>
+      <li>If unavailable, the extension icon turns warning color and a detailed message appears in popup/sidebar.</li>
+      <li>You can switch to a remote AI service in the options page.</li>
+    </ul>
+    <div class="faq">
+      <h2>FAQ</h2>
+      <ul>
+        <li><b>AI analysis unavailable?</b><br>Check if your local AI service is running, or switch to a remote service.</li>
+        <li><b>Data privacy?</b><br>All data is stored locally by default, never uploaded to the cloud.</li>
+        <li><b>How to contribute?</b><br>Please submit issues or PRs on GitHub.</li>
+      </ul>
+    </div>
+    <h2>Contact & Support</h2>
+    <p>For questions or suggestions, visit the project homepage or submit feedback on GitHub.</p>
+    <div class="footer-links" style="margin-top:32px;">
+      <!-- 动态生成所有可用语言切换入口 -->
+      <span id="help-lang-switch"></span>
+    </div>
+  </div>
+</body>
+<script>
+(async function() {
+  // 动态生成语言切换
+  const langSwitch = document.getElementById('help-lang-switch');
+  if (!langSwitch) return;
+  let locales = [];
+  try {
+    locales = await fetch('../../_locales/locales.json').then(r => r.json());
+  } catch {}
+  if (!Array.isArray(locales) || locales.length === 0) {
+    locales = [
+      { value: 'zh_CN', label: '简体中文' },
+      { value: 'en', label: 'English' }
+    ];
+  }
+  // 当前页面语言
+  const current = 'en';
+  langSwitch.innerHTML = locales.map(l =>
+    l.value === current
+      ? `<span style='color:#888;'>Current: ${l.label}</span>`
+      : `<a href='help-${l.value}.html' style='margin-right:16px;'>${l.label}</a>`
+  ).join('');
+})();
+</script>
+</html>

@@ -1,0 +1,101 @@
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', 'Microsoft YaHei', Arial, sans-serif;
+  background: linear-gradient(135deg, #f6fff6 0%, #e6fbe6 100%);
+  color: #222;
+  margin: 0;
+  padding: 0;
+}
+.help-container {
+  max-width: 720px;
+  margin: 40px auto 40px auto;
+  background: #fff;
+  border-radius: 18px;
+  box-shadow: 0 6px 32px 0 #008f0022, 0 1.5px 8px 0 #b2e5b255;
+  padding: 40px 32px 36px 32px;
+  font-size: 18px;
+  line-height: 1.8;
+  transition: box-shadow 0.2s;
+}
+.help-container:hover {
+  box-shadow: 0 12px 48px 0 #008f0033, 0 2px 12px 0 #b2e5b288;
+}
+h1 {
+  color: #008F00;
+  font-size: 2.1em;
+  margin-bottom: 0.5em;
+  letter-spacing: 0.02em;
+}
+h2 {
+  color: #008F00;
+  font-size: 1.3em;
+  margin-top: 1.6em;
+  margin-bottom: 0.7em;
+  border-left: 4px solid #b2e5b2;
+  padding-left: 10px;
+  background: linear-gradient(90deg, #e6fbe6 0%, #fff 100%);
+}
+h3 {
+  color: #3a7a3a;
+  font-size: 1.1em;
+  margin-top: 1.2em;
+  margin-bottom: 0.5em;
+}
+ul, ol {
+  margin-left: 1.5em;
+  margin-bottom: 1.2em;
+}
+.faq {
+  background: linear-gradient(90deg, #e6fbe6 0%, #fff 100%);
+  border-radius: 10px;
+  padding: 18px 18px 12px 18px;
+  margin: 32px 0 24px 0;
+  border-left: 4px solid #FFC10A;
+  box-shadow: 0 1.5px 8px 0 #b2e5b233;
+}
+.help-logo {
+  width: 54px;
+  vertical-align: middle;
+  margin-right: 14px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px 0 #008f0011;
+  background: #fff;
+}
+.help-title {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+.footer-links {
+  margin-top: 36px;
+  text-align: right;
+  font-size: 15px;
+}
+.footer-links a {
+  color: #008F00;
+  text-decoration: underline;
+  margin-right: 18px;
+  font-weight: 600;
+  transition: color 0.18s;
+}
+.footer-links a:hover {
+  color: #FFC10A;
+}
+@media (max-width: 700px) {
+  .help-container {
+    padding: 16px 4vw;
+    font-size: 16px;
+  }
+  .help-logo {
+    width: 38px;
+    margin-right: 8px;
+  }
+}
+@media (max-width: 480px) {
+  .help-container {
+    padding: 8px 2vw;
+    font-size: 15px;
+  }
+  h1 { font-size: 1.3em; }
+  h2 { font-size: 1.1em; }
+}

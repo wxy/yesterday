@@ -102,7 +102,19 @@ document.addEventListener('DOMContentLoaded', () => {
   if (openHelpLink) {
     openHelpLink.addEventListener('click', (e) => {
       e.preventDefault();
-      chrome.tabs.create({ url: 'https://github.com/yourusername/your-extension/wiki' });
+      // 语言优先级：当前页面lang > navigator.language > en
+      let lang = document.documentElement.lang || navigator.language || 'en';
+      lang = lang.replace('-', '_').toLowerCase();
+      let helpUrl = '';
+      if (lang.startsWith('zh')) {
+        helpUrl = 'content/help/help-zh_CN.html';
+      } else if (lang.startsWith('en')) {
+        helpUrl = 'content/help/help-en.html';
+      } else {
+        // 可扩展更多语言
+        helpUrl = 'content/help/help-en.html';
+      }
+      chrome.tabs.create({ url: helpUrl });
     });
   }
   // 版本号
@@ -115,7 +127,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // 配置变更自动刷新
 config.onConfigChanged(() => {
-  window.location.reload(); // 或调用自定义刷新逻辑
+  // 语言变更时自动刷新 UI
+  window.location.reload();
 });
 
 // 监听页面标签变化，及时刷新“当前打开”高亮

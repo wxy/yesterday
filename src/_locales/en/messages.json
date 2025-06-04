@@ -1,208 +1,167 @@
 {
   "logger_session_started": {
-    "message": "{0} - 开始",
-    "description": "从TS提取 (_): lib/logger/logger.ts",
-    "_untranslated": true
+    "message": "{0} - Start",
+    "description": "从TS提取 (_): lib/logger/logger.ts"
   },
   "logger_session_ended": {
-    "message": "{0} - 结束 (耗时: {1}ms)",
-    "description": "从TS提取 (_): lib/logger/logger.ts",
-    "_untranslated": true
+    "message": "{0} - Finished (Time taken: {1}ms)",
+    "description": "从TS提取 (_): lib/logger/logger.ts"
   },
   "logger_total_duration": {
-    "message": "总耗时: {0}ms",
-    "description": "从TS提取 (_): lib/logger/logger.ts",
-    "_untranslated": true
+    "message": "Total time: {0}ms",
+    "description": "从TS提取 (_): lib/logger/logger.ts"
   },
   "logger_debug_full_stack": {
-    "message": "完整堆栈:",
-    "description": "从TS提取 (_): lib/logger/logger.ts",
-    "_untranslated": true
+    "message": "Full Stack:",
+    "description": "从TS提取 (_): lib/logger/logger.ts"
   },
   "logger_debug_line_number": {
-    "message": "行 {0}:",
-    "description": "从TS提取 (_): lib/logger/logger.ts",
-    "_untranslated": true
+    "message": "Line {0}:",
+    "description": "从TS提取 (_): lib/logger/logger.ts"
   },
   "logger_debug_chrome_standard_format": {
-    "message": " Chrome标准格式:",
-    "description": "从TS提取 (_): lib/logger/logger.ts",
-    "_untranslated": true
+    "message": "Chrome Standard Format:",
+    "description": "从TS提取 (_): lib/logger/logger.ts"
   },
   "logger_debug_chrome_simple_format": {
-    "message": " Chrome简单格式:",
-    "description": "从TS提取 (_): lib/logger/logger.ts",
-    "_untranslated": true
+    "message": "Chrome simple format:",
+    "description": "从TS提取 (_): lib/logger/logger.ts"
   },
   "logger_debug_firefox_format": {
-    "message": " Firefox格式:",
-    "description": "从TS提取 (_): lib/logger/logger.ts",
-    "_untranslated": true
+    "message": "Firefox Format:",
+    "description": "从TS提取 (_): lib/logger/logger.ts"
   },
   "logger_debug_fallback_format": {
-    "message": " 后备格式:",
-    "description": "从TS提取 (_): lib/logger/logger.ts",
-    "_untranslated": true
+    "message": "Fallback format:",
+    "description": "从TS提取 (_): lib/logger/logger.ts"
   },
   "logger_debug_stack_first_five": {
-    "message": "堆栈前5行:",
-    "description": "从TS提取 (_): lib/logger/logger.ts",
-    "_untranslated": true
+    "message": "The first 5 lines of the stack:",
+    "description": "从TS提取 (_): lib/logger/logger.ts"
   },
   "logger_debug_stack_view_full": {
-    "message": "使用Logger.debugStack(",
-    "description": "从TS提取 (_): lib/logger/logger.ts",
-    "_untranslated": true
+    "message": "Use Logger.debugStack(",
+    "description": "从TS提取 (_): lib/logger/logger.ts"
   },
   "logger_debug_stack_error": {
-    "message": "无法获取堆栈",
-    "description": "从TS提取 (_): lib/logger/logger.ts",
-    "_untranslated": true
+    "message": "Unable to get stack",
+    "description": "从TS提取 (_): lib/logger/logger.ts"
   },
   "logger_keyword_completed": {
-    "message": "完成",
-    "description": "从TS提取 (_): lib/logger/logger.ts",
-    "_untranslated": true
+    "message": "Finish",
+    "description": "从TS提取 (_): lib/logger/logger.ts"
   },
   "logger_keyword_success": {
-    "message": "成功",
-    "description": "从TS提取 (_): lib/logger/logger.ts",
-    "_untranslated": true
+    "message": "success",
+    "description": "从TS提取 (_): lib/logger/logger.ts"
   },
   "logger_keyword_ended": {
-    "message": "结束",
-    "description": "从TS提取 (_): lib/logger/logger.ts",
-    "_untranslated": true
+    "message": "Finish",
+    "description": "从TS提取 (_): lib/logger/logger.ts"
   },
   "logger_keyword_failed": {
-    "message": "失败",
-    "description": "从TS提取 (_): lib/logger/logger.ts",
-    "_untranslated": true
+    "message": "fail",
+    "description": "从TS提取 (_): lib/logger/logger.ts"
   },
   "logger_keyword_error": {
-    "message": "错误",
-    "description": "从TS提取 (_): lib/logger/logger.ts",
-    "_untranslated": true
+    "message": "mistake",
+    "description": "从TS提取 (_): lib/logger/logger.ts"
   },
   "logger_keyword_warning": {
-    "message": "警告",
-    "description": "从TS提取 (_): lib/logger/logger.ts",
-    "_untranslated": true
+    "message": "warn",
+    "description": "从TS提取 (_): lib/logger/logger.ts"
   },
   "logger_keyword_initialized": {
-    "message": "已初始化",
-    "description": "从TS提取 (_): lib/logger/logger.ts",
-    "_untranslated": true
+    "message": "Initialized",
+    "description": "从TS提取 (_): lib/logger/logger.ts"
   },
   "logger_keyword_init_complete": {
-    "message": "初始化完成",
-    "description": "从TS提取 (_): lib/logger/logger.ts",
-    "_untranslated": true
+    "message": "Initialization completed",
+    "description": "从TS提取 (_): lib/logger/logger.ts"
   },
   "logger_keyword_init_success": {
-    "message": "初始化成功",
-    "description": "从TS提取 (_): lib/logger/logger.ts",
-    "_untranslated": true
+    "message": "Initialization successful",
+    "description": "从TS提取 (_): lib/logger/logger.ts"
   },
   "logger_keyword_started": {
-    "message": "启动完成",
-    "description": "从TS提取 (_): lib/logger/logger.ts",
-    "_untranslated": true
+    "message": "Startup completed",
+    "description": "从TS提取 (_): lib/logger/logger.ts"
   },
   "logger_keyword_loaded": {
-    "message": "已加载",
-    "description": "从TS提取 (_): lib/logger/logger.ts",
-    "_untranslated": true
+    "message": "Loaded",
+    "description": "从TS提取 (_): lib/logger/logger.ts"
   },
   "logger_keyword_load_complete": {
-    "message": "加载完成",
-    "description": "从TS提取 (_): lib/logger/logger.ts",
-    "_untranslated": true
+    "message": "Loading Complete",
+    "description": "从TS提取 (_): lib/logger/logger.ts"
   },
   "logger_keyword_saved": {
-    "message": "已保存",
-    "description": "从TS提取 (_): lib/logger/logger.ts",
-    "_untranslated": true
+    "message": "Saved",
+    "description": "从TS提取 (_): lib/logger/logger.ts"
   },
   "logger_keyword_save_success": {
-    "message": "保存成功",
-    "description": "从TS提取 (_): lib/logger/logger.ts",
-    "_untranslated": true
+    "message": "Saved successfully",
+    "description": "从TS提取 (_): lib/logger/logger.ts"
   },
   "logger_keyword_downloaded": {
-    "message": "已下载",
-    "description": "从TS提取 (_): lib/logger/logger.ts",
-    "_untranslated": true
+    "message": "Downloaded",
+    "description": "从TS提取 (_): lib/logger/logger.ts"
   },
   "logger_keyword_uploaded": {
-    "message": "已上传",
-    "description": "从TS提取 (_): lib/logger/logger.ts",
-    "_untranslated": true
+    "message": "Uploaded",
+    "description": "从TS提取 (_): lib/logger/logger.ts"
   },
   "logger_keyword_created": {
-    "message": "已创建",
-    "description": "从TS提取 (_): lib/logger/logger.ts",
-    "_untranslated": true
+    "message": "Created",
+    "description": "从TS提取 (_): lib/logger/logger.ts"
   },
   "logger_keyword_registered": {
-    "message": "已注册",
-    "description": "从TS提取 (_): lib/logger/logger.ts",
-    "_untranslated": true
+    "message": "Already registered",
+    "description": "从TS提取 (_): lib/logger/logger.ts"
   },
   "logger_keyword_added": {
-    "message": "已添加",
-    "description": "从TS提取 (_): lib/logger/logger.ts",
-    "_untranslated": true
+    "message": "Added",
+    "description": "从TS提取 (_): lib/logger/logger.ts"
   },
   "logger_keyword_deleted": {
-    "message": "已删除",
-    "description": "从TS提取 (_): lib/logger/logger.ts",
-    "_untranslated": true
+    "message": "Deleted",
+    "description": "从TS提取 (_): lib/logger/logger.ts"
   },
   "logger_keyword_set": {
-    "message": "已设置",
-    "description": "从TS提取 (_): lib/logger/logger.ts",
-    "_untranslated": true
+    "message": "Already set",
+    "description": "从TS提取 (_): lib/logger/logger.ts"
   },
   "logger_keyword_configured": {
-    "message": "已配置",
-    "description": "从TS提取 (_): lib/logger/logger.ts",
-    "_untranslated": true
+    "message": "Configured",
+    "description": "从TS提取 (_): lib/logger/logger.ts"
   },
   "logger_keyword_settings_complete": {
-    "message": "设置完成",
-    "description": "从TS提取 (_): lib/logger/logger.ts",
-    "_untranslated": true
+    "message": "Setup Complete",
+    "description": "从TS提取 (_): lib/logger/logger.ts"
   },
   "logger_keyword_started_action": {
-    "message": "已启动",
-    "description": "从TS提取 (_): lib/logger/logger.ts",
-    "_untranslated": true
+    "message": "Started",
+    "description": "从TS提取 (_): lib/logger/logger.ts"
   },
   "logger_keyword_stopped": {
-    "message": "已停止",
-    "description": "从TS提取 (_): lib/logger/logger.ts",
-    "_untranslated": true
+    "message": "Stopped",
+    "description": "从TS提取 (_): lib/logger/logger.ts"
   },
   "logger_keyword_paused": {
-    "message": "已暂停",
-    "description": "从TS提取 (_): lib/logger/logger.ts",
-    "_untranslated": true
+    "message": "Paused",
+    "description": "从TS提取 (_): lib/logger/logger.ts"
   },
   "logger_keyword_resumed": {
-    "message": "已恢复",
-    "description": "从TS提取 (_): lib/logger/logger.ts",
-    "_untranslated": true
+    "message": "Restored",
+    "description": "从TS提取 (_): lib/logger/logger.ts"
   },
   "logger_keyword_ready": {
-    "message": "已就绪",
-    "description": "从TS提取 (_): lib/logger/logger.ts",
-    "_untranslated": true
+    "message": "Ready",
+    "description": "从TS提取 (_): lib/logger/logger.ts"
   },
   "logger_keyword_prepared": {
-    "message": "已准备",
-    "description": "从TS提取 (_): lib/logger/logger.ts",
-    "_untranslated": true
+    "message": "Prepared",
+    "description": "从TS提取 (_): lib/logger/logger.ts"
   },
   "logger_keyword_in_progress": {
     "message": "...",
@@ -210,9 +169,8 @@
     "_untranslated": true
   },
   "logger_keyword_processing": {
-    "message": "处理中",
-    "description": "从TS提取 (_): lib/logger/logger.ts",
-    "_untranslated": true
+    "message": "Processing",
+    "description": "从TS提取 (_): lib/logger/logger.ts"
   },
   "appName": {
     "message": "appName",
@@ -225,359 +183,196 @@
     "_untranslated": true
   },
   "storage_strategy_no_custom_adapter": {
-    "message": "未提供自定义存储适配器实例",
-    "description": "从TS提取 (_Error): lib/storage/storage-strategy.ts",
-    "_untranslated": true
+    "message": "No custom storage adapter instance provided",
+    "description": "从TS提取 (_Error): lib/storage/storage-strategy.ts"
   },
   "storage_strategy_unsupported_backend": {
-    "message": "不支持的存储后端类型: {0}",
-    "description": "从TS提取 (_Error): lib/storage/storage-strategy.ts",
-    "_untranslated": true
+    "message": "Unsupported storage backend type: {0}",
+    "description": "从TS提取 (_Error): lib/storage/storage-strategy.ts"
   },
   "storage_adapter_unavailable": {
-    "message": "存储适配器不可用",
-    "description": "从TS提取 (_Error): lib/storage/storage-manager.ts",
-    "_untranslated": true
+    "message": "Storage adapter unavailable",
+    "description": "从TS提取 (_Error): lib/storage/storage-manager.ts"
   },
   "storage_adapter_unavailable_with_name": {
-    "message": "存储适配器不可用: {0}",
-    "description": "从TS提取 (_Error): lib/storage/storage-manager.ts",
-    "_untranslated": true
+    "message": "Storage adapter not available: {0}",
+    "description": "从TS提取 (_Error): lib/storage/storage-manager.ts"
   },
   "storage_manager_no_strategy": {
-    "message": "当前存储管理器未使用策略模式，无法切换后端",
-    "description": "从TS提取 (_Error): lib/storage/storage-manager.ts",
-    "_untranslated": true
+    "message": "The current storage manager does not use policy mode and cannot switch backends",
+    "description": "从TS提取 (_Error): lib/storage/storage-manager.ts"
   },
   "indexeddb_unavailable": {
-    "message": "indexedDB 不可用",
-    "description": "从TS提取 (_Error): lib/storage/adapters/indexed-db.ts",
-    "_untranslated": true
+    "message": "indexedDB is not available",
+    "description": "从TS提取 (_Error): lib/storage/adapters/indexed-db.ts"
   },
   "indexeddb_open_failed": {
-    "message": "无法打开IndexedDB数据库",
-    "description": "从TS提取 (_Error): lib/storage/adapters/indexed-db.ts",
-    "_untranslated": true
+    "message": "Unable to open IndexedDB database",
+    "description": "从TS提取 (_Error): lib/storage/adapters/indexed-db.ts"
   },
   "indexeddb_init_failed": {
-    "message": "初始化IndexedDB时出错",
-    "description": "从TS提取 (_Error): lib/storage/adapters/indexed-db.ts",
-    "_untranslated": true
+    "message": "Error initializing IndexedDB",
+    "description": "从TS提取 (_Error): lib/storage/adapters/indexed-db.ts"
   },
   "indexeddb_set_failed": {
-    "message": "设置IndexedDB项失败: {0}",
-    "description": "从TS提取 (_Error): lib/storage/adapters/indexed-db.ts",
-    "_untranslated": true
+    "message": "Failed to set IndexedDB item: {0}",
+    "description": "从TS提取 (_Error): lib/storage/adapters/indexed-db.ts"
   },
   "indexeddb_get_failed": {
-    "message": "获取IndexedDB项失败: {0}",
-    "description": "从TS提取 (_Error): lib/storage/adapters/indexed-db.ts",
-    "_untranslated": true
+    "message": "Failed to get IndexedDB item: {0}",
+    "description": "从TS提取 (_Error): lib/storage/adapters/indexed-db.ts"
   },
   "indexeddb_remove_failed": {
-    "message": "删除IndexedDB项失败: {0}",
-    "description": "从TS提取 (_Error): lib/storage/adapters/indexed-db.ts",
-    "_untranslated": true
+    "message": "Failed to delete IndexedDB item: {0}",
+    "description": "从TS提取 (_Error): lib/storage/adapters/indexed-db.ts"
   },
   "indexeddb_clear_failed": {
-    "message": "清空IndexedDB存储失败",
-    "description": "从TS提取 (_Error): lib/storage/adapters/indexed-db.ts",
-    "_untranslated": true
+    "message": "Failed to clear IndexedDB storage",
+    "description": "从TS提取 (_Error): lib/storage/adapters/indexed-db.ts"
   },
   "indexeddb_keys_failed": {
-    "message": "获取IndexedDB键失败",
-    "description": "从TS提取 (_Error): lib/storage/adapters/indexed-db.ts",
-    "_untranslated": true
+    "message": "Failed to get IndexedDB key",
+    "description": "从TS提取 (_Error): lib/storage/adapters/indexed-db.ts"
   },
   "indexeddb_has_failed": {
-    "message": "检查IndexedDB键失败: {0}",
-    "description": "从TS提取 (_Error): lib/storage/adapters/indexed-db.ts",
-    "_untranslated": true
+    "message": "Checking IndexedDB key failed: {0}",
+    "description": "从TS提取 (_Error): lib/storage/adapters/indexed-db.ts"
   },
   "chrome_storage_unavailable": {
-    "message": "chrome.storage 不可用",
-    "description": "从TS提取 (_Error): lib/storage/adapters/chrome-storage.ts",
-    "_untranslated": true
+    "message": "chrome.storage is not available",
+    "description": "从TS提取 (_Error): lib/storage/adapters/chrome-storage.ts"
   },
   "session_storage_unavailable_in_sw": {
-    "message": "session storage 在 Service Worker 环境中不可用",
-    "description": "从TS提取 (_Error): lib/storage/adapters/chrome-storage.ts",
-    "_untranslated": true
+    "message": "Session storage is not available in a Service Worker environment",
+    "description": "从TS提取 (_Error): lib/storage/adapters/chrome-storage.ts"
   },
   "ai_ollama_unavailable": {
-    "message": "Ollama 服务不可用: {0}",
-    "description": "从TS提取 (_): lib/artificial-intelligence/ollama/ollama-service.ts",
-    "_untranslated": true
+    "message": "Ollama service unavailable: {0}",
+    "description": "从TS提取 (_): lib/artificial-intelligence/ollama/ollama-service.ts"
   },
   "ai_ollama_summarize": {
-    "message": "Ollama 正在总结页面: {0}",
-    "description": "从TS提取 (_): lib/artificial-intelligence/ollama/ollama-service.ts",
-    "_untranslated": true
+    "message": "Ollama is summarizing page: {0}",
+    "description": "从TS提取 (_): lib/artificial-intelligence/ollama/ollama-service.ts"
   },
   "ai_ollama_summarize_error": {
-    "message": "Ollama 总结失败: {0}",
-    "description": "从TS提取 (_Error): lib/artificial-intelligence/ollama/ollama-service.ts",
-    "_untranslated": true
+    "message": "Ollama summary failed: {0}",
+    "description": "从TS提取 (_Error): lib/artificial-intelligence/ollama/ollama-service.ts"
   },
   "ai_ollama_report": {
-    "message": "Ollama 正在生成日报: {0}",
-    "description": "从TS提取 (_): lib/artificial-intelligence/ollama/ollama-service.ts",
-    "_untranslated": true
+    "message": "Ollama is generating daily report: {0}",
+    "description": "从TS提取 (_): lib/artificial-intelligence/ollama/ollama-service.ts"
   },
   "ai_ollama_report_error": {
-    "message": "Ollama 日报生成失败: {0}",
-    "description": "从TS提取 (_Error): lib/artificial-intelligence/ollama/ollama-service.ts",
-    "_untranslated": true
+    "message": "Ollama daily report generation failed: {0}",
+    "description": "从TS提取 (_Error): lib/artificial-intelligence/ollama/ollama-service.ts"
   },
   "ai_chrome_unavailable": {
-    "message": "Chrome AI 不可用: {0}",
-    "description": "从TS提取 (_): lib/artificial-intelligence/chrome-ai/chrome-ai-service.ts",
-    "_untranslated": true
+    "message": "Chrome AI is not available: {0}",
+    "description": "从TS提取 (_): lib/artificial-intelligence/chrome-ai/chrome-ai-service.ts"
   },
   "ai_chrome_summarize": {
-    "message": "Chrome AI 正在总结页面: {0}",
-    "description": "从TS提取 (_): lib/artificial-intelligence/chrome-ai/chrome-ai-service.ts",
-    "_untranslated": true
+    "message": "Chrome AI is summarizing page: {0}",
+    "description": "从TS提取 (_): lib/artificial-intelligence/chrome-ai/chrome-ai-service.ts"
   },
   "ai_chrome_summarize_error": {
-    "message": "Chrome AI 总结失败: {0}",
-    "description": "从TS提取 (_Error): lib/artificial-intelligence/chrome-ai/chrome-ai-service.ts",
-    "_untranslated": true
+    "message": "Chrome AI summary failed: {0}",
+    "description": "从TS提取 (_Error): lib/artificial-intelligence/chrome-ai/chrome-ai-service.ts"
   },
   "ai_chrome_report": {
-    "message": "Chrome AI 正在生成日报: {0}",
-    "description": "从TS提取 (_): lib/artificial-intelligence/chrome-ai/chrome-ai-service.ts",
-    "_untranslated": true
+    "message": "Chrome AI is generating daily report: {0}",
+    "description": "从TS提取 (_): lib/artificial-intelligence/chrome-ai/chrome-ai-service.ts"
   },
   "ai_chrome_report_error": {
-    "message": "Chrome AI 日报生成失败: {0}",
-    "description": "从TS提取 (_Error): lib/artificial-intelligence/chrome-ai/chrome-ai-service.ts",
-    "_untranslated": true
+    "message": "Chrome AI daily report generation failed: {0}",
+    "description": "从TS提取 (_Error): lib/artificial-intelligence/chrome-ai/chrome-ai-service.ts"
   },
   "ai_chrome_summarizer_not_found": {
-    "message": "全局 Summarizer API 不存在",
-    "description": "从TS提取 (_Error): lib/artificial-intelligence/chrome-ai/chrome-ai-service.ts",
-    "_untranslated": true
+    "message": "The global Summarizer API does not exist",
+    "description": "从TS提取 (_Error): lib/artificial-intelligence/chrome-ai/chrome-ai-service.ts"
   },
   "ai_chrome_summarizer_unavailable": {
-    "message": "Summarizer API 不可用",
-    "description": "从TS提取 (_Error): lib/artificial-intelligence/chrome-ai/chrome-ai-service.ts",
-    "_untranslated": true
+    "message": "Summarizer API is not available",
+    "description": "从TS提取 (_Error): lib/artificial-intelligence/chrome-ai/chrome-ai-service.ts"
   },
   "ai_chrome_timeout": {
-    "message": "AI 分析超时",
-    "description": "从TS提取 (_Error): lib/artificial-intelligence/chrome-ai/chrome-ai-service.ts",
-    "_untranslated": true
-  },
-  "ai_analyze_no_content": {
-    "message": "无内容可分析: {0}",
-    "description": "从TS提取 (_): background/event-handlers.ts",
-    "_untranslated": true
-  },
-  "ai_analyze_no_visit_record": {
-    "message": "未找到访问记录: {0}",
-    "description": "从TS提取 (_): background/event-handlers.ts",
-    "_untranslated": true
-  },
-  "ai_analyze_no_service": {
-    "message": "无可用 AI 服务",
-    "description": "从TS提取 (_Error): background/event-handlers.ts",
-    "_untranslated": true
-  },
-  "ai_analyze_error": {
-    "message": "分析异常: {0}",
-    "description": "从TS提取 (_): background/event-handlers.ts",
-    "_untranslated": true
-  },
-  "sidebar_summary_loading": {
-    "message": "汇总报告加载中...",
-    "description": "从TS提取 (_): sidebar/sidebar.ts",
-    "_untranslated": true
-  },
-  "sidebar_summary_empty": {
-    "message": "暂无汇总报告",
-    "description": "从TS提取 (_): sidebar/sidebar.ts",
-    "_untranslated": true
-  },
-  "sidebar_summary_title": {
-    "message": "汇总报告",
-    "description": "从TS提取 (_): sidebar/sidebar.ts",
-    "_untranslated": true
-  },
-  "sidebar_summary_refresh": {
-    "message": "刷新",
-    "description": "从TS提取 (_): sidebar/sidebar.ts",
-    "_untranslated": true
-  },
-  "sidebar_summary_stats_total": {
-    "message": "访问总数",
-    "description": "从TS提取 (_): sidebar/sidebar.ts",
-    "_untranslated": true
-  },
-  "sidebar_summary_stats_duration": {
-    "message": "总时长",
-    "description": "从TS提取 (_): sidebar/sidebar.ts",
-    "_untranslated": true
-  },
-  "sidebar_summary_stats_domains": {
-    "message": "涉及域名",
-    "description": "从TS提取 (_): sidebar/sidebar.ts",
-    "_untranslated": true
-  },
-  "sidebar_summary_stats_keywords": {
-    "message": "关键词",
-    "description": "从TS提取 (_): sidebar/sidebar.ts",
-    "_untranslated": true
-  },
-  "sidebar_summary_special": {
-    "message": "特别关注",
-    "description": "从TS提取 (_): sidebar/sidebar.ts",
-    "_untranslated": true
-  },
-  "sidebar_summary_refreshing": {
-    "message": "正在刷新...",
-    "description": "从TS提取 (_): sidebar/sidebar.ts",
-    "_untranslated": true
-  },
-  "sidebar_summary_error": {
-    "message": "汇总报告加载失败",
-    "description": "从TS提取 (_): sidebar/sidebar.ts",
-    "_untranslated": true
+    "message": "AI analysis timeout",
+    "description": "从TS提取 (_Error): lib/artificial-intelligence/chrome-ai/chrome-ai-service.ts"
   },
   "sidebar_tab_today": {
-    "message": "今日",
-    "description": "从TS提取 (_): sidebar/sidebar.ts",
-    "_untranslated": true
+    "message": "today",
+    "description": "从TS提取 (_): sidebar/sidebar.ts"
   },
   "sidebar_tab_yesterday": {
-    "message": "昨日",
-    "description": "从TS提取 (_): sidebar/sidebar.ts",
-    "_untranslated": true
-  },
-  "sidebar_insight_generate": {
-    "message": "即刻洞察",
-    "description": "从TS提取 (_): sidebar/sidebar.ts",
-    "_untranslated": true
+    "message": "yesterday",
+    "description": "从TS提取 (_): sidebar/sidebar.ts"
   },
   "sidebar_insight_generating": {
-    "message": "正在生成...",
-    "description": "从TS提取 (_): sidebar/sidebar.ts",
-    "_untranslated": true
+    "message": "Generating...",
+    "description": "从TS提取 (_): sidebar/sidebar.ts"
   },
   "sidebar_insight_empty": {
-    "message": "暂无昨日洞察",
-    "description": "从TS提取 (_): sidebar/sidebar.ts",
-    "_untranslated": true
+    "message": "No yesterday's insights",
+    "description": "从TS提取 (_): sidebar/sidebar.ts"
   },
   "sidebar_insight_stats_total": {
-    "message": "访问总数",
-    "description": "从TS提取 (_): sidebar/sidebar.ts",
-    "_untranslated": true
+    "message": "Total visits",
+    "description": "从TS提取 (_): sidebar/sidebar.ts"
   },
   "sidebar_insight_stats_duration": {
-    "message": "总时长",
-    "description": "从TS提取 (_): sidebar/sidebar.ts",
-    "_untranslated": true
+    "message": "Total duration",
+    "description": "从TS提取 (_): sidebar/sidebar.ts"
   },
   "sidebar_insight_stats_domains": {
-    "message": "涉及域名",
-    "description": "从TS提取 (_): sidebar/sidebar.ts",
-    "_untranslated": true
+    "message": "Domain name involved",
+    "description": "从TS提取 (_): sidebar/sidebar.ts"
   },
   "sidebar_insight_stats_keywords": {
-    "message": "关键词",
-    "description": "从TS提取 (_): sidebar/sidebar.ts",
-    "_untranslated": true
+    "message": "Keywords",
+    "description": "从TS提取 (_): sidebar/sidebar.ts"
   },
   "sidebar_insight_special": {
-    "message": "特别关注",
-    "description": "从TS提取 (_): sidebar/sidebar.ts",
-    "_untranslated": true
-  },
-  "sidebar_insight_error": {
-    "message": "昨日洞察加载失败",
-    "description": "从TS提取 (_): sidebar/sidebar.ts",
-    "_untranslated": true
+    "message": "Special attention",
+    "description": "从TS提取 (_): sidebar/sidebar.ts"
   },
   "sidebar_card_times": {
-    "message": "次",
-    "description": "从TS提取 (_): sidebar/sidebar.ts",
-    "_untranslated": true
+    "message": "Second-rate",
+    "description": "从TS提取 (_): sidebar/sidebar.ts"
   },
   "sidebar_card_analyzing": {
-    "message": "正在进行 AI 分析",
-    "description": "从TS提取 (_): sidebar/sidebar.ts",
-    "_untranslated": true
-  },
-  "sidebar_card_analyze_duration": {
-    "message": "分析用时",
-    "description": "从TS提取 (_): sidebar/sidebar.ts",
-    "_untranslated": true
+    "message": "AI analysis in progress",
+    "description": "从TS提取 (_): sidebar/sidebar.ts"
   },
   "sidebar_card_seconds": {
-    "message": "秒",
-    "description": "从TS提取 (_): sidebar/sidebar.ts",
-    "_untranslated": true
-  },
-  "ai_service_ollama": {
-    "message": "Ollama 本地",
-    "description": "从TS提取 (_): sidebar/sidebar.ts",
-    "_untranslated": true
-  },
-  "ai_service_chrome_ai": {
-    "message": "Chrome 内置 AI",
-    "description": "从TS提取 (_): sidebar/sidebar.ts",
-    "_untranslated": true
-  },
-  "ai_service_openai": {
-    "message": "OpenAI",
-    "description": "从TS提取 (_): sidebar/sidebar.ts",
-    "_untranslated": true
-  },
-  "ai_service_other": {
-    "message": "其它",
-    "description": "从TS提取 (_): sidebar/sidebar.ts",
-    "_untranslated": true
-  },
-  "ai_service_default": {
-    "message": "AI",
-    "description": "从TS提取 (_): sidebar/sidebar.ts",
-    "_untranslated": true
+    "message": "Second",
+    "description": "从TS提取 (_): sidebar/sidebar.ts"
   },
   "sidebar_card_minutes": {
-    "message": "分钟",
-    "description": "从TS提取 (_): sidebar/sidebar.ts",
-    "_untranslated": true
+    "message": "minute",
+    "description": "从TS提取 (_): sidebar/sidebar.ts"
   },
   "sidebar_insight_regenerate": {
-    "message": "重新生成",
-    "description": "从TS提取 (_): sidebar/sidebar.ts",
-    "_untranslated": true
+    "message": "Regenerate",
+    "description": "从TS提取 (_): sidebar/sidebar.ts"
   },
   "sidebar_card_duration": {
-    "message": "用时",
-    "description": "从TS提取 (_): sidebar/sidebar.ts",
-    "_untranslated": true
+    "message": "Time",
+    "description": "从TS提取 (_): sidebar/sidebar.ts"
   },
   "sidebar_card_loading": {
-    "message": "加载中...",
-    "description": "从TS提取 (_): sidebar/sidebar.ts",
-    "_untranslated": true
+    "message": "loading...",
+    "description": "从TS提取 (_): sidebar/sidebar.ts"
   },
   "sidebar_card_empty": {
-    "message": "无数据",
-    "description": "从TS提取 (_): sidebar/sidebar.ts",
-    "_untranslated": true
+    "message": "No data",
+    "description": "从TS提取 (_): sidebar/sidebar.ts"
   },
   "sidebar_card_ai_failed": {
-    "message": "AI 分析失败",
-    "description": "从TS提取 (_): sidebar/sidebar.ts",
-    "_untranslated": true
+    "message": "AI analysis fails",
+    "description": "从TS提取 (_): sidebar/sidebar.ts"
   },
   "sidebar_card_ai_empty": {
-    "message": "无分析结果",
-    "description": "从TS提取 (_): sidebar/sidebar.ts",
-    "_untranslated": true
+    "message": "No analysis results",
+    "description": "从TS提取 (_): sidebar/sidebar.ts"
   },
   "sidebar_card_seconds_short": {
     "message": "s",
@@ -585,44 +380,28 @@
     "_untranslated": true
   },
   "sidebar_card_ai_timeout": {
-    "message": "分析超时",
-    "description": "从TS提取 (_): sidebar/sidebar.ts",
-    "_untranslated": true
-  },
-  "sidebar_clear_data_log": {
-    "message": "清除本地数据（不清除配置）",
-    "description": "从TS提取 (_): sidebar/sidebar.ts",
-    "_untranslated": true
-  },
-  "sidebar_clear_data_failed": {
-    "message": "清除数据失败",
-    "description": "从TS提取 (_): sidebar/sidebar.ts",
-    "_untranslated": true
+    "message": "Analysis timeout",
+    "description": "从TS提取 (_): sidebar/sidebar.ts"
   },
   "sidebar_clear_data_confirm": {
-    "message": "确定要清除所有本地数据吗？此操作无法撤销。",
-    "description": "从TS提取 (_): sidebar/sidebar.ts",
-    "_untranslated": true
+    "message": "Are you sure you want to clear all local data? This action cannot be undone.",
+    "description": "从TS提取 (_): sidebar/sidebar.ts"
   },
   "sidebar_version": {
-    "message": "版本：",
-    "description": "从TS提取 (_): sidebar/sidebar.ts",
-    "_untranslated": true
+    "message": "Version:",
+    "description": "从TS提取 (_): sidebar/sidebar.ts"
   },
   "sidebar_title": {
-    "message": "扩展侧边栏",
-    "description": "从HTML提取: sidebar/sidebar.html",
-    "_untranslated": true
+    "message": "Extended Sidebar",
+    "description": "从HTML提取: sidebar/sidebar.html"
   },
   "sidebar_clear_data": {
-    "message": "清除数据",
-    "description": "从HTML提取: sidebar/sidebar.html",
-    "_untranslated": true
+    "message": "Clear Data",
+    "description": "从HTML提取: sidebar/sidebar.html"
   },
   "sidebar_help": {
-    "message": "帮助",
-    "description": "从HTML提取: sidebar/sidebar.html",
-    "_untranslated": true
+    "message": "help",
+    "description": "从HTML提取: sidebar/sidebar.html"
   },
   "sidebar_open_options": {
     "message": "",
@@ -630,74 +409,60 @@
     "_untranslated": true
   },
   "popup_title": {
-    "message": "扩展弹出窗口",
-    "description": "从HTML提取: popup/popup.html",
-    "_untranslated": true
+    "message": "Extension pop-up",
+    "description": "从HTML提取: popup/popup.html"
   },
   "options_title": {
-    "message": "扩展选项",
-    "description": "从HTML提取: options/options.html",
-    "_untranslated": true
+    "message": "Extension options",
+    "description": "从HTML提取: options/options.html"
   },
   "options_header_title": {
-    "message": "扩展设置",
-    "description": "从HTML提取: options/options.html",
-    "_untranslated": true
+    "message": "Extension Settings",
+    "description": "从HTML提取: options/options.html"
   },
   "config_request_timeout_label": {
-    "message": "API请求超时 (秒)",
-    "description": "从TS提取 (_): lib/config/configs.ts",
-    "_untranslated": true
+    "message": "API request timeout (seconds)",
+    "description": "从TS提取 (_): lib/config/configs.ts"
   },
   "config_request_timeout_desc": {
-    "message": "设置网络请求的超时时间",
-    "description": "从TS提取 (_): lib/config/configs.ts",
-    "_untranslated": true
+    "message": "Set the timeout for network requests",
+    "description": "从TS提取 (_): lib/config/configs.ts"
   },
   "config_section_general": {
-    "message": "常规设置",
-    "description": "从TS提取 (_): lib/config/configs.ts",
-    "_untranslated": true
+    "message": "General settings",
+    "description": "从TS提取 (_): lib/config/configs.ts"
   },
   "config_max_ai_result_length_label": {
-    "message": "AI分析结果最大长度",
-    "description": "从TS提取 (_): lib/config/configs.ts",
-    "_untranslated": true
+    "message": "Maximum length of AI analysis results",
+    "description": "从TS提取 (_): lib/config/configs.ts"
   },
   "config_max_ai_result_length_desc": {
-    "message": "限制AI分析结果的最大字符数，防止内容过长影响体验",
-    "description": "从TS提取 (_): lib/config/configs.ts",
-    "_untranslated": true
+    "message": "Limit the maximum number of characters in AI analysis results to prevent the content from being too long and affecting the user experience",
+    "description": "从TS提取 (_): lib/config/configs.ts"
   },
   "config_ai_service_label": {
-    "message": "AI服务配置",
-    "description": "从TS提取 (_): lib/config/configs.ts",
-    "_untranslated": true
+    "message": "AI service configuration",
+    "description": "从TS提取 (_): lib/config/configs.ts"
   },
   "config_ai_service_desc": {
-    "message": "当前激活的 AI 服务配置，切换/编辑后自动同步到配置列表。",
-    "description": "从TS提取 (_): lib/config/configs.ts",
-    "_untranslated": true
+    "message": "The currently activated AI service configuration will be automatically synchronized to the configuration list after switching/editing.",
+    "description": "从TS提取 (_): lib/config/configs.ts"
   },
   "config_section_ai": {
-    "message": "AI 服务",
-    "description": "从TS提取 (_): lib/config/configs.ts",
-    "_untranslated": true
+    "message": "AI Services",
+    "description": "从TS提取 (_): lib/config/configs.ts"
   },
   "config_ai_service_type_label": {
-    "message": "服务类型",
-    "description": "从TS提取 (_): lib/config/configs.ts",
-    "_untranslated": true
+    "message": "Service Type",
+    "description": "从TS提取 (_): lib/config/configs.ts"
   },
   "config_ai_service_ollama": {
-    "message": "Ollama 本地",
-    "description": "从TS提取 (_): lib/config/configs.ts",
-    "_untranslated": true
+    "message": "Ollama Local",
+    "description": "从TS提取 (_): lib/config/configs.ts"
   },
   "config_ai_service_chrome_ai": {
-    "message": "Chrome 内置 AI",
-    "description": "从TS提取 (_): lib/config/configs.ts",
-    "_untranslated": true
+    "message": "Chrome has AI built into it",
+    "description": "从TS提取 (_): lib/config/configs.ts"
   },
   "config_ai_service_openai": {
     "message": "OpenAI",
@@ -705,103 +470,107 @@
     "_untranslated": true
   },
   "config_ai_service_other": {
-    "message": "其它",
-    "description": "从TS提取 (_): lib/config/configs.ts",
-    "_untranslated": true
+    "message": "other",
+    "description": "从TS提取 (_): lib/config/configs.ts"
   },
   "config_ai_model_label": {
-    "message": "模型名称",
-    "description": "从TS提取 (_): lib/config/configs.ts",
-    "_untranslated": true
+    "message": "Model Name",
+    "description": "从TS提取 (_): lib/config/configs.ts"
   },
   "config_ai_model_desc": {
-    "message": "如 llama2, gpt-3.5-turbo 等",
-    "description": "从TS提取 (_): lib/config/configs.ts",
-    "_untranslated": true
+    "message": "Such as llama2, gpt-3.5-turbo, etc.",
+    "description": "从TS提取 (_): lib/config/configs.ts"
   },
   "config_ai_url_label": {
-    "message": "API 地址",
-    "description": "从TS提取 (_): lib/config/configs.ts",
-    "_untranslated": true
+    "message": "API Address",
+    "description": "从TS提取 (_): lib/config/configs.ts"
   },
   "config_ai_url_desc": {
-    "message": "自定义服务地址（如本地或企业 API）",
-    "description": "从TS提取 (_): lib/config/configs.ts",
-    "_untranslated": true
+    "message": "Custom service addresses (such as local or enterprise APIs)",
+    "description": "从TS提取 (_): lib/config/configs.ts"
   },
   "config_ai_apikey_label": {
-    "message": "API 密钥",
-    "description": "从TS提取 (_): lib/config/configs.ts",
-    "_untranslated": true
+    "message": "API Key",
+    "description": "从TS提取 (_): lib/config/configs.ts"
   },
   "config_ai_apikey_desc": {
-    "message": "如需鉴权请填写",
-    "description": "从TS提取 (_): lib/config/configs.ts",
-    "_untranslated": true
+    "message": "If authentication is required, please fill in",
+    "description": "从TS提取 (_): lib/config/configs.ts"
   },
   "config_url_filter_label": {
-    "message": "网址过滤",
-    "description": "从TS提取 (_): lib/config/configs.ts",
-    "_untranslated": true
+    "message": "URL filtering",
+    "description": "从TS提取 (_): lib/config/configs.ts"
   },
   "config_url_filter_desc": {
-    "message": "可灵活配置哪些网址不分析或强制分析",
-    "description": "从TS提取 (_): lib/config/configs.ts",
-    "_untranslated": true
+    "message": "Flexible configuration of which URLs are not to be analyzed or forced to be analyzed",
+    "description": "从TS提取 (_): lib/config/configs.ts"
   },
   "config_section_url_filter": {
-    "message": "网址过滤",
-    "description": "从TS提取 (_): lib/config/configs.ts",
-    "_untranslated": true
+    "message": "URL filtering",
+    "description": "从TS提取 (_): lib/config/configs.ts"
   },
   "config_url_filter_exclude_types_label": {
-    "message": "排除类型",
-    "description": "从TS提取 (_): lib/config/configs.ts",
-    "_untranslated": true
+    "message": "Exclusion type",
+    "description": "从TS提取 (_): lib/config/configs.ts"
   },
   "config_url_filter_exclude_types_desc": {
-    "message": "选择需要自动排除分析的网址类型",
-    "description": "从TS提取 (_): lib/config/configs.ts",
-    "_untranslated": true
+    "message": "Select the URL types that need to be automatically excluded from analysis",
+    "description": "从TS提取 (_): lib/config/configs.ts"
   },
   "config_url_filter_intranet": {
-    "message": "内网地址（如 10.x/192.168.x/172.16-31.x/localhost）",
-    "description": "从TS提取 (_): lib/config/configs.ts",
-    "_untranslated": true
+    "message": "Intranet address (such as 10.x/192.168.x/172.16-31.x/localhost)",
+    "description": "从TS提取 (_): lib/config/configs.ts"
   },
   "config_url_filter_ip": {
-    "message": "纯IP地址",
-    "description": "从TS提取 (_): lib/config/configs.ts",
-    "_untranslated": true
+    "message": "Pure IP address",
+    "description": "从TS提取 (_): lib/config/configs.ts"
   },
   "config_url_filter_port": {
-    "message": "非标准端口",
-    "description": "从TS提取 (_): lib/config/configs.ts",
-    "_untranslated": true
+    "message": "Non-standard ports",
+    "description": "从TS提取 (_): lib/config/configs.ts"
   },
   "config_url_filter_auth": {
-    "message": "需要基础认证的网址",
-    "description": "从TS提取 (_): lib/config/configs.ts",
-    "_untranslated": true
+    "message": "URLs that require basic authentication",
+    "description": "从TS提取 (_): lib/config/configs.ts"
   },
   "config_url_filter_exclude_urls_label": {
-    "message": "手动排除网址",
-    "description": "从TS提取 (_): lib/config/configs.ts",
-    "_untranslated": true
+    "message": "Manually exclude URLs",
+    "description": "从TS提取 (_): lib/config/configs.ts"
   },
   "config_url_filter_exclude_urls_desc": {
-    "message": "每行一个，支持通配符/正则表达式，匹配到的将不会进行AI分析。",
-    "description": "从TS提取 (_): lib/config/configs.ts",
-    "_untranslated": true
+    "message": "One per line, supports wildcards/regular expressions, and matches will not be analyzed by AI.",
+    "description": "从TS提取 (_): lib/config/configs.ts"
   },
   "config_url_filter_include_urls_label": {
-    "message": "强制分析网址",
-    "description": "从TS提取 (_): lib/config/configs.ts",
-    "_untranslated": true
+    "message": "Force analysis of URLs",
+    "description": "从TS提取 (_): lib/config/configs.ts"
   },
   "config_url_filter_include_urls_desc": {
-    "message": "每行一个，支持通配符/正则表达式，优先于排除规则。",
-    "description": "从TS提取 (_): lib/config/configs.ts",
-    "_untranslated": true
+    "message": "One per line, supports wildcards/regular expressions, takes precedence over exclude rules.",
+    "description": "从TS提取 (_): lib/config/configs.ts"
+  },
+  "sidebar_insight_generate_now": {
+    "message": "Immediate Insights",
+    "description": "从TS提取 (_): sidebar/insight-report.ts"
+  },
+  "sidebar_insight_loading": {
+    "message": "loading...",
+    "description": "从TS提取 (_): sidebar/insight-report.ts"
+  },
+  "config_cross_day_idle_threshold_label": {
+    "message": "Idle threshold across days (hours)",
+    "description": "从TS提取 (_): lib/config/configs.ts"
+  },
+  "config_cross_day_idle_threshold_desc": {
+    "message": "After continuous idle time exceeds this duration, new access will be counted into a new day. The optional range is 1-12 hours.",
+    "description": "从TS提取 (_): lib/config/configs.ts"
+  },
+  "ai_service_available": {
+    "message": "Available",
+    "description": "从TS提取 (_): lib/artificial-intelligence/ai-manager.ts"
+  },
+  "ai_service_unavailable": {
+    "message": "Unavailable",
+    "description": "从TS提取 (_): lib/artificial-intelligence/ai-manager.ts"
   }
 }

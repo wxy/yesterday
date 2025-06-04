@@ -168,6 +168,10 @@ export async function renderMergedView(root: HTMLElement, dayId: string, tab: 't
     if (isImportant) {
       cardClass += ' ai-important-card';
     }
+    // 检查标签页是否已关闭，若已关闭则加 tab-closed class（无论是否重要卡片）
+    if (tab === 'today' && item.url && !openTabUrls.includes(item.url.split('#')[0])) {
+      cardClass += ' tab-closed';
+    }
     const visitTime = item.visitStartTime ? new Date(item.visitStartTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
     const titleLine = `<div class='merged-card-title-line'>
       <div class='merged-card-title'>${item.title || ''}</div>

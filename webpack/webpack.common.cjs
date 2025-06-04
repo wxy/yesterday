@@ -72,6 +72,11 @@ module.exports = {
           from: path.resolve(__dirname, '..', 'src', 'dnr-rules.json'),
           to: path.resolve(__dirname, '..', 'dist', 'dnr-rules.json')
         },
+        {
+          from: path.resolve(__dirname, '..', 'src', 'content', 'help'),
+          to: path.resolve(__dirname, '..', 'dist', 'content', 'help'),
+          noErrorOnMissing: true,
+        },
       ],
     }),
     new HtmlWebpackPlugin({
