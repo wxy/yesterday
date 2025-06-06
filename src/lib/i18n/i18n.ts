@@ -65,13 +65,13 @@ export class I18n {
   }
 
   /**
-   * 检测浏览器默认语言
+   * 检测浏览器默认语言（公开为静态方法，便于外部获取 auto 语言）
    */
-  private detectBrowserLocale(): string {
+  public static detectBrowserLocale(): string {
     if (typeof navigator !== "undefined" && navigator.language) {
       return navigator.language.replace("-", "_");
     }
-    return this.defaultLocale;
+    return I18n.getInstance().defaultLocale;
   }
 
   /**
@@ -139,7 +139,7 @@ export class I18n {
       try {
         await this.initDefaultLocaleFromManifest();
         let locale = null;
-        if (!locale) locale = this.forcedLocale || this.detectBrowserLocale();
+        if (!locale) locale = this.forcedLocale || I18n.detectBrowserLocale();
         this.forcedLocale = locale;
         const main = await this.loadMessages(locale);
         if (main) {
@@ -363,6 +363,10 @@ export const i18n = {
   ): string =>
     I18n.getInstance().formatMessage(messageId, defaultMessage, ...args),
   changeLanguage: async (locale: string) => await I18n.getInstance().changeLanguage(locale),
+  /**
+   * 获取 auto 场景下应使用的语言
+   */
+  getAutoLanguage: () => I18n.detectBrowserLocale(),
 };
 
 /**

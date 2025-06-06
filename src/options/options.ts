@@ -24,9 +24,23 @@ async function initializeOptionsPage() {
       uiMetadata: uiMeta,
       onSave: async () => {
         const formData = config['uiRenderer'].collectConfigValues();
+        const prevConfig = await config.getAll();
         await config.update(formData);
         const latest = await config.getAll();
-        (window as any).currentConfig = JSON.parse(JSON.stringify(latest));
+        // 判断语言是否变化
+        if (prevConfig.language !== latest.language) {
+          let targetLang = latest.language;
+          if (!targetLang || targetLang === 'auto') {
+            // 跟随浏览器
+            targetLang = (navigator.language || 'en').replace('-', '_');
+          }
+          await i18n.changeLanguage(targetLang);
+          await i18n.apply();
+          // 重新渲染配置UI，确保所有 label/description/option.label 都用新语言
+          initializeOptionsPage();
+          return;
+        }
+        // 其它配置变更可选刷新UI（如有需要可手动刷新）
       }
     } as any);
   } catch (error) {
@@ -92,10 +106,12 @@ messenger.on('AI_SERVICE_UNAVAILABLE', (msg) => {
 // 当DOM内容加载完成后初始化页面
 document.addEventListener('DOMContentLoaded', async () => {
   const allConfig = await config.getAll();
-  if (allConfig && allConfig.language && allConfig.language !== 'auto') {
-    await i18n.changeLanguage(allConfig.language);
-    await i18n.apply();
+  let targetLang = allConfig.language;
+  if (!targetLang || targetLang === 'auto') {
+    targetLang = i18n.getAutoLanguage();
   }
+  await i18n.changeLanguage(targetLang);
+  await i18n.apply();
   initializeOptionsPage();
   disableUnavailableAiServices();
 });

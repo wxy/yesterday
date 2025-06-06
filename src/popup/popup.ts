@@ -48,10 +48,12 @@ async function renderSingleBrief(root: HTMLElement) {
 
 document.addEventListener('DOMContentLoaded', async () => {
   const allConfig = await config.getAll();
-  if (allConfig && allConfig.language && allConfig.language !== 'auto') {
-    await i18n.changeLanguage(allConfig.language);
-    await i18n.apply();
+  let targetLang = allConfig.language;
+  if (!targetLang || targetLang === 'auto') {
+    targetLang = i18n.getAutoLanguage();
   }
+  await i18n.changeLanguage(targetLang);
+  await i18n.apply();
   const root = document.getElementById('mergedDataArea') as HTMLElement;
   if (root) renderSingleBrief(root);
 });
