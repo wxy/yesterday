@@ -1,6 +1,8 @@
 import { Logger } from '../lib/logger/logger.js';
 import { config } from '../lib/config/index.js';
+import { getConfigUIMetadata } from '../lib/config/config-utils.js';
 import { messenger } from '../lib/messaging/messenger.js';
+import { i18n } from '../lib/i18n/i18n.js';
 
 const logger = new Logger('Options');
 
@@ -9,7 +11,6 @@ const logger = new Logger('Options');
  */
 async function initializeOptionsPage() {
   try {
-    logger.debug('初始化选项页');
     const container = document.querySelector('.container') as HTMLElement;
     if (!container) {
       throw new Error('未找到容器元素');
@@ -17,17 +18,17 @@ async function initializeOptionsPage() {
     // 读取 storage 配置，赋值给 window.currentConfig
     const allConfig = await config.getAll();
     (window as any).currentConfig = JSON.parse(JSON.stringify(allConfig));
-    // 直接渲染所有配置项（包括语言选择）
+    //await I18n.getInstance().init();
+    const uiMeta = getConfigUIMetadata();
     await config.renderUI(container, {
+      uiMetadata: uiMeta,
       onSave: async () => {
         const formData = config['uiRenderer'].collectConfigValues();
         await config.update(formData);
         const latest = await config.getAll();
         (window as any).currentConfig = JSON.parse(JSON.stringify(latest));
-        logger.debug('保存选项并刷新 currentConfig', latest);
       }
     } as any);
-    logger.debug('选项页初始化完成');
   } catch (error) {
     logger.error('初始化选项页失败', error);
   }
@@ -89,7 +90,12 @@ messenger.on('AI_SERVICE_UNAVAILABLE', (msg) => {
 });
 
 // 当DOM内容加载完成后初始化页面
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+  const allConfig = await config.getAll();
+  if (allConfig && allConfig.language && allConfig.language !== 'auto') {
+    await i18n.changeLanguage(allConfig.language);
+    await i18n.apply();
+  }
   initializeOptionsPage();
   disableUnavailableAiServices();
 });

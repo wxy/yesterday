@@ -7,7 +7,7 @@
 // 导入核心模块
 import { Logger } from '../lib/logger/logger.js';
 import { storage } from '../lib/storage/index.js';
-import { i18n } from '../lib/i18n/i18n.js';
+import { i18n, I18n } from '../lib/i18n/i18n.js';
 import { browserEvents } from '../lib/browser-events/index.js';
 import { config } from '../lib/config/index.js';
 // 修改消息系统导入方式 - 使用默认导出
@@ -24,26 +24,26 @@ let aiServiceStatus: Record<string, boolean> = {};
  */
 async function initializeSubsystems() {
   try {
-    // 1. 初始化国际化系统
+    // 1. 初始化国际化系统（无依赖，最先初始化，默认语言）
     await i18n.init();
     logger.info('国际化系统已初始化');
-    
+
     // 2. 初始化存储系统 (优先初始化，因为其他系统可能依赖它)
     await storage.init();
     logger.info('存储系统已初始化');
-    
+
     // 3. 初始化配置系统 (依赖存储系统)
     await config.init();
     logger.info('配置系统已初始化');
-    
+
     // 4. 初始化事件管理器
     await browserEvents.init();
     logger.info('浏览器事件系统已初始化');
-    
+
     // 5. 初始化消息系统核心 (显式初始化)
     await messageBus.init();
     logger.info('消息系统已初始化');
-    
+
     // 6. 设置消息处理器 (注册处理函数)
     await setupMessageHandlers();
     logger.info('消息处理器已配置完成');
@@ -86,6 +86,10 @@ async function updateGlobalConfig() {
     } else {
       crossDayIdleThresholdMs = 6 * 60 * 60 * 1000;
     }
+    // 动态切换语言（如有变化）
+    if (globalConfig.language && globalConfig.language !== 'auto') {
+      await i18n.changeLanguage(globalConfig.language);
+    }
   } catch {
     // 保持默认值
   }
@@ -99,16 +103,11 @@ logger.info('后台脚本启动');
 export let globalConfig: any = {};
 export let crossDayIdleThresholdMs = 6 * 60 * 60 * 1000; // 默认 6 小时
 
-// 启动时立即加载一次配置
+// 启动时立即加载一次配置（含语言切换）
 updateGlobalConfig();
-// 监听配置变更，自动刷新全局配置
-if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.onChanged) {
-  chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === 'local' && changes.yesterday_config) {
-      updateGlobalConfig();
-    }
-  });
-}
+
+// 监听配置变更，自动刷新全局配置和语言
+config.onConfigChanged?.(updateGlobalConfig);
 
 // 启动初始化流程
 initializeSubsystems().then(() => {

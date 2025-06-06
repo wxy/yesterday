@@ -226,36 +226,24 @@ export class ConfigManager<T extends Record<string, any>> {
     options: Partial<Omit<ConfigUI.RenderOptions, 'container'>> = {}
   ): Promise<void> {
     await this.ensureInitialized();
-    
-    if (Object.keys(this.configMetadata).length === 0) {
-      this.logger.warn('尝试渲染UI但未设置元数据');
-      return;
-    }
-    
     const currentConfig = await this.getAll();
-    
     // 创建完整的渲染选项
     const renderOptions: ConfigUI.RenderOptions = {
       container,
       onChange: options.onChange,
       showSaveButton: options.showSaveButton ?? true,
       showResetButton: options.showResetButton ?? true,
-      
-      // 默认的保存处理程序
       onSave: options.onSave || (async () => {
-        // 指定正确的泛型类型
         const values = this.uiRenderer.collectConfigValues<T>();
         await this.update(values);
       }),
-      
-      // 默认的重置处理程序
       onReset: options.onReset || (async () => {
         await this.reset();
         await this.updateUI();
       })
     };
-    
-    this.uiRenderer.renderConfigUI(this.configMetadata, currentConfig, renderOptions);
+    // 直接用最新的 getConfigUIMetadata 渲染
+    this.uiRenderer.renderConfigUI(currentConfig, renderOptions);
   }
   
   /**

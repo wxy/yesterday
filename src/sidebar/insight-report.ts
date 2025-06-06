@@ -8,12 +8,15 @@ const insightCollapseState: Record<string, boolean> = {};
 // 注意：本模块与访问记录/AI分析主链路解耦，所有数据只读，不影响主表结构和消息流
 export async function renderInsightReport(box: HTMLElement, dayId: string, tab: 'today' | 'yesterday') {
   // 只读取数据库，不触发生成
+  const insightTitle = tab === 'today' ? _('sidebar_insight_today', '今日洞察') : _('sidebar_insight_yesterday', '昨日洞察');
+  const generateNowText = _('sidebar_insight_generate_now', '即刻洞察');
+  const loadingText = _('sidebar_insight_loading', '加载中...');
   box.innerHTML = `<div class='insight-report-card insight-report-card--modern'>
     <div class='insight-report-header'>
-      <div class='insight-report-title'>${_(tab === 'today' ? 'sidebar_insight_today' : 'sidebar_insight_yesterday', tab === 'today' ? '今日洞察' : '昨日洞察')}</div>
-      <button id='insight-generate-btn' class='insight-generate-btn'>${_('sidebar_insight_generate_now', '即刻洞察')}</button>
+      <div class='insight-report-title'>${insightTitle}</div>
+      <button id='insight-generate-btn' class='insight-generate-btn'>${generateNowText}</button>
     </div>
-    <div id='insight-content-box' class='insight-content-box'>${_('sidebar_insight_loading', '加载中...')}</div>
+    <div id='insight-content-box' class='insight-content-box'>${loadingText}</div>
     <div class='insight-report-footer'>
       <span id='insight-ai-label' class='insight-ai-label insight-footer-label'></span>
       <span id='insight-duration-label' class='insight-duration-label insight-footer-label'></span>
@@ -37,17 +40,22 @@ export async function renderInsightReport(box: HTMLElement, dayId: string, tab: 
   if (durationLabelEl) durationLabelEl.textContent = duration > 0 ? `⌛️${(duration/1000).toFixed(1)}s` : '';
   if (!report || (!report.summary && (!report.suggestions || report.suggestions.length === 0))) {
     contentBox.innerHTML = `<div class='insight-report-content insight-report-content--empty'>${_('sidebar_insight_empty', '暂无洞察')}</div>`;
-    generateBtn.innerHTML = _('sidebar_insight_generate_now', '即刻洞察');
+    generateBtn.innerHTML = generateNowText;
     generateBtn.disabled = false;
   } else {
     let html = '';
     const { stats, summary, suggestions } = report;
     if (stats) {
+      const statsTotalLabel = _('sidebar_insight_stats_total', '访问总数');
+      const statsDurationLabel = _('sidebar_insight_stats_duration', '总时长');
+      const statsDomainsLabel = _('sidebar_insight_stats_domains', '涉及域名');
+      const statsKeywordsLabel = _('sidebar_insight_stats_keywords', '关键词');
+      const minutesLabel = _('sidebar_card_minutes', '分钟');
       html += `<div class='insight-stats'>
-        <div class='insight-stats-row-label'>${_('sidebar_insight_stats_total', '访问总数')}</div><div class='insight-stats-row-value'>${stats.total}</div>
-        <div class='insight-stats-row-label'>${_('sidebar_insight_stats_duration', '总时长')}</div><div class='insight-stats-row-value'>${(stats.totalDuration/1000/60).toFixed(1)}${_('sidebar_card_minutes', '分钟')}</div>
-        <div class='insight-stats-row-label'>${_('sidebar_insight_stats_domains', '涉及域名')}</div><div class='insight-stats-row-value'>${stats.domains && stats.domains.length ? stats.domains.join('，') : '-'}</div>
-        <div class='insight-stats-row-label'>${_('sidebar_insight_stats_keywords', '关键词')}</div><div class='insight-stats-row-value'>${stats.keywords && stats.keywords.length ? stats.keywords.slice(0, 10).join('，') : '-'}</div>
+        <div class='insight-stats-row-label'>${statsTotalLabel}</div><div class='insight-stats-row-value'>${stats.total}</div>
+        <div class='insight-stats-row-label'>${statsDurationLabel}</div><div class='insight-stats-row-value'>${(stats.totalDuration/1000/60).toFixed(1)}${minutesLabel}</div>
+        <div class='insight-stats-row-label'>${statsDomainsLabel}</div><div class='insight-stats-row-value'>${stats.domains && stats.domains.length ? stats.domains.join('，') : '-'}</div>
+        <div class='insight-stats-row-label'>${statsKeywordsLabel}</div><div class='insight-stats-row-value'>${stats.keywords && stats.keywords.length ? stats.keywords.slice(0, 10).join('，') : '-'}</div>
       </div>`;
     }
     if (summary) {

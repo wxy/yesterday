@@ -232,8 +232,8 @@ export class Messenger {
 
     const timeoutPromise = new Promise<never>((_, reject) => {
       setTimeout(() => {
-        reject(new MessageTimeoutError(type, timeout));
-      }, timeout);
+        reject(new MessageTimeoutError(type, Number(timeout)));
+      }, Number(timeout));
     });
 
     const sendPromise = new Promise<R>((resolve, reject) => {

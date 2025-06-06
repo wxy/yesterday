@@ -1,5 +1,5 @@
 import { ConfigManager } from './config-manager.js';
-import { getDefaultConfig, getConfigUIMetadata, validateConfigs } from './config-utils.js';
+import { getDefaultConfig, validateConfigs } from './config-utils.js';
 import type { ConfigSchema } from './configs.js';
 
 // 获取默认配置
@@ -8,9 +8,6 @@ const defaultConfig = getDefaultConfig();
 // 创建并导出配置实例
 export type AppConfig = ConfigSchema;
 const configManager = new ConfigManager<ConfigSchema>(defaultConfig as any, 'yesterday_config');
-
-// 设置UI元数据
-configManager.setUIMetadata(getConfigUIMetadata());
 
 // 初始化方法
 export function initConfig() {

@@ -19,6 +19,7 @@ export class I18n {
   private forcedLocale: string | null = null;
   private initPromise: Promise<void> | null = null;
   private defaultLocale: string = "en";
+  private currentLocale: string | null = null;
 
   // 构造函数不再做异步操作
   constructor() {}
@@ -113,40 +114,54 @@ export class I18n {
   }
 
   /**
-   * 初始化国际化系统，支持 fallback 到默认语言
+   * 设置强制语言（如 config.language），下次 init 时生效
    */
-  public async init(): Promise<void> {
-    if (this.initPromise) return this.initPromise;
+  public setForcedLocale(locale: string) {
+    this.forcedLocale = locale;
+  }
+
+  /**
+   * 动态切换语言，只有当 locale 变化时才重新加载
+   */
+  public async changeLanguage(locale: string): Promise<void> {
+    if (locale === this.currentLocale) return;
+    this.setForcedLocale(locale);
+    await this.init(true); // 传递 forceReload 标志
+  }
+
+  /**
+   * 初始化国际化系统，支持 fallback 到默认语言
+   * @param forceReload 是否强制重新加载（用于切换语言）
+   */
+  public async init(forceReload = false): Promise<void> {
+    if (this.initPromise && !forceReload) return this.initPromise;
     this.initPromise = (async () => {
       try {
-        // Chrome API 环境不再跳过自定义国际化逻辑，始终加载本地 messages.json 并处理 data-i18n
-        // if (typeof chrome !== "undefined" && chrome.i18n) {
-        //   console.debug("[i18n-utils] Using Chrome API for localization");
-        //   return;
-        // }
-        // 先确保 defaultLocale 与 manifest.json 保持一致
         await this.initDefaultLocaleFromManifest();
-        this.forcedLocale = this.forcedLocale || this.detectBrowserLocale();
-        const main = await this.loadMessages(this.forcedLocale);
+        let locale = null;
+        if (!locale) locale = this.forcedLocale || this.detectBrowserLocale();
+        this.forcedLocale = locale;
+        const main = await this.loadMessages(locale);
         if (main) {
           this.loadedMessages = main;
+          this.currentLocale = locale;
           console.log(
-            `[i18n-utils] Loaded ${Object.keys(main).length} messages for ${this.forcedLocale}`
+            `[i18n-utils] Loaded ${Object.keys(main).length} messages for ${locale}`
           );
         } else {
           this.loadedMessages = {};
+          this.currentLocale = null;
           console.warn(
-            `[i18n-utils] Failed to load locale ${this.forcedLocale}, fallback to default`
+            `[i18n-utils] Failed to load locale ${locale}, fallback to default`
           );
         }
-        if (this.forcedLocale !== this.defaultLocale) {
+        if (locale !== this.defaultLocale) {
           const fallback = await this.loadMessages(this.defaultLocale);
           if (fallback) {
             this.fallbackMessages = fallback;
           }
         }
       } catch (error) {
-        // 只打印简单错误信息，避免 context invalidated 报错影响主流程
         const msg =
           typeof error === "object" && error && "message" in error
             ? (error as any).message
@@ -347,6 +362,7 @@ export const i18n = {
     ...args: any[]
   ): string =>
     I18n.getInstance().formatMessage(messageId, defaultMessage, ...args),
+  changeLanguage: async (locale: string) => await I18n.getInstance().changeLanguage(locale),
 };
 
 /**

@@ -165,22 +165,19 @@
   },
   "logger_keyword_in_progress": {
     "message": "...",
-    "description": "从TS提取 (_): lib/logger/logger.ts",
-    "_untranslated": true
+    "description": "从TS提取 (_): lib/logger/logger.ts"
   },
   "logger_keyword_processing": {
     "message": "Processing",
     "description": "从TS提取 (_): lib/logger/logger.ts"
   },
   "appName": {
-    "message": "appName",
-    "description": "用于manifest.json中",
-    "_untranslated": true
+    "message": "Yesterday",
+    "description": "用于manifest.json中"
   },
   "appDescription": {
-    "message": "appDescription",
-    "description": "用于manifest.json中",
-    "_untranslated": true
+    "message": "A browser extension that provides a sidebar for viewing and analyzing yesterday's browsing history.",
+    "description": "用于manifest.json中"
   },
   "storage_strategy_no_custom_adapter": {
     "message": "No custom storage adapter instance provided",
@@ -376,8 +373,7 @@
   },
   "sidebar_card_seconds_short": {
     "message": "s",
-    "description": "从TS提取 (_): sidebar/sidebar.ts",
-    "_untranslated": true
+    "description": "从TS提取 (_): sidebar/sidebar.ts"
   },
   "sidebar_card_ai_timeout": {
     "message": "Analysis timeout",
@@ -461,13 +457,12 @@
     "description": "从TS提取 (_): lib/config/configs.ts"
   },
   "config_ai_service_chrome_ai": {
-    "message": "Chrome has AI built into it",
+    "message": "Chrome AI",
     "description": "从TS提取 (_): lib/config/configs.ts"
   },
   "config_ai_service_openai": {
     "message": "OpenAI",
-    "description": "从TS提取 (_): lib/config/configs.ts",
-    "_untranslated": true
+    "description": "从TS提取 (_): lib/config/configs.ts"
   },
   "config_ai_service_other": {
     "message": "other",
@@ -572,5 +567,89 @@
   "ai_service_unavailable": {
     "message": "Unavailable",
     "description": "从TS提取 (_): lib/artificial-intelligence/ai-manager.ts"
+  },
+  "config_language_label": {
+    "message": "Interface language",
+    "description": "从TS提取 (_): lib/config/configs.ts"
+  },
+  "config_language_desc": {
+    "message": "Select the extension interface language, which will automatically follow the browser.",
+    "description": "从TS提取 (_): lib/config/configs.ts"
+  },
+  "sidebar_scroll_to_visit_error": {
+    "message": "Error scrolling to access record: {0}",
+    "description": "从TS提取 (_): sidebar/sidebar.ts"
+  },
+  "ai_service_unavailable_msg": {
+    "message": "No available local AI services were detected, AI analysis functionality is disabled.",
+    "description": "从TS提取 (_): sidebar/sidebar.ts"
+  },
+  "comma_cn": {
+    "message": ",",
+    "description": "从TS提取 (_): sidebar/sidebar.ts"
+  },
+  "ai_service_unavailable_tip": {
+    "message": "No available local AI services were detected, AI analysis functionality is disabled.",
+    "description": "从TS提取 (_): popup/popup.ts"
+  },
+  "config_save_button": {
+    "message": "Save settings",
+    "description": "从TS提取 (_): lib/config/config-ui-renderer.ts"
+  },
+  "config_saving": {
+    "message": "Saving...",
+    "description": "从TS提取 (_): lib/config/config-ui-renderer.ts"
+  },
+  "config_save_success": {
+    "message": "Saved successfully",
+    "description": "从TS提取 (_): lib/config/config-ui-renderer.ts"
+  },
+  "config_save_failed": {
+    "message": "Save failed",
+    "description": "从TS提取 (_): lib/config/config-ui-renderer.ts"
+  },
+  "config_saved_message": {
+    "message": "Settings saved!",
+    "description": "从TS提取 (_): lib/config/config-ui-renderer.ts"
+  },
+  "config_reset_button": {
+    "message": "Restore Defaults",
+    "description": "从TS提取 (_): lib/config/config-ui-renderer.ts"
+  },
+  "config_reset_confirm": {
+    "message": "Are you sure you want to restore all settings to default values? This action cannot be undone.",
+    "description": "从TS提取 (_): lib/config/config-ui-renderer.ts"
+  },
+  "config_resetting": {
+    "message": "Resetting...",
+    "description": "从TS提取 (_): lib/config/config-ui-renderer.ts"
+  },
+  "config_reset_success": {
+    "message": "Reset Successfully",
+    "description": "从TS提取 (_): lib/config/config-ui-renderer.ts"
+  },
+  "config_reset_failed": {
+    "message": "Reset failed",
+    "description": "从TS提取 (_): lib/config/config-ui-renderer.ts"
+  },
+  "sidebar_insight_today": {
+    "message": "Today's Insights",
+    "description": "从TS提取 (_): sidebar/insight-report.ts"
+  },
+  "sidebar_insight_yesterday": {
+    "message": "Yesterday's Insights",
+    "description": "从TS提取 (_): sidebar/insight-report.ts"
+  },
+  "config_language_auto": {
+    "message": "Automatic (follows browser)",
+    "description": "从TS提取 (_): lib/config/configs.ts"
+  },
+  "config_language_zh_CN": {
+    "message": "简体中文",
+    "description": "从TS提取 (_): lib/config/configs.ts"
+  },
+  "config_language_en": {
+    "message": "English",
+    "description": "从TS提取 (_): lib/config/configs.ts"
   }
 }

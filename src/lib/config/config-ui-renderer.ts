@@ -1,5 +1,7 @@
 import { ConfigUI } from "./config-types.js";
 import { Logger } from "../logger/logger.js";
+import { getConfigUIMetadata } from "./config-utils.js";
+import { _ } from "../i18n/i18n.js";
 
 /**
  * 配置UI渲染器 - 负责生成和管理配置用户界面
@@ -14,13 +16,14 @@ export class ConfigUIRenderer {
 
   /**
    * 渲染完整的配置页面
+   * 每次渲染都自动获取 getConfigUIMetadata() 的最新结果，确保 label/description/option.label 为当前语言
    */
   public renderConfigUI(
-    configMetadata: Record<string, ConfigUI.UIMetadata>,
     currentConfig: any,
     options: ConfigUI.RenderOptions
   ): void {
     this.logger.debug("开始渲染配置UI");
+    const configMetadata = getConfigUIMetadata();
     this.metadataCache = configMetadata;
 
     const { container } = options;
@@ -37,6 +40,7 @@ export class ConfigUIRenderer {
     // 分组和排序元数据
     // 直接用 group 字段作为分区，不再用 section/其它设置/高级设置/AI设置
     // 分区逻辑：直接以 group 字段 label 作为分区名，非 group 字段归为“常规设置”
+    const generalSectionName = _("config_section_general", "常规设置");
     for (const path of Object.keys(configMetadata)) {
       const metadata = configMetadata[path];
       // 只按分区，不再递归 group 字段
@@ -50,8 +54,8 @@ export class ConfigUIRenderer {
           });
         }
       } else {
-        if (!sectionMap.has('常规设置')) sectionMap.set('常规设置', []);
-        sectionMap.get('常规设置')!.push({ ...metadata, path });
+        if (!sectionMap.has(generalSectionName)) sectionMap.set(generalSectionName, []);
+        sectionMap.get(generalSectionName)!.push({ ...metadata, path });
       }
     }
 
@@ -224,7 +228,7 @@ export class ConfigUIRenderer {
     // 添加标签
     const label = document.createElement("div");
     label.className = "option-label";
-    label.textContent = metadata.label;
+    label.textContent = metadata.label; // 直接用国际化字符串
     row.appendChild(label);
 
     // 添加控件容器
@@ -285,7 +289,7 @@ export class ConfigUIRenderer {
           container.dispatchEvent(new Event('input', { bubbles: true }));
         };
         label.appendChild(checkbox);
-        label.appendChild(document.createTextNode(' ' + opt.label));
+        label.appendChild(document.createTextNode(' ' + opt.label)); // 直接用国际化字符串
         line.appendChild(label);
         container.appendChild(line);
       });
@@ -353,13 +357,13 @@ export class ConfigUIRenderer {
         if (groupMeta.label) {
           const legend = document.createElement("legend");
           legend.className = "option-group-legend";
-          legend.textContent = groupMeta.label;
+          legend.textContent = groupMeta.label; // 直接用国际化字符串
           container.appendChild(legend);
         }
         if (groupMeta.description) {
           const desc = document.createElement("div");
           desc.className = "option-group-description";
-          desc.textContent = groupMeta.description;
+          desc.textContent = groupMeta.description; // 直接用国际化字符串
           container.appendChild(desc);
         }
         const rowList: HTMLElement[] = [];
@@ -376,7 +380,7 @@ export class ConfigUIRenderer {
           if (fieldMeta.label) {
             const label = document.createElement("div");
             label.className = "option-label option-label-group";
-            label.textContent = fieldMeta.label;
+            label.textContent = fieldMeta.label; // 直接用国际化字符串
             row.appendChild(label);
           }
           const control = document.createElement("div");
@@ -387,7 +391,7 @@ export class ConfigUIRenderer {
           if (fieldMeta.description) {
             const description = document.createElement("div");
             description.className = "option-description option-description-group";
-            description.textContent = fieldMeta.description;
+            description.textContent = fieldMeta.description; // 直接用国际化字符串
             control.appendChild(description);
           }
           row.appendChild(control);
@@ -439,9 +443,9 @@ export class ConfigUIRenderer {
         // 隐藏字段不渲染任何控件
         return document.createElement("span");
       default:
-        this.logger.warn(`未知的控件类型: ${(metadata as any).type}`);
+        this.logger.warn("config_unknown_control_type", "未知的控件类型: {0}", (metadata as any).type);
         const fallback = document.createElement("div");
-        fallback.textContent = `不支持的控件类型: ${(metadata as any).type}`;
+        fallback.textContent = _("config_unsupported_control_type", `不支持的控件类型: ${(metadata as any).type}`);
         return fallback;
     }
   }
@@ -468,7 +472,7 @@ export class ConfigUIRenderer {
 
     if (metadata.checkboxLabel) {
       const span = document.createElement("span");
-      span.textContent = ` ${metadata.checkboxLabel}`;
+      span.textContent = ` ${metadata.checkboxLabel}`; // 直接用国际化字符串
       label.appendChild(span);
     }
 
@@ -492,76 +496,12 @@ export class ConfigUIRenderer {
     for (const option of metadata.options) {
       const optionEl = document.createElement("option");
       optionEl.value = option.value;
-      optionEl.textContent = option.label;
+      optionEl.textContent = option.label; // 直接用国际化字符串
       optionEl.selected = option.value === value;
       select.appendChild(optionEl);
     }
 
     return select;
-  }
-
-  /**
-   * 创建数字输入框
-   */
-  private createNumberInput(
-    path: string,
-    metadata: ConfigUI.NumberUIMetadata,
-    value: number
-  ): HTMLInputElement {
-    const input = document.createElement("input");
-    input.type = "number";
-    input.id = `config-${path.replace(/\./g, "-")}`;
-    input.setAttribute("data-config-path", path);
-
-    // 应用属性
-    if (metadata.min !== undefined) input.min = String(metadata.min);
-    if (metadata.max !== undefined) input.max = String(metadata.max);
-    if (metadata.step !== undefined) input.step = String(metadata.step);
-
-    // 应用值（考虑转换器）
-    const displayValue = metadata.reverter ? metadata.reverter(value) : value;
-    input.value = String(displayValue);
-
-    return input;
-  }
-
-  /**
-   * 创建文本输入框
-   */
-  private createTextInput(
-    path: string,
-    metadata: ConfigUI.TextUIMetadata,
-    value: string
-  ): HTMLInputElement {
-    const input = document.createElement("input");
-    input.type = "text";
-    input.id = `config-${path.replace(/\./g, "-")}`;
-    input.setAttribute("data-config-path", path);
-
-    // 应用属性
-    if (metadata.placeholder) input.placeholder = metadata.placeholder;
-    if (metadata.pattern) input.pattern = metadata.pattern;
-
-    input.value = value || "";
-
-    return input;
-  }
-
-  /**
-   * 创建颜色选择器
-   */
-  private createColorInput(
-    path: string,
-    metadata: ConfigUI.ColorUIMetadata,
-    value: string
-  ): HTMLInputElement {
-    const input = document.createElement("input");
-    input.type = "color";
-    input.id = `config-${path.replace(/\./g, "-")}`;
-    input.setAttribute("data-config-path", path);
-    input.value = value || metadata.defaultValue || "#000000";
-
-    return input;
   }
 
   /**
@@ -589,7 +529,7 @@ export class ConfigUIRenderer {
       radio.setAttribute("data-config-path", path);
 
       label.appendChild(radio);
-      label.appendChild(document.createTextNode(` ${option.label}`));
+      label.appendChild(document.createTextNode(` ${option.label}`)); // 直接用国际化字符串
       container.appendChild(label);
     }
 
@@ -614,6 +554,60 @@ export class ConfigUIRenderer {
   }
 
   /**
+   * 创建数字输入框
+   */
+  private createNumberInput(
+    path: string,
+    metadata: ConfigUI.NumberUIMetadata,
+    value: number
+  ): HTMLInputElement {
+    const input = document.createElement("input");
+    input.type = "number";
+    input.id = `config-${path.replace(/\./g, "-")}`;
+    input.setAttribute("data-config-path", path);
+    if (metadata.min !== undefined) input.min = String(metadata.min);
+    if (metadata.max !== undefined) input.max = String(metadata.max);
+    if (metadata.step !== undefined) input.step = String(metadata.step);
+    const displayValue = metadata.reverter ? metadata.reverter(value) : value;
+    input.value = String(displayValue);
+    return input;
+  }
+
+  /**
+   * 创建文本输入框
+   */
+  private createTextInput(
+    path: string,
+    metadata: ConfigUI.TextUIMetadata,
+    value: string
+  ): HTMLInputElement {
+    const input = document.createElement("input");
+    input.type = "text";
+    input.id = `config-${path.replace(/\./g, "-")}`;
+    input.setAttribute("data-config-path", path);
+    if (metadata.placeholder) input.placeholder = metadata.placeholder;
+    if (metadata.pattern) input.pattern = metadata.pattern;
+    input.value = value || "";
+    return input;
+  }
+
+  /**
+   * 创建颜色选择框
+   */
+  private createColorInput(
+    path: string,
+    metadata: ConfigUI.ColorUIMetadata,
+    value: string
+  ): HTMLInputElement {
+    const input = document.createElement("input");
+    input.type = "color";
+    input.id = `config-${path.replace(/\./g, "-")}`;
+    input.setAttribute("data-config-path", path);
+    input.value = value || metadata.defaultValue || "#000000";
+    return input;
+  }
+
+  /**
    * 渲染保存/重置按钮
    */
   private renderButtons(
@@ -626,28 +620,28 @@ export class ConfigUIRenderer {
     if (options.showSaveButton) {
       const saveButton = document.createElement("button");
       saveButton.id = "config-save-button";
-      saveButton.textContent = "保存设置";
+      saveButton.textContent = _("config_save_button", "保存设置");
       saveButton.className = "primary-button";
       saveButton.addEventListener("click", async () => {
         if (options.onSave) {
           saveButton.disabled = true;
-          saveButton.textContent = "保存中...";
+          saveButton.textContent = _("config_saving", "保存中...");
 
           try {
             await options.onSave();
 
-            saveButton.textContent = "保存成功";
+            saveButton.textContent = _("config_save_success", "保存成功");
             setTimeout(() => {
               saveButton.disabled = false;
-              saveButton.textContent = "保存设置";
+              saveButton.textContent = _("config_save_button", "保存设置");
             }, 2000);
           } catch (error) {
-            saveButton.textContent = "保存失败";
+            saveButton.textContent = _("config_save_failed", "保存失败");
             setTimeout(() => {
               saveButton.disabled = false;
-              saveButton.textContent = "保存设置";
+              saveButton.textContent = _("config_save_button", "保存设置");
             }, 2000);
-            this.logger.error("保存配置失败", error);
+            this.logger.error("config_save_failed_log", "保存配置失败: {0}", error instanceof Error ? error.message : String(error));
           }
         }
       });
@@ -657,7 +651,7 @@ export class ConfigUIRenderer {
       const saveMessage = document.createElement("span");
       saveMessage.id = "config-save-message";
       saveMessage.className = "success-message";
-      saveMessage.textContent = "设置已保存！";
+      saveMessage.textContent = _("config_saved_message", "设置已保存！");
       saveMessage.style.display = "none";
       buttonSection.appendChild(saveMessage);
     }
@@ -665,29 +659,29 @@ export class ConfigUIRenderer {
     if (options.showResetButton) {
       const resetButton = document.createElement("button");
       resetButton.id = "config-reset-button";
-      resetButton.textContent = "恢复默认";
+      resetButton.textContent = _("config_reset_button", "恢复默认");
       resetButton.className = "secondary-button";
       resetButton.addEventListener("click", async () => {
-        if (confirm("确定要恢复所有设置为默认值吗？此操作无法撤销。")) {
+        if (confirm(_("config_reset_confirm", "确定要恢复所有设置为默认值吗？此操作无法撤销。"))) {
           if (options.onReset) {
             resetButton.disabled = true;
-            resetButton.textContent = "重置中...";
+            resetButton.textContent = _("config_resetting", "重置中...");
 
             try {
               await options.onReset();
 
-              resetButton.textContent = "重置成功";
+              resetButton.textContent = _("config_reset_success", "重置成功");
               setTimeout(() => {
                 resetButton.disabled = false;
-                resetButton.textContent = "恢复默认";
+                resetButton.textContent = _("config_reset_button", "恢复默认");
               }, 2000);
             } catch (error) {
-              resetButton.textContent = "重置失败";
+              resetButton.textContent = _("config_reset_failed", "重置失败");
               setTimeout(() => {
                 resetButton.disabled = false;
-                resetButton.textContent = "恢复默认";
+                resetButton.textContent = _("config_reset_button", "恢复默认");
               }, 2000);
-              this.logger.error("重置配置失败", error);
+              this.logger.error("config_reset_failed_log", "重置配置失败: {0}", error instanceof Error ? error.message : String(error));
             }
           }
         }
@@ -829,7 +823,7 @@ export class ConfigUIRenderer {
           return true;
       }
     } catch (error) {
-      this.logger.error("条件评估失败", error);
+      this.logger.error("config_condition_eval_failed", "条件评估失败: {0}", error instanceof Error ? error.message : String(error));
       return true; // 出错时默认显示
     }
   }

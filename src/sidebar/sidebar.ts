@@ -1,7 +1,7 @@
 import { Logger } from '../lib/logger/logger.js';
 import { messenger } from '../lib/messaging/messenger.js';
 import { storage } from '../lib/storage/index.js';
-import { _ } from '../lib/i18n/i18n.js';
+import { i18n, _ } from '../lib/i18n/i18n.js';
 import { shouldAnalyzeUrl } from '../lib/utils/url-utils.js';
 import { config } from '../lib/config/index.js';
 import { renderMergedView, updateOpenTabHighlight, mergeVisitsAndAnalysis, startAnalyzingTimer } from './merged-view.js';
@@ -20,18 +20,22 @@ let lastActiveTime = Date.now();
 
 function renderSidebarTabs(root: HTMLElement) {
   currentTab = 'today';
+  // 1. 先渲染静态结构，不插入 label
   root.innerHTML = `
     <div class='sidebar-tabs-wrap'>
       <div class='tabs'>
-        <button id='tab-today' class='sidebar-tab tab'>${_('sidebar_tab_today', '今日')}</button>
-        <button id='tab-yesterday' class='sidebar-tab tab'>${_('sidebar_tab_yesterday', '昨日')}</button>
+        <button id='tab-today' class='sidebar-tab tab'></button>
+        <button id='tab-yesterday' class='sidebar-tab tab'></button>
       </div>
     </div>
     <div id='insight-report-box'></div>
     <div id='merged-view-box'></div>
   `;
+  // 2. 用 DOM API 赋值国际化文本
   const tabToday = document.getElementById('tab-today');
   const tabYesterday = document.getElementById('tab-yesterday');
+  if (tabToday) tabToday.textContent = _('sidebar_tab_today', '今日');
+  if (tabYesterday) tabYesterday.textContent = _('sidebar_tab_yesterday', '昨日');
   const insightBox = document.getElementById('insight-report-box');
   const mergedBox = document.getElementById('merged-view-box');
   function setActiveTab(tab: 'today' | 'yesterday') {
@@ -75,23 +79,38 @@ function clearAiConfigCache() {
   aiConfigCache
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+  const allConfig = await config.getAll();
+  if (allConfig && allConfig.language && allConfig.language !== 'auto') {
+    await i18n.changeLanguage(allConfig.language);
+    await i18n.apply();
+  }
   const root = document.getElementById('sidebar-root');
   if (root) {
     renderSidebarTabs(root);
     // 只绑定已有按钮事件，不再动态创建按钮
     const clearBtn = document.getElementById('clearDataBtn') as HTMLButtonElement;
     if (clearBtn) {
+      const clearDataConfirm = _('sidebar_clear_data_confirm', '确定要清除所有本地数据吗？此操作无法撤销。');
       clearBtn.onclick = async () => {
-        if (confirm(_('sidebar_clear_data_confirm', '确定要清除所有本地数据吗？此操作无法撤销。'))) {
+        if (confirm(clearDataConfirm)) {
           // 清理 sidebar.ts 中的 clearMergedViewData 调用，相关逻辑如需保留可迁移至 merged-view.ts 或重构为工具函数
         }
       };
     }
   }
-  // 顶部选项页跳转
+  // 版本号
+  const versionInfoEl = document.getElementById('versionInfo') as HTMLElement;
+  if (versionInfoEl) {
+    const manifest = chrome.runtime.getManifest();
+    const versionLabel = _('sidebar_version', '版本：');
+    versionInfoEl.textContent = `${versionLabel}${manifest.version}`;
+  }
+  // 打开选项页按钮
   const openOptionsLink = document.getElementById('openOptions') as HTMLAnchorElement;
   if (openOptionsLink) {
+    const openOptionsLabel = _('sidebar_open_options', '打开选项页');
+    openOptionsLink.textContent = openOptionsLabel;
     openOptionsLink.addEventListener('click', (e) => {
       e.preventDefault();
       chrome.runtime.openOptionsPage();
@@ -116,12 +135,6 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       chrome.tabs.create({ url: helpUrl });
     });
-  }
-  // 版本号
-  const versionInfoEl = document.getElementById('versionInfo') as HTMLElement;
-  if (versionInfoEl) {
-    const manifest = chrome.runtime.getManifest();
-    versionInfoEl.textContent = `${_('sidebar_version', '版本：')}${manifest.version}`;
   }
 });
 
@@ -192,7 +205,7 @@ messenger.on('SCROLL_TO_VISIT', (msg) => {
           }
         });
       } catch (e) {
-        logger.error('滚动到访问记录时出错', e);
+        logger.error('sidebar_scroll_to_visit_error', _('sidebar_scroll_to_visit_error', '滚动到访问记录时出错: {0}'), e instanceof Error ? e.message : String(e));
       }
     }, 300);
   }
@@ -200,11 +213,14 @@ messenger.on('SCROLL_TO_VISIT', (msg) => {
 
 // 监听 AI_SERVICE_UNAVAILABLE 消息
 messenger.on('AI_SERVICE_UNAVAILABLE', (msg) => {
-  let text = '未检测到可用的本地 AI 服务，AI 分析功能已禁用。';
+  let text = _('ai_service_unavailable_msg', '未检测到可用的本地 AI 服务，AI 分析功能已禁用。');
   const details = msg.payload?.details as Record<string, boolean> | undefined;
   if (details) {
-    const detailArr = Object.entries(details).map(([k, v]) => `${k}: ${v ? '可用' : '不可用'}`);
-    text += '\n' + detailArr.join('，');
+    const availableLabel = _('ai_service_available', '可用');
+    const unavailableLabel = _('ai_service_unavailable', '不可用');
+    const commaCn = _('comma_cn', '，');
+    const detailArr = Object.entries(details).map(([k, v]) => `${k}: ${v ? availableLabel : unavailableLabel}`);
+    text += '\n' + detailArr.join(commaCn);
   }
   let aiWarn = document.querySelector('.ai-service-unavailable');
   if (!aiWarn) {

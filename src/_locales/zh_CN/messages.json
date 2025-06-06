@@ -400,7 +400,7 @@
     "description": "从HTML提取: sidebar/sidebar.html"
   },
   "sidebar_open_options": {
-    "message": "",
+    "message": "打开选项页",
     "description": "从HTML提取: sidebar/sidebar.html"
   },
   "popup_title": {
@@ -566,5 +566,89 @@
   "ai_service_unavailable": {
     "message": "不可用",
     "description": "从TS提取 (_): lib/artificial-intelligence/ai-manager.ts"
+  },
+  "config_language_label": {
+    "message": "界面语言",
+    "description": "从TS提取 (_): lib/config/configs.ts"
+  },
+  "config_language_desc": {
+    "message": "选择扩展界面语言，自动为跟随浏览器。",
+    "description": "从TS提取 (_): lib/config/configs.ts"
+  },
+  "sidebar_scroll_to_visit_error": {
+    "message": "滚动到访问记录时出错: {0}",
+    "description": "从TS提取 (_): sidebar/sidebar.ts"
+  },
+  "ai_service_unavailable_msg": {
+    "message": "未检测到可用的本地 AI 服务，AI 分析功能已禁用。",
+    "description": "从TS提取 (_): sidebar/sidebar.ts"
+  },
+  "comma_cn": {
+    "message": "，",
+    "description": "从TS提取 (_): sidebar/sidebar.ts"
+  },
+  "ai_service_unavailable_tip": {
+    "message": "未检测到可用的本地 AI 服务，AI 分析功能已禁用。",
+    "description": "从TS提取 (_): popup/popup.ts"
+  },
+  "config_save_button": {
+    "message": "保存设置",
+    "description": "从TS提取 (_): lib/config/config-ui-renderer.ts"
+  },
+  "config_saving": {
+    "message": "保存中...",
+    "description": "从TS提取 (_): lib/config/config-ui-renderer.ts"
+  },
+  "config_save_success": {
+    "message": "保存成功",
+    "description": "从TS提取 (_): lib/config/config-ui-renderer.ts"
+  },
+  "config_save_failed": {
+    "message": "保存失败",
+    "description": "从TS提取 (_): lib/config/config-ui-renderer.ts"
+  },
+  "config_saved_message": {
+    "message": "设置已保存！",
+    "description": "从TS提取 (_): lib/config/config-ui-renderer.ts"
+  },
+  "config_reset_button": {
+    "message": "恢复默认",
+    "description": "从TS提取 (_): lib/config/config-ui-renderer.ts"
+  },
+  "config_reset_confirm": {
+    "message": "确定要恢复所有设置为默认值吗？此操作无法撤销。",
+    "description": "从TS提取 (_): lib/config/config-ui-renderer.ts"
+  },
+  "config_resetting": {
+    "message": "重置中...",
+    "description": "从TS提取 (_): lib/config/config-ui-renderer.ts"
+  },
+  "config_reset_success": {
+    "message": "重置成功",
+    "description": "从TS提取 (_): lib/config/config-ui-renderer.ts"
+  },
+  "config_reset_failed": {
+    "message": "重置失败",
+    "description": "从TS提取 (_): lib/config/config-ui-renderer.ts"
+  },
+  "sidebar_insight_today": {
+    "message": "今日洞察",
+    "description": "从TS提取 (_): sidebar/insight-report.ts"
+  },
+  "sidebar_insight_yesterday": {
+    "message": "昨日洞察",
+    "description": "从TS提取 (_): sidebar/insight-report.ts"
+  },
+  "config_language_auto": {
+    "message": "自动（跟随浏览器）",
+    "description": "从TS提取 (_): lib/config/configs.ts"
+  },
+  "config_language_zh_CN": {
+    "message": "简体中文",
+    "description": "从TS提取 (_): lib/config/configs.ts"
+  },
+  "config_language_en": {
+    "message": "English",
+    "description": "从TS提取 (_): lib/config/configs.ts"
   }
 }
