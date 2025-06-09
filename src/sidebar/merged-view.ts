@@ -75,7 +75,6 @@ function clearAllAnalyzingTimers() {
 export async function renderMergedView(root: HTMLElement, dayId: string, tab: 'today' | 'yesterday') {
   clearAllAnalyzingTimers(); // 渲染前清理所有分析中计时器，防止泄漏
   root.innerHTML = '<div class="text-muted" style="padding:16px;">'+_('sidebar_card_loading', '加载中...')+'</div>';
-  // 恢复 GET_VISITS 消消息调用
   const [visits, tabs] = await Promise.all([
     messenger.send('GET_VISITS', { dayId }).then(r => r?.visits || []).catch(() => []),
     (tab === 'today' && typeof chrome !== 'undefined' && chrome.tabs) ? new Promise<any[]>(resolve => {
@@ -97,7 +96,6 @@ export async function renderMergedView(root: HTMLElement, dayId: string, tab: 't
   }
   root.innerHTML = merged.map((item, idx) => {
     let aiContent = '';
-    let durationStr = '';
     let isStructured = false;
     let rawText = item.aiResult;
     let jsonObj: any = null;
@@ -112,11 +110,9 @@ export async function renderMergedView(root: HTMLElement, dayId: string, tab: 't
       jsonObj = rawText;
       isStructured = true;
     }
-    // 变量声明顺序修正，提前声明 isImportant、entryId、collapsed
     const isImportant = (jsonObj && jsonObj.important === true) || (item.aiResult && typeof item.aiResult === 'object' && item.aiResult.important === true);
     const collapsed = idx > 0;
     const entryId = `merged-entry-${idx}`;
-    // 卡片样式
     let cardClass = 'merged-card';
     if (tab === 'today' && item.url && openTabUrls.includes(item.url.split('#')[0])) {
       cardClass += ' merged-card-open';
@@ -124,7 +120,6 @@ export async function renderMergedView(root: HTMLElement, dayId: string, tab: 't
     if (tab === 'today' && item.url && !openTabUrls.includes(item.url.split('#')[0])) {
       cardClass += ' tab-closed';
     }
-    // 重点卡片样式，始终添加 ai-important-card
     if (isImportant) {
       cardClass += ' ai-important-card';
     }
@@ -135,29 +130,28 @@ export async function renderMergedView(root: HTMLElement, dayId: string, tab: 't
     </div>`;
     const urlLine = `<div class='merged-card-url-line'>
       <a href='${item.url || ''}' target='_blank' class='merged-card-url'>${item.url || ''}</a>
-      <!-- 分析用时不再显示在 URL 行 -->
     </div>`;
     let aiLabelHtml = '';
-    // AI服务标签
     if (item.aiServiceLabel) {
       aiLabelHtml = `<span class='merged-card-ai-label'>🤖 ${item.aiServiceLabel}</span>`;
     }
-    // 访问次数标签
     let visitCountLabel = '';
     if (item.visitCount && item.visitCount > 1) {
       visitCountLabel = `<span class='merged-card-visit-count'>🛞 ${item.visitCount}${_('sidebar_card_times', '次')}</span>`;
     }
-    // 分析用时标签
+    // 结构化分析状态判断
     let analyzeDurationLabel = '';
-    // 判断分析中（不依赖硬编码字符串，且有 visitStartTime 且无 analyzeDuration）
-    const isAnalyzing = (!item.analyzeDuration && (item.analyzingStartTime || item.visitStartTime));
-    if (isAnalyzing) {
-      const durationId = `merged-analyzing-duration-${idx}`;
+    let statusLabel = '';
+    const status = item.analysisStatus;
+    if (status === 'pending') {
+      // 等待分析，显示排队用时
+      const durationId = `merged-queue-duration-${idx}`;
       analyzeDurationLabel = `<span class='merged-card-analyze-duration' id='${durationId}'>⌛️0${_('sidebar_card_seconds_short', 's')}</span>`;
+      statusLabel = `<span class='ai-analyzing'>${_('sidebar_card_ai_pending', '等待分析')}</span>`;
       setTimeout(() => {
         const el = document.getElementById(durationId);
         if (!el) return;
-        const start = item.analyzingStartTime || item.visitStartTime || Date.now();
+        const start = item.analyzingQueueTime || item.visitStartTime || Date.now();
         const update = () => {
           const now = Date.now();
           const seconds = Math.floor((now - start) / 1000);
@@ -169,8 +163,35 @@ export async function renderMergedView(root: HTMLElement, dayId: string, tab: 't
           update();
         }, 1000);
       }, 0);
-    } else if (item.analyzeDuration && item.analyzeDuration > 0) {
-      analyzeDurationLabel = `<span class='merged-card-analyze-duration'>⌛️ ${(item.analyzeDuration / 1000).toFixed(1)}${_('sidebar_card_seconds_short', 's')}</span>`;
+    } else if (status === 'running') {
+      // 分析中，显示分析用时
+      const durationId = `merged-analyzing-duration-${idx}`;
+      analyzeDurationLabel = `<span class='merged-card-analyze-duration' id='${durationId}'>⌛️0${_('sidebar_card_seconds_short', 's')}</span>`;
+      statusLabel = `<span class='ai-analyzing'>${_('sidebar_card_analyzing', '正在进行 AI 分析')}</span>`;
+      setTimeout(() => {
+        const el = document.getElementById(durationId);
+        if (!el) return;
+        const start = item.analyzingStartTime || Date.now();
+        const update = () => {
+          const now = Date.now();
+          const seconds = Math.floor((now - start) / 1000);
+          el.textContent = `⌛️${seconds}${_('sidebar_card_seconds_short', 's')}`;
+        };
+        update();
+        const timer = setInterval(() => {
+          if (!document.body.contains(el)) { clearInterval(timer); return; }
+          update();
+        }, 1000);
+      }, 0);
+    } else if (status === 'done') {
+      // 分析完成，显示总用时
+      if (item.analyzeDuration && item.analyzeDuration > 0) {
+        analyzeDurationLabel = `<span class='merged-card-analyze-duration'>⌛️ ${(item.analyzeDuration / 1000).toFixed(1)}${_('sidebar_card_seconds_short', 's')}</span>`;
+      }
+    } else if (status === 'failed') {
+      statusLabel = `<span class='ai-failed'>${_('sidebar_card_ai_failed', 'AI 分析失败')}</span>`;
+    } else if (status === 'none') {
+      statusLabel = `<span class='ai-empty'>[${_('sidebar_card_ai_empty', '未分析')}]</span>`;
     }
     // 标签区
     let cardTagsLine = '';
@@ -178,9 +199,9 @@ export async function renderMergedView(root: HTMLElement, dayId: string, tab: 't
       cardTagsLine = `<div class='merged-card-tags-line'>${aiLabelHtml}${analyzeDurationLabel}${visitCountLabel}</div>`;
     }
     // 内容区
-    if (isAnalyzing) {
-      aiContent = `<span class='ai-analyzing'>正在进行 AI 分析</span>`;
-    } else if (isStructured && jsonObj) {
+    if (status === 'pending' || status === 'running') {
+      aiContent = statusLabel;
+    } else if (status === 'done' && isStructured && jsonObj) {
       aiContent = `<div class='ai-summary'>${jsonObj.summary || ''}</div>`;
       if (jsonObj.highlights && Array.isArray(jsonObj.highlights) && jsonObj.highlights.length) {
         aiContent += `<ul class='ai-highlights'>${jsonObj.highlights.map((h: string) => `<li>${h}</li>`).join('')}</ul>`;
@@ -191,7 +212,7 @@ export async function renderMergedView(root: HTMLElement, dayId: string, tab: 't
       if (isImportant) {
         aiContent += `<div class='ai-important-flag'>⚠️ 该内容被标记为重要</div>`;
       }
-    } else if (typeof rawText === 'string') {
+    } else if (status === 'done' && typeof rawText === 'string') {
       if (rawText && rawText !== '' && !rawText.startsWith(_('sidebar_card_ai_failed', 'AI 分析失败'))) {
         aiContent = `<div class='ai-plain'>${rawText.replace(/\n/g, '<br>')}</div>`;
       } else if (rawText.startsWith(_('sidebar_card_ai_failed', 'AI 分析失败'))) {
@@ -199,11 +220,11 @@ export async function renderMergedView(root: HTMLElement, dayId: string, tab: 't
       } else {
         aiContent = `<span class='ai-empty'>[${_('sidebar_card_ai_empty', '无分析结果')}]</span>`;
       }
+    } else if (status === 'failed') {
+      aiContent = statusLabel;
     } else {
-      aiContent = `<span class='ai-empty'>[${_('sidebar_card_ai_empty', '无分析结果')}]</span>`;
+      aiContent = statusLabel;
     }
-    // tag 区始终渲染
-    let aiContentWithLabel = aiContent;
     return `
       <div class='${cardClass}'>
         <div class='merged-card-header' data-entry-id='${entryId}'>

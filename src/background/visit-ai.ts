@@ -7,6 +7,7 @@ import { config } from '../lib/config/index.js';
 import { messenger } from '../lib/messaging/messenger.js';
 import { AIManager } from '../lib/ai/ai-manager.js';
 import { crossDayIdleThresholdMs, globalConfig } from './background.js';
+import { taskQueue, AnalysisTaskStatus } from '../lib/ai/task-queue.js';
 const logger = new Logger('visit-ai');
 
 export const VISIT_KEEP_DAYS = 7;
@@ -42,6 +43,17 @@ export async function handlePageVisitRecord(data: any) {
     }
     // 兼容 content-script 可能传递 { payload: {...} } 的情况
     const record = data && data.payload && typeof data.payload === 'object' ? data.payload : data;
+    // 极短停留页面过滤（如小于1.5秒）
+    const visitStart = record && record.visitStartTime;
+    const visitEnd = record && record.visitEndTime;
+    if (visitStart && visitEnd && typeof visitStart === 'number' && typeof visitEnd === 'number') {
+      const stayMs = visitEnd - visitStart;
+      if (stayMs >= 0 && stayMs < 1500) {
+        logger.info('[内容捕获] 跳过极短停留页面', { url: record.url, id: record.id, stayMs });
+        return { status: 'skipped', reason: 'short_stay', url: record.url, stayMs };
+      }
+    }
+    
     // 字段完整性校验：url、title、id 必须存在且为非空字符串
     if (!record || typeof record.url !== 'string' || !record.url.trim() || typeof record.title !== 'string' || !record.title.trim() || typeof record.id !== 'string' || !record.id.trim()) {
       logger.warn('[内容捕获] 拒绝插入无效访问记录，字段不全', { data });
@@ -52,7 +64,7 @@ export async function handlePageVisitRecord(data: any) {
       // 跳过分析
       return;
     }
-    // 新增：写入 aiServiceLabel 和分析中时间 analyzingStartTime（分析中也写入，保证前端可立即显示）
+    // 新增：写入 aiServiceLabel（不再写 analyzingStartTime，分析任务开始时再写）
     if (!('aiResult' in record)) {
       record.aiResult = '';
       // 获取当前 AI 配置
@@ -69,8 +81,7 @@ export async function handlePageVisitRecord(data: any) {
         aiServiceLabel = labelMap[aiConfig.serviceId] || aiConfig.serviceId || 'AI';
       } catch {}
       record.aiServiceLabel = aiServiceLabel;
-      // 新增 analyzingStartTime 字段
-      record.analyzingStartTime = Date.now();
+      // analyzingStartTime 不在此处写入
     }
     if (!record.visitStartTime || isNaN(new Date(record.visitStartTime).getTime())) {
       // 自动补当前时间
@@ -97,28 +108,37 @@ export async function handlePageVisitRecord(data: any) {
     for (const v of visits) {
       if (v.url === record.url) {
         existed = true;
-        // 判断内容是否变化，仅以 title/mainContent 是否变化为准，id 变化不影响分析状态
+        // analysisStatus 只在内容变化时重置
         const contentChanged = (v.title !== record.title || v.mainContent !== record.mainContent);
+        if (contentChanged) {
+          v.analysisStatus = 'none';
+          v.aiResult = '';
+          v.analyzeDuration = undefined;
+          v.aiServiceLabel = record.aiServiceLabel || 'AI';
+          v.title = record.title;
+          v.mainContent = record.mainContent;
+          updated = true;
+          logger.info('[内容捕获] 重复访问但内容有变化，已重置分析', { url: record.url, dayId, id: v.id });
+        }
         if (isRefresh) {
           // 刷新：只更新基础字段，不覆盖分析相关字段
           v.title = record.title;
           v.mainContent = record.mainContent;
           v.visitStartTime = record.visitStartTime;
           v.id = record.id;
-          updated = true;
-        } else {
-          // 非刷新：只递增visitCount，但如果内容有变化则清空aiResult重新分析
-          v.visitCount = (v.visitCount || 1) + 1;
-          if (contentChanged) {
-            v.title = record.title;
-            v.mainContent = record.mainContent;
+          // 新增：如果未分析过，刷新时强制重置 analysisStatus/aiResult，确保后续能分析
+          if (!v.aiResult || v.aiResult === '' || v.analysisStatus !== 'done') {
+            v.analysisStatus = 'none';
             v.aiResult = '';
-            v.aiServiceLabel = record.aiServiceLabel || 'AI';
             v.analyzeDuration = undefined;
-            logger.info('[内容捕获] 重复访问但内容有变化，已重置分析', { url: record.url, dayId, id: v.id });
-          } else {
-            logger.info(`[内容捕获] 跳过重复访问记录，更新访问时长和访问次数`, { url: record.url, dayId, id: v.id });
+            v.aiServiceLabel = record.aiServiceLabel || 'AI';
+            logger.info('[内容捕获] 刷新页面且未分析，已重置分析状态', { url: record.url, dayId, id: v.id });
           }
+          updated = true;
+        } else if (!contentChanged) {
+          // 非刷新且内容无变化：只递增visitCount
+          v.visitCount = (v.visitCount || 1) + 1;
+          logger.info(`[内容捕获] 跳过重复访问记录，更新访问时长和访问次数`, { url: record.url, dayId, id: v.id });
           updated = true;
         }
         break;
@@ -127,9 +147,7 @@ export async function handlePageVisitRecord(data: any) {
     // 只有新访问才 visitCount = 1，刷新不应 visitCount++
     if (!existed) {
       record.visitCount = 1;
-      if (!record.analyzingStartTime) {
-        record.analyzingStartTime = Date.now();
-      }
+      record.analysisStatus = 'none';
       visits.push(record);
       updated = true;
       logger.info(`[内容捕获] 已存储访问记录`, { url: record.url, dayId, id: record.id });
@@ -361,23 +379,97 @@ export async function handleCrossDayCleanup() {
  */
 export async function handlePageVisitAndMaybeAnalyze(record: any, options: { isAnalyze?: boolean, sourceType?: string } = {}) {
   // 统一取 payload 里的主数据
-  const visit = record && record.payload && typeof record.payload === 'object' ? record.payload : record;
+  const visitRaw = record && record.payload && typeof record.payload === 'object' ? record.payload : record;
   // 1. 写入/更新访问记录
   const result = await handlePageVisitRecord(record);
-  // 2. 只要 mainContent 存在且应分析，自动触发AI分析
+  // 2. 重新从 storage 获取最新 visit，确保分析触发条件准确
+  let visit = visitRaw;
+  try {
+    const dateObj = new Date(visitRaw.visitStartTime);
+    const dayId = dateObj.toISOString().slice(0, 10);
+    const key = `browsing_visits_${dayId}`;
+    const visits: any[] = (await storage.get<any[]>(key)) || [];
+    const found = visits.find(v => v.id === visitRaw.id);
+    if (found) visit = found;
+  } catch {}
+  // 输出分析触发前的状态
+  logger.info('[AI分析触发检查]', {
+    id: visit.id,
+    url: visit.url,
+    analysisStatus: visit.analysisStatus,
+    aiResult: visit.aiResult,
+    mainContentLen: visit.mainContent ? visit.mainContent.length : 0,
+    contentLen: visit.content ? visit.content.length : 0
+  });
+  // 只要 mainContent 存在且 analysisStatus 为 none/pending，自动触发AI分析
   if (options.isAnalyze !== false) {
     const mainContent = visit.content || visit.mainContent;
-    if (mainContent && mainContent.length > 0 && (!visit.aiResult || visit.aiResult === '' || visit.aiResult === '正在进行 AI 分析')) {
-      await analyzeVisitRecordById({
-        url: visit.url,
-        title: visit.title,
-        content: mainContent,
-        id: visit.id,
-        visitStartTime: visit.visitStartTime
+    if (mainContent && mainContent.length > 0 && (visit.analysisStatus === 'none' || visit.analysisStatus === 'pending')) {
+      logger.info('[AI分析已入队]', { id: visit.id, url: visit.url });
+      // 队列式分析
+      const analyzeKey = visit.id;
+      taskQueue.addTask(async () => {
+        await analyzeVisitRecordById({
+          url: visit.url,
+          title: visit.title,
+          content: mainContent,
+          id: visit.id,
+          visitStartTime: visit.visitStartTime
+        });
+      }, {
+        key: analyzeKey,
+        statusCallback: (status: AnalysisTaskStatus) => {
+          updateVisitAnalyzeStatus(visit, status);
+        }
       });
     }
   }
   return result;
+}
+
+// 新增：分析状态反馈，写入 analyzingStatus 字段及时间
+function updateVisitAnalyzeStatus(visit: any, status: AnalysisTaskStatus) {
+  const now = Date.now();
+  if (status === 'pending') {
+    visit.analyzingStatus = 'pending';
+    visit.analysisStatus = 'pending';
+    visit.analyzingQueueTime = now;
+  } else if (status === 'running') {
+    visit.analyzingStatus = 'running';
+    visit.analysisStatus = 'running';
+    visit.analyzingStartTime = now;
+  } else if (status === 'done') {
+    visit.analyzingStatus = 'done';
+    visit.analysisStatus = 'done';
+  } else if (status === 'failed') {
+    visit.analyzingStatus = 'failed';
+    visit.analysisStatus = 'failed';
+  }
+  persistVisitStatus(visit);
+}
+
+// 新增：持久化分析状态到 storage
+async function persistVisitStatus(visit: any) {
+  if (!visit || !visit.id || !visit.visitStartTime) return;
+  const date = new Date(visit.visitStartTime);
+  const dayId = date.toISOString().slice(0, 10);
+  const key = `browsing_visits_${dayId}`;
+  const visits: any[] = (await storage.get<any[]>(key)) || [];
+  for (const v of visits) {
+    if (v.id === visit.id) {
+      Object.assign(v, {
+        analyzingStatus: visit.analyzingStatus,
+        analyzingQueueTime: visit.analyzingQueueTime,
+        analyzingStartTime: visit.analyzingStartTime,
+        analysisStatus: visit.analysisStatus
+      });
+      break;
+    }
+  }
+  await storage.set(key, visits);
+  if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+    chrome.runtime.sendMessage({ type: 'SIDE_PANEL_UPDATE', payload: { updateType: 'ai' } });
+  }
 }
 
 /**
@@ -385,50 +477,42 @@ export async function handlePageVisitAndMaybeAnalyze(record: any, options: { isA
  * @param msg 包含 url、id、content、visitStartTime 等
  */
 export async function analyzeVisitRecordById(msg: any) {
-  const { url, title, content, id } = msg.payload || msg;
-  const visitStartTime = msg.payload?.visitStartTime || msg.visitStartTime || Date.now();
-  let dayId = msg.payload?.dayId || msg.dayId;
-  if (!dayId) {
-    const date = new Date(visitStartTime);
-    dayId = date.toISOString().slice(0, 10);
-  }
-  if (!id) {
-    logger.warn('ai_analyze_no_visit_record', 'AI 分析请求缺少 id，无法查找访问记录: {0}', url);
-    return { ok: false, error: 'AI 分析请求缺少 id，无法查找访问记录' };
-  }
-  const visitId = id;
-  const key = `browsing_visits_${dayId}`;
-  let visits: any[] = (await storage.get<any[]>(key)) || [];
-  const visit = visits.find(v => v.id === visitId);
-  if (!visit) {
-    logger.warn('ai_analyze_no_visit_record', '未找到访问记录: {0}', url);
-    return { ok: false, error: '未找到访问记录' };
-  }
-  if (visit.aiResult && visit.aiResult !== '' && visit.aiResult !== '正在进行 AI 分析') {
-    logger.info('已有分析结果，跳过: {0}', url);
-    return { ok: true, skipped: true, reason: 'already analyzed' };
-  }
-  await config.reload();
-  const allConfig: any = await config.getAll();
-  const aiConfig = allConfig && allConfig['aiServiceConfig'] ? allConfig['aiServiceConfig'] : { serviceId: 'ollama' };
-  const aiService = await AIManager.instance.getAvailableService(aiConfig.serviceId);
-  const labelMap: Record<string, string> = {
-    'ollama': 'Ollama 本地',
-    'chrome-ai': 'Chrome 内置 AI',
-    'openai': 'OpenAI',
-    'other': '其它',
-  };
-  const aiServiceLabel = labelMap[aiConfig.serviceId] || aiConfig.serviceId || 'AI';
-  const analyzeStart = Date.now();
   try {
-    if (!aiService) throw new Error('无可用 AI 服务');
-    const aiSummary = await aiService.summarizePage(url, content);
-    const analyzeEnd = Date.now();
-    const analyzeDuration = analyzeEnd - analyzeStart;
-    await updateVisitAiResult(url, visitStartTime, aiSummary, analyzeDuration, visitId, aiServiceLabel);
-    return { ok: true, aiContent: aiSummary, analyzeDuration };
-  } catch (e: any) {
-    logger.error('ai_analyze_error', '分析异常: {0}', url);
-    return { ok: false, error: '分析异常' };
+    // ====== 你的原有分析逻辑开始 ======
+    const t0 = Date.now();
+    let aiResult = '';
+    let analyzeDuration = 0;
+    let aiServiceLabel = 'AI';
+    try {
+      const aiService = await AIManager.instance.getAvailableService();
+      if (!aiService) throw new Error('无可用AI服务');
+      const allConfig = await config.getAll();
+      if (allConfig && allConfig['aiServiceConfig']) {
+        const labelMap: Record<string, string> = {
+          'ollama': 'Ollama 本地',
+          'chrome-ai': 'Chrome 内置 AI',
+          'openai': 'OpenAI',
+          'other': '其它',
+        };
+        const aiConfig = allConfig['aiServiceConfig'];
+        aiServiceLabel = labelMap[aiConfig.serviceId] || aiConfig.serviceId || 'AI';
+      }
+      // 统一调用 summarizePage
+      if (typeof aiService.summarizePage === 'function') {
+        const summary = await aiService.summarizePage(msg.url, msg.content);
+        aiResult = typeof summary === 'string' ? summary : (summary.summary || JSON.stringify(summary));
+      } else {
+        throw new Error('AI服务不支持 summarizePage 接口');
+      }
+      analyzeDuration = Date.now() - t0;
+    } catch (e: any) {
+      logger.error('[AI分析异常]', e);
+      aiResult = '[AI分析失败] ' + (e && e.message ? e.message : String(e));
+      analyzeDuration = Date.now() - t0;
+    }
+    // ====== 你的原有分析逻辑结束 ======
+    await updateVisitAiResult(msg.url, msg.visitStartTime, aiResult, analyzeDuration, msg.id, aiServiceLabel);
+  } catch (err) {
+    logger.error('[AI分析任务异常]', err);
   }
 }
