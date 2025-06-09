@@ -8,6 +8,7 @@ export interface AiCardData {
   visitStartTime?: number;
   aiResult?: any;
   analyzeDuration?: number;
+  analyzingStartTime?: number; // 新增，结构化分析中时间戳
 }
 
 export function renderAiCard(item: AiCardData, idx = 0): string {
@@ -41,15 +42,27 @@ export function renderAiCard(item: AiCardData, idx = 0): string {
     if (isImportant) {
       aiContent += `<div class='ai-important-flag'>⚠️ 该内容被标记为重要</div>`;
     }
+  }
+  // 判断分析中（不依赖字符串，仅依赖结构化字段）
+  const isAnalyzing = (!item.analyzeDuration && (item.analyzingStartTime || item.visitStartTime));
+  if (isAnalyzing) {
+    aiContent = `<span class='ai-analyzing'>正在进行 AI 分析</span>`;
+  } else if (isStructured && jsonObj) {
+    aiContent = `<div class='ai-summary'>${jsonObj.summary || ''}</div>`;
+    if (jsonObj.highlights && Array.isArray(jsonObj.highlights) && jsonObj.highlights.length) {
+      aiContent += `<ul class='ai-highlights'>${jsonObj.highlights.map((h: string) => `<li>${h}</li>`).join('')}</ul>`;
+    }
+    if (jsonObj.specialConcerns && Array.isArray(jsonObj.specialConcerns) && jsonObj.specialConcerns.length) {
+      aiContent += `<div class='ai-special-concerns'>特别关注：${jsonObj.specialConcerns.map((c: string) => c).join('，')}</div>`;
+    }
+    if (isImportant) {
+      aiContent += `<div class='ai-important-flag'>⚠️ 该内容被标记为重要</div>`;
+    }
   } else if (typeof rawText === 'string') {
-    if (rawText && rawText !== '正在进行 AI 分析' && rawText !== '') {
-      if (rawText.startsWith('AI 分析失败')) {
-        aiContent = `<div class='ai-failed'>${rawText.replace(/\n/g, '<br>')}</div>`;
-      } else {
-        aiContent = `<div class='ai-plain'>${rawText.replace(/\n/g, '<br>')}</div>`;
-      }
-    } else if ((rawText === '正在进行 AI 分析' || rawText === '') && !isStructured) {
-      aiContent = `<span class='ai-analyzing'>正在进行 AI 分析</span>`;
+    if (rawText && rawText !== '' && !rawText.startsWith('AI 分析失败')) {
+      aiContent = `<div class='ai-plain'>${rawText.replace(/\n/g, '<br>')}</div>`;
+    } else if (rawText.startsWith('AI 分析失败')) {
+      aiContent = `<div class='ai-failed'>${rawText.replace(/\n/g, '<br>')}</div>`;
     } else {
       aiContent = `<span class='ai-empty'>[无分析结果]</span>`;
     }

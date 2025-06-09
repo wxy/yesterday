@@ -52,9 +52,9 @@ export async function handlePageVisitRecord(data: any) {
       // 跳过分析
       return;
     }
-    // 新增：写入 aiServiceLabel（分析中也写入，保证前端可立即显示）
+    // 新增：写入 aiServiceLabel 和分析中时间 analyzingStartTime（分析中也写入，保证前端可立即显示）
     if (!('aiResult' in record)) {
-      record.aiResult = '正在进行 AI 分析';
+      record.aiResult = '';
       // 获取当前 AI 配置
       let aiServiceLabel = 'AI';
       try {
@@ -69,6 +69,8 @@ export async function handlePageVisitRecord(data: any) {
         aiServiceLabel = labelMap[aiConfig.serviceId] || aiConfig.serviceId || 'AI';
       } catch {}
       record.aiServiceLabel = aiServiceLabel;
+      // 新增 analyzingStartTime 字段
+      record.analyzingStartTime = Date.now();
     }
     if (!record.visitStartTime || isNaN(new Date(record.visitStartTime).getTime())) {
       // 自动补当前时间
@@ -95,41 +97,44 @@ export async function handlePageVisitRecord(data: any) {
     for (const v of visits) {
       if (v.url === record.url) {
         existed = true;
+        // 判断内容是否变化，仅以 title/mainContent 是否变化为准，id 变化不影响分析状态
+        const contentChanged = (v.title !== record.title || v.mainContent !== record.mainContent);
         if (isRefresh) {
-          // 刷新：更新内容、时间戳、id、visitCount+1，并清空aiResult以触发AI分析
+          // 刷新：只更新基础字段，不覆盖分析相关字段
           v.title = record.title;
           v.mainContent = record.mainContent;
           v.visitStartTime = record.visitStartTime;
           v.id = record.id;
-          v.aiResult = '';
-          v.visitCount = (v.visitCount || 1) + 1;
           updated = true;
         } else {
           // 非刷新：只递增visitCount，但如果内容有变化则清空aiResult重新分析
           v.visitCount = (v.visitCount || 1) + 1;
-          if (v.title !== record.title || v.mainContent !== record.mainContent) {
+          if (contentChanged) {
             v.title = record.title;
             v.mainContent = record.mainContent;
             v.aiResult = '';
             v.aiServiceLabel = record.aiServiceLabel || 'AI';
             v.analyzeDuration = undefined;
-            logger.info('[内容捕获] 重复访问但内容有变化，已重置分析', { url: record.url, dayId, id: record.id });
+            logger.info('[内容捕获] 重复访问但内容有变化，已重置分析', { url: record.url, dayId, id: v.id });
           } else {
-            logger.info(`[内容捕获] 跳过重复访问记录，更新访问时长和访问次数`, { url: record.url, dayId, id: record.id });
+            logger.info(`[内容捕获] 跳过重复访问记录，更新访问时长和访问次数`, { url: record.url, dayId, id: v.id });
           }
           updated = true;
         }
         break;
       }
     }
+    // 只有新访问才 visitCount = 1，刷新不应 visitCount++
     if (!existed) {
       record.visitCount = 1;
+      if (!record.analyzingStartTime) {
+        record.analyzingStartTime = Date.now();
+      }
       visits.push(record);
       updated = true;
       logger.info(`[内容捕获] 已存储访问记录`, { url: record.url, dayId, id: record.id });
-    } else if (isRefresh) {
-      logger.info(`[内容捕获] 刷新并更新访问记录`, { url: record.url, dayId, id: record.id, mainContentLength: record.mainContent ? record.mainContent.length : 0 });
     }
+    // 刷新分支已在上方处理，这里无需再 Object.assign 合并，避免覆盖分析字段
     if (updated) {
       await storage.set(key, visits);
       // 新增：访问记录写入后主动通知侧边栏刷新，显示“正在分析中”
@@ -172,11 +177,13 @@ export async function updateVisitAiResult(
     const key = `browsing_visits_${dayId}`; // 原 visits_${dayId}
     const visits: any[] = (await storage.get<any[]>(key)) || [];
     let updated = false;
+    // 在 updateVisitAiResult 分析完成时，写入 analyzeDuration 并移除 analyzingStartTime
     for (const v of visits) {
       if (v.id === id) {
         v.aiResult = aiResult;
         v.analyzeDuration = analyzeDuration;
-        if (aiServiceLabel) v.aiServiceLabel = aiServiceLabel; // 新增：写入 AI 服务名
+        if (aiServiceLabel) v.aiServiceLabel = aiServiceLabel;
+        if ('analyzingStartTime' in v) delete v.analyzingStartTime;
         updated = true;
         break;
       }
@@ -398,7 +405,7 @@ export async function analyzeVisitRecordById(msg: any) {
     return { ok: false, error: '未找到访问记录' };
   }
   if (visit.aiResult && visit.aiResult !== '' && visit.aiResult !== '正在进行 AI 分析') {
-    logger.info('ai_analyze_skipped', '已有分析结果，跳过: {0}', url);
+    logger.info('已有分析结果，跳过: {0}', url);
     return { ok: true, skipped: true, reason: 'already analyzed' };
   }
   await config.reload();

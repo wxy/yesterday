@@ -650,5 +650,21 @@
   "config_language_en": {
     "message": "English",
     "description": "从TS提取 (_): lib/config/configs.ts"
+  },
+  "popup_loading": {
+    "message": "加载中...",
+    "description": "从TS提取 (_): popup/popup.ts"
+  },
+  "popup_no_data": {
+    "message": "暂无数据",
+    "description": "从TS提取 (_): popup/popup.ts"
+  },
+  "popup_latest_analysis": {
+    "message": "最新分析",
+    "description": "从TS提取 (_): popup/popup.ts"
+  },
+  "popup_latest_important": {
+    "message": "最新重要提示",
+    "description": "从TS提取 (_): popup/popup.ts"
   }
 }
