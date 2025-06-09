@@ -96,24 +96,6 @@ export async function renderMergedView(root: HTMLElement, dayId: string, tab: 't
     return;
   }
   root.innerHTML = merged.map((item, idx) => {
-    // 今日标签下，若 url 在 openTabUrls 中则高亮
-    let cardClass = 'merged-card';
-    if (tab === 'today' && item.url && openTabUrls.includes(item.url.split('#')[0])) {
-      cardClass += ' merged-card-open';
-    }
-    // 检查标签页是否已关闭，若已关闭则加 tab-closed class（无论是否重要卡片）
-    if (tab === 'today' && item.url && !openTabUrls.includes(item.url.split('#')[0])) {
-      cardClass += ' tab-closed';
-    }
-    const visitTime = item.visitStartTime ? new Date(item.visitStartTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
-    const titleLine = `<div class='merged-card-title-line'>
-      <div class='merged-card-title'>${item.title || ''}</div>
-      <div class='merged-card-time'>${visitTime}</div>
-    </div>`;
-    const urlLine = `<div class='merged-card-url-line'>
-      <a href='${item.url || ''}' target='_blank' class='merged-card-url'>${item.url || ''}</a>
-      <!-- 分析用时不再显示在 URL 行 -->
-    </div>`;
     let aiContent = '';
     let durationStr = '';
     let isStructured = false;
@@ -131,13 +113,32 @@ export async function renderMergedView(root: HTMLElement, dayId: string, tab: 't
       isStructured = true;
     }
     // 变量声明顺序修正，提前声明 isImportant、entryId、collapsed
+    const isImportant = (jsonObj && jsonObj.important === true) || (item.aiResult && typeof item.aiResult === 'object' && item.aiResult.important === true);
     const collapsed = idx > 0;
     const entryId = `merged-entry-${idx}`;
-    const isImportant = (jsonObj && jsonObj.important === true) || (item.aiResult && typeof item.aiResult === 'object' && item.aiResult.important === true);
-    // 判断分析中（不依赖硬编码字符串，且有 visitStartTime 且无 analyzeDuration）
-    const isAnalyzing = (!item.analyzeDuration && (item.analyzingStartTime || item.visitStartTime));
-    // AI服务标签
+    // 卡片样式
+    let cardClass = 'merged-card';
+    if (tab === 'today' && item.url && openTabUrls.includes(item.url.split('#')[0])) {
+      cardClass += ' merged-card-open';
+    }
+    if (tab === 'today' && item.url && !openTabUrls.includes(item.url.split('#')[0])) {
+      cardClass += ' tab-closed';
+    }
+    // 重点卡片样式，始终添加 ai-important-card
+    if (isImportant) {
+      cardClass += ' ai-important-card';
+    }
+    const visitTime = item.visitStartTime ? new Date(item.visitStartTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+    const titleLine = `<div class='merged-card-title-line'>
+      <div class='merged-card-title'>${item.title || ''}</div>
+      <div class='merged-card-time'>${visitTime}</div>
+    </div>`;
+    const urlLine = `<div class='merged-card-url-line'>
+      <a href='${item.url || ''}' target='_blank' class='merged-card-url'>${item.url || ''}</a>
+      <!-- 分析用时不再显示在 URL 行 -->
+    </div>`;
     let aiLabelHtml = '';
+    // AI服务标签
     if (item.aiServiceLabel) {
       aiLabelHtml = `<span class='merged-card-ai-label'>🤖 ${item.aiServiceLabel}</span>`;
     }
@@ -148,6 +149,8 @@ export async function renderMergedView(root: HTMLElement, dayId: string, tab: 't
     }
     // 分析用时标签
     let analyzeDurationLabel = '';
+    // 判断分析中（不依赖硬编码字符串，且有 visitStartTime 且无 analyzeDuration）
+    const isAnalyzing = (!item.analyzeDuration && (item.analyzingStartTime || item.visitStartTime));
     if (isAnalyzing) {
       const durationId = `merged-analyzing-duration-${idx}`;
       analyzeDurationLabel = `<span class='merged-card-analyze-duration' id='${durationId}'>⌛️0${_('sidebar_card_seconds_short', 's')}</span>`;

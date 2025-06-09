@@ -4,7 +4,7 @@ import { storage } from '../lib/storage/index.js';
 import { i18n, _ } from '../lib/i18n/i18n.js';
 import { shouldAnalyzeUrl } from '../lib/utils/url-utils.js';
 import { config } from '../lib/config/index.js';
-import { renderMergedView, updateOpenTabHighlight, mergeVisitsAndAnalysis, startAnalyzingTimer } from './merged-view.js';
+import { renderMergedView, updateOpenTabHighlight, mergeVisitsAndAnalysis } from './merged-view.js';
 import { renderInsightReport } from './insight-report.js'; 
 
 const logger = new Logger('Sidebar');
