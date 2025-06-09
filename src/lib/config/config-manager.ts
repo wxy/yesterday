@@ -2,7 +2,7 @@ import { Logger } from '../logger/logger.js';
 import { ChromeStorageAdapter } from '../storage/adapters/chrome-storage.js';
 import { ConfigUI, ExtractConfigValues } from './config-types.js';
 import { ConfigUIRenderer } from './config-ui-renderer.js';
-import { AIManager } from '../artificial-intelligence/ai-manager.js';
+import { AIManager } from '../ai/ai-manager.js';
 import { messenger } from '../messaging/messenger.js';
 
 /**

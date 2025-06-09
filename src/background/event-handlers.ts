@@ -22,7 +22,7 @@ import {
   analyzeVisitRecordById
 } from './visit-ai.js';
 
-import { AIManager } from '../lib/artificial-intelligence/ai-manager.js';
+import { AIManager } from '../lib/ai/ai-manager.js';
 import { Logger } from '../lib/logger/logger.js';
 import { _, _Error } from '../lib/i18n/i18n.js';
 

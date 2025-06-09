@@ -32,7 +32,7 @@ async function initializeOptionsPage() {
           let targetLang = latest.language;
           if (!targetLang || targetLang === 'auto') {
             // 跟随浏览器
-            targetLang = (navigator.language || 'en').replace('-', '_');
+            targetLang = i18n.getAutoLanguage();
           }
           await i18n.changeLanguage(targetLang);
           await i18n.apply();

@@ -14,7 +14,7 @@ import { config } from '../lib/config/index.js';
 import messageBus, { setupMessageHandlers } from '../lib/messaging/index.js';
 import { messenger } from '../lib/messaging/messenger.js';
 import { registerBackgroundEventHandlers } from './event-handlers.js';
-import { AIManager } from '../lib/artificial-intelligence/ai-manager.js';
+import { AIManager } from '../lib/ai/ai-manager.js';
 
 let aiServiceAvailable = true;
 let aiServiceStatus: Record<string, boolean> = {};

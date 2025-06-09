@@ -233,3 +233,27 @@ messenger.on('AI_SERVICE_UNAVAILABLE', (msg) => {
   aiWarn.textContent = text;
   // 可选：禁用相关按钮/入口
 });
+
+// 监听页面可见性变化，恢复时自动切换到“今日”tab并刷新卡片
+let sidebarInitialized = false;
+document.addEventListener('DOMContentLoaded', () => {
+  sidebarInitialized = true;
+});
+if (typeof document !== 'undefined' && typeof window !== 'undefined') {
+  let firstVisible = true;
+  document.addEventListener('visibilitychange', async () => {
+    if (document.visibilityState === 'visible') {
+      if (!sidebarInitialized) return; // 只在初始化后处理
+      if (firstVisible) {
+        firstVisible = false;
+        return; // 首次 visible 不处理，避免和 DOMContentLoaded 重复
+      }
+      // 切换到“今日”tab并刷新卡片（只切换tab和卡片，不刷新洞察报告）
+      const root = document.getElementById('sidebar-root');
+      if (root) {
+        const tabToday = document.getElementById('tab-today');
+        if (tabToday && currentTab !== 'today') tabToday.click();
+      }
+    }
+  });
+}

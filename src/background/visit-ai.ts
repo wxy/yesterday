@@ -5,7 +5,7 @@ import { Logger } from '../lib/logger/logger.js';
 import { shouldAnalyzeUrl } from '../lib/utils/url-utils.js';
 import { config } from '../lib/config/index.js';
 import { messenger } from '../lib/messaging/messenger.js';
-import { AIManager } from '../lib/artificial-intelligence/ai-manager.js';
+import { AIManager } from '../lib/ai/ai-manager.js';
 import { crossDayIdleThresholdMs, globalConfig } from './background.js';
 const logger = new Logger('visit-ai');
 
