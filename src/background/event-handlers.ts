@@ -19,7 +19,9 @@ import {
   getSimpleReport,
   generateSimpleReport,
   handlePageVisitAndMaybeAnalyze,
-  analyzeVisitRecordById
+  analyzeVisitRecordById,
+  getReportStatus, // 直接引入
+  queueGenerateSimpleReport // 新增导入
 } from './visit-ai.js';
 
 import { AIManager } from '../lib/ai/ai-manager.js';
@@ -62,6 +64,12 @@ function handleMessengerClearIconStatus() {
   return { ok: true };
 }
 
+function handleMessengerGetReportStatus(msg: any) {
+  const dayId = msg.payload?.dayId;
+  if (!dayId) return { status: 'none' };
+  return getReportStatus(dayId);
+}
+
 // ====== 统一 glue 层方法注释与参数说明 ======
 
 /**
@@ -89,7 +97,8 @@ async function handleMessengerGenerateSummaryReport(msg: any) {
   const dayId = msg.payload?.dayId;
   const force = !!msg.payload?.force;
   if (!dayId) return { summary: '' };
-  const report = await generateSimpleReport(dayId, force);
+  // 改为队列化，支持结构化状态反馈
+  const report = await queueGenerateSimpleReport(dayId, force);
   return report || { summary: '' };
 }
 
@@ -121,6 +130,7 @@ export function registerBackgroundEventHandlers() {
   messenger.on('CLEAR_ICON_STATUS', handleMessengerClearIconStatus);
   messenger.on('GET_SUMMARY_REPORT', handleMessengerGetSummaryReport);
   messenger.on('GENERATE_SUMMARY_REPORT', handleMessengerGenerateSummaryReport);
+  messenger.on('GET_REPORT_STATUS', handleMessengerGetReportStatus); // 新增
   messenger.on('SCROLL_TO_VISIT', handleNoop); // 兜底
   messenger.on('SIDE_PANEL_UPDATE', handleNoop); // 兜底
   messenger.on('CHECK_AI_SERVICES', handleMessengerCheckAiServices);

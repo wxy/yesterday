@@ -317,7 +317,8 @@ export async function generateSimpleReport(dayId: string, force = false) {
       if (aiResult.summaries && Array.isArray(aiResult.summaries)) {
         summary = aiResult.summaries.map((s: any) => s.summary).join('\n');
       }
-      suggestions = aiResult.suggestions || [];
+      suggestions = parseSuggestions(aiResult.suggestions);
+      logger.info('[日报AI内容]', { dayId, summary, suggestions });
     }
   } catch (err) {
     logger.error('生成简化洞察报告失败', err);
@@ -365,7 +366,7 @@ export async function handleCrossDayCleanup() {
     }
   }
   // 3. 对昨日数据进行分析，生成洞察日报
-  await generateSimpleReport(yesterdayId, true);
+  await queueGenerateSimpleReport(yesterdayId, true);
   // 4. 通知侧边栏刷新（如果已打开）
   if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
     chrome.runtime.sendMessage({ type: 'SIDE_PANEL_UPDATE' });
@@ -515,4 +516,211 @@ export async function analyzeVisitRecordById(msg: any) {
   } catch (err) {
     logger.error('[AI分析任务异常]', err);
   }
+}
+
+// ========== 日报（洞察）生成队列与状态流转 ==========
+
+// 日报生成任务队列
+const reportQueue: Array<{
+  dayId: string;
+  force: boolean;
+  resolve: (v: any) => void;
+  reject: (e: any) => void;
+  progressCb?: (status: any) => void;
+}> = [];
+let reportQueueRunning = false;
+
+// 日报状态映射：{ [dayId]: { status, startTime, duration, aiServiceLabel, errorMsg } }
+const reportStatusMap: Record<string, {
+  status: 'none' | 'pending' | 'running' | 'done' | 'failed',
+  startTime?: number,
+  duration?: number,
+  aiServiceLabel?: string,
+  errorMsg?: string
+}> = {};
+
+// 队列调度器
+async function runReportQueue() {
+  if (reportQueueRunning) return;
+  reportQueueRunning = true;
+  while (reportQueue.length > 0) {
+    const task = reportQueue.shift();
+    if (!task) continue;
+    const { dayId, force, resolve, reject, progressCb } = task;
+    logger.info('[日报生成出队]', { dayId, force, queueLength: reportQueue.length });
+    // 标记 pending
+    reportStatusMap[dayId] = { status: 'pending', startTime: Date.now() };
+    progressCb && progressCb({ ...reportStatusMap[dayId] });
+    try {
+      // 标记 running
+      // aiServiceLabel 需在 generateSimpleReportWithStatus running 阶段写入
+      // 但先写 startTime
+      reportStatusMap[dayId] = { status: 'running', startTime: reportStatusMap[dayId].startTime };
+      progressCb && progressCb({ ...reportStatusMap[dayId] });
+      // 调用生成逻辑，传递进度回调
+      const result = await generateSimpleReportWithStatus(dayId, force, (progress) => {
+        // 进度回调：可扩展
+        // running 阶段写入 aiServiceLabel
+        if (progress.status === 'running' && progress.aiServiceLabel) {
+          reportStatusMap[dayId] = {
+            ...reportStatusMap[dayId],
+            status: 'running',
+            aiServiceLabel: progress.aiServiceLabel,
+            startTime: reportStatusMap[dayId].startTime || Date.now()
+          };
+        } else if (progress.status === 'pending') {
+          reportStatusMap[dayId] = {
+            ...reportStatusMap[dayId],
+            status: 'pending',
+            startTime: reportStatusMap[dayId].startTime || Date.now()
+          };
+        }
+        progressCb && progressCb({ ...reportStatusMap[dayId], ...progress });
+      });
+      // 标记 done
+      reportStatusMap[dayId] = {
+        status: 'done',
+        startTime: reportStatusMap[dayId].startTime,
+        duration: result.report?.duration,
+        aiServiceLabel: result.report?.aiServiceLabel
+      };
+      progressCb && progressCb({ ...reportStatusMap[dayId] });
+      logger.info('[日报生成完成]', { dayId, duration: result.report?.duration, aiServiceLabel: result.report?.aiServiceLabel });
+      resolve(result);
+    } catch (err: any) {
+      reportStatusMap[dayId] = {
+        status: 'failed',
+        startTime: reportStatusMap[dayId].startTime,
+        errorMsg: err && err.message ? err.message : String(err)
+      };
+      progressCb && progressCb({ ...reportStatusMap[dayId] });
+      logger.error('[日报生成失败]', { dayId, error: err && err.message ? err.message : String(err) });
+      reject(err);
+    }
+  }
+  reportQueueRunning = false;
+}
+
+// 队列化生成日报（支持进度反馈）
+export function queueGenerateSimpleReport(dayId: string, force = false, progressCb?: (status: any) => void) {
+  logger.info('[日报生成入队]', { dayId, force, queueLength: reportQueue.length + 1 });
+  return new Promise((resolve, reject) => {
+    reportQueue.push({ dayId, force, resolve, reject, progressCb });
+    runReportQueue();
+  });
+}
+
+// 支持进度反馈的日报生成
+async function generateSimpleReportWithStatus(dayId: string, force = false, progressCb?: (progress: any) => void) {
+  // 进度：已排队
+  progressCb && progressCb({ status: 'pending' });
+  // ...调用原 generateSimpleReport 逻辑...
+  const key = `browsing_summary_${dayId}`;
+  if (!force) {
+    const cached = await storage.get<any>(key);
+    if (cached && cached.report) return { dayId, report: cached.report };
+  }
+  // 获取访问记录
+  const visits = await getVisitsByDay(dayId);
+  // 统计部分
+  const total = visits.length;
+  const domains = Array.from(new Set(visits.map(v => {
+    try { return new URL(v.url).hostname; } catch { return ''; }
+  }).filter(Boolean)));
+  const keywords = Array.from(new Set(visits.flatMap(v => (v.title || '').split(/\s|,|，|。|\.|;|；/).filter(Boolean))));
+  const totalDuration = visits.reduce((sum, v) => sum + (v.analyzeDuration || 0), 0);
+  const stats = { total, totalDuration, domains, keywords };
+  let summary = '';
+  let suggestions: string[] = [];
+  let aiServiceLabel = 'AI';
+  let duration = 0;
+  let errorMsg = '';
+  try {
+    const aiService = await AIManager.instance.getAvailableService();
+    let requestTimeout = 20000;
+    try {
+      const allConfig = await config.getAll();
+      if (allConfig && allConfig['requestTimeout']) requestTimeout = allConfig['requestTimeout'];
+      // 读取 AI 配置，获取服务名
+      const aiConfig = allConfig && typeof allConfig['aiServiceConfig'] === 'object' ? allConfig['aiServiceConfig'] as { serviceId?: string } : { serviceId: 'ollama' };
+      const labelMap: Record<string, string> = {
+        'ollama': 'Ollama 本地',
+        'chrome-ai': 'Chrome 内置 AI',
+        'openai': 'OpenAI',
+        'other': '其它',
+      };
+      aiServiceLabel = aiConfig && aiConfig.serviceId ? (labelMap[aiConfig.serviceId] || aiConfig.serviceId || 'AI') : 'AI';
+    } catch {}
+    if (aiService && aiService.generateDailyReport) {
+      const pageSummaries = visits.map(v => ({
+        summary: v.title || '',
+        highlights: [],
+        important: false,
+        mainContent: v.mainContent || ''
+      }));
+      const t0 = Date.now();
+      // 进度：AI 服务已调用
+      progressCb && progressCb({ status: 'running', aiServiceLabel });
+      const aiResult = await aiService.generateDailyReport(dayId, pageSummaries, { timeout: requestTimeout });
+      duration = Date.now() - t0;
+      if (aiResult.summaries && Array.isArray(aiResult.summaries)) {
+        summary = aiResult.summaries.map((s: any) => s.summary).join('\n');
+      }
+      suggestions = parseSuggestions(aiResult.suggestions);
+      logger.info('[日报AI内容]', { dayId, summary, suggestions });
+    } else {
+      throw new Error('AI服务不支持 generateDailyReport 接口');
+    }
+  } catch (err: any) {
+    errorMsg = err && err.message ? err.message : String(err);
+    throw new Error(errorMsg);
+  }
+  // 新增：写入 aiServiceLabel 和 duration 字段
+  const report = { stats, summary, suggestions, aiServiceLabel, duration };
+  const data = { dayId, report };
+  await storage.set(key, data);
+  logger.info(`[简化报告] 已生成并缓存 ${dayId} 的报告`, data);
+  // 新增：生成后主动通知侧边栏刷新洞察卡片
+  if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+    chrome.runtime.sendMessage({ type: 'SIDE_PANEL_UPDATE', payload: { updateType: 'ai' } });
+  }
+  return data;
+}
+
+// 获取日报生成状态（供前端轮询）
+export function getReportStatus(dayId: string) {
+  return reportStatusMap[dayId] || { status: 'none' };
+}
+
+// 兼容 AI suggestions 字段为 string/object/object[]/json 字符串的情况，始终返回 string[]
+function parseSuggestions(suggestionsRaw: any): string[] {
+  let suggestions = suggestionsRaw;
+  if (Array.isArray(suggestions) && suggestions.length === 1 && typeof suggestions[0] === 'string') {
+    try {
+      const parsed = JSON.parse(suggestions[0]);
+      if (Array.isArray(parsed)) {
+        suggestions = parsed;
+      } else if (typeof parsed === 'object' && parsed.summary) {
+        suggestions = [parsed.summary];
+      } else if (typeof parsed === 'object') {
+        suggestions = Object.values(parsed).map(String);
+      }
+    } catch {}
+  } else if (!Array.isArray(suggestions) && typeof suggestions === 'string') {
+    try {
+      const parsed = JSON.parse(suggestions);
+      if (Array.isArray(parsed)) {
+        suggestions = parsed;
+      } else if (typeof parsed === 'object' && parsed.summary) {
+        suggestions = [parsed.summary];
+      } else if (typeof parsed === 'object') {
+        suggestions = Object.values(parsed).map(String);
+      }
+    } catch {}
+  } else if (Array.isArray(suggestions) && suggestions.length && typeof (suggestions[0] as any) === 'object') {
+    // 兼容 suggestions 为对象数组
+    suggestions = (suggestions as any[]).map(s => typeof s === 'object' && s.summary ? s.summary : JSON.stringify(s));
+  }
+  if (!Array.isArray(suggestions)) return [];
+  return suggestions.map(String);
 }
