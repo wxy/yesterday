@@ -31,11 +31,22 @@ function renderSidebarTabs(root: HTMLElement) {
     <div id='insight-report-box'></div>
     <div id='merged-view-box'></div>
   `;
-  // 2. 用 DOM API 赋值国际化文本
+  // 2. 用 DOM API 赋值国际化文本，并加日期
   const tabToday = document.getElementById('tab-today');
   const tabYesterday = document.getElementById('tab-yesterday');
-  if (tabToday) tabToday.textContent = _('sidebar_tab_today', '今日');
-  if (tabYesterday) tabYesterday.textContent = _('sidebar_tab_yesterday', '昨日');
+  function getShortDate(tab: 'today' | 'yesterday') {
+    const now = new Date();
+    let dateObj;
+    if (tab === 'today') {
+      dateObj = now;
+    } else {
+      dateObj = new Date(now.getTime() - 86400000);
+    }
+    // 返回 MM-DD 格式
+    return `${dateObj.getMonth() + 1}-${dateObj.getDate()}`;
+  }
+  if (tabToday) tabToday.textContent = `${_('sidebar_tab_today', '今日')} (${getShortDate('today')})`;
+  if (tabYesterday) tabYesterday.textContent = `${_('sidebar_tab_yesterday', '昨日')} (${getShortDate('yesterday')})`;
   const insightBox = document.getElementById('insight-report-box');
   const mergedBox = document.getElementById('merged-view-box');
   function setActiveTab(tab: 'today' | 'yesterday') {
@@ -111,7 +122,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // 打开选项页按钮
   const openOptionsLink = document.getElementById('openOptions') as HTMLAnchorElement;
   if (openOptionsLink) {
-    const openOptionsLabel = _('sidebar_open_options', '打开选项页');
+    const openOptionsLabel = _('sidebar_open_options', '选项');
     openOptionsLink.textContent = openOptionsLabel;
     openOptionsLink.addEventListener('click', (e) => {
       e.preventDefault();

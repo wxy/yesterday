@@ -396,11 +396,11 @@
     "description": "从HTML提取: sidebar/sidebar.html"
   },
   "sidebar_help": {
-    "message": "help",
+    "message": "Help",
     "description": "从HTML提取: sidebar/sidebar.html"
   },
   "sidebar_open_options": {
-    "message": "",
+    "message": "Options",
     "description": "从HTML提取: sidebar/sidebar.html",
     "_untranslated": true
   },
