@@ -307,10 +307,6 @@
     "message": "正在生成...",
     "description": "从TS提取 (_): sidebar/sidebar.ts"
   },
-  "sidebar_insight_empty": {
-    "message": "暂无洞察",
-    "description": "从TS提取 (_): sidebar/sidebar.ts"
-  },
   "sidebar_insight_stats_total": {
     "message": "访问总数",
     "description": "从TS提取 (_): sidebar/sidebar.ts"
@@ -347,10 +343,6 @@
     "message": "分钟",
     "description": "从TS提取 (_): sidebar/sidebar.ts"
   },
-  "sidebar_insight_regenerate": {
-    "message": "重新生成",
-    "description": "从TS提取 (_): sidebar/sidebar.ts"
-  },
   "sidebar_card_duration": {
     "message": "已用时",
     "description": "从TS提取 (_): sidebar/sidebar.ts"
@@ -368,7 +360,7 @@
     "description": "从TS提取 (_): sidebar/sidebar.ts"
   },
   "sidebar_card_ai_empty": {
-    "message": "无分析结果",
+    "message": "未分析",
     "description": "从TS提取 (_): sidebar/sidebar.ts"
   },
   "sidebar_card_seconds_short": {
@@ -400,7 +392,7 @@
     "description": "从HTML提取: sidebar/sidebar.html"
   },
   "sidebar_open_options": {
-    "message": "打开选项页",
+    "message": "选项",
     "description": "从HTML提取: sidebar/sidebar.html"
   },
   "popup_title": {
@@ -666,5 +658,9 @@
   "popup_latest_important": {
     "message": "最新重要提示",
     "description": "从TS提取 (_): popup/popup.ts"
+  },
+  "sidebar_card_ai_pending": {
+    "message": "等待分析",
+    "description": "从TS提取 (_): sidebar/merged-view.ts"
   }
 }

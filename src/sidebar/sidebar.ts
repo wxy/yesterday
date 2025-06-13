@@ -183,6 +183,9 @@ messenger.on('SIDE_PANEL_UPDATE', (msg) => {
     if (mergedBox) renderMergedView(mergedBox, dayId, currentTab);
   } else if (updateType === 'visit' && mergedBox) {
     renderMergedView(mergedBox, dayId, currentTab);
+  } else if (updateType === 'crossDay') {
+    // 跨日：强制刷新tab标签日期和内容
+    renderSidebarTabs(document.getElementById('sidebar-root')!);
   } else {
     if (insightBox) renderInsightReport(insightBox, dayId, currentTab);
     if (mergedBox) renderMergedView(mergedBox, dayId, currentTab);

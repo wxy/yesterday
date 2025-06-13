@@ -3,6 +3,7 @@ import { Logger } from '../logger/logger.js';
 import { _, i18n } from '../i18n/i18n.js';
 import { OllamaService } from './ollama/ollama-service.js';
 import { ChromeAIService } from './chrome-ai/chrome-ai-service.js';
+import { messenger } from '../messaging/messenger.js';
 
 // AI 服务统一注册与调度
 export class AIManager {
@@ -105,5 +106,20 @@ export class AIManager {
   static async registerAllBuiltInServices() {
     await AIManager.instance.register(new OllamaService());
     await AIManager.instance.register(new ChromeAIService());
+  }
+
+  static async checkAndNotifyStatus() {
+    const result = await this.checkAllLocalServicesAvailable();
+    if (!result.available) {
+      if (typeof chrome !== 'undefined' && chrome.action && chrome.runtime) {
+        chrome.action.setIcon({ path: {
+          16: '../assets/icons/logo-warn-16.png',
+          48: '../assets/icons/logo-warn-48.png',
+          128: '../assets/icons/logo-warn.png',
+        }});
+      }
+      await messenger.sendWithoutResponse('AI_SERVICE_UNAVAILABLE', { details: result.details }).catch(() => {});
+    }
+    return result;
   }
 }

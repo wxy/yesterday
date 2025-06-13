@@ -6,7 +6,6 @@ import { shouldAnalyzeUrl } from '../lib/utils/url-utils.js';
 import { config } from '../lib/config/index.js';
 import { messenger } from '../lib/messaging/messenger.js';
 import { AIManager } from '../lib/ai/ai-manager.js';
-import { crossDayIdleThresholdMs, globalConfig } from './background.js';
 import { taskQueue, AnalysisTaskStatus } from '../lib/ai/task-queue.js';
 const logger = new Logger('visit-ai');
 
@@ -91,6 +90,14 @@ export async function handlePageVisitRecord(data: any) {
     }
     // ====== 关键逻辑：判断 dayId ======
     const now = record.visitStartTime;
+    // 动态获取跨日阈值
+    let crossDayIdleThresholdMs = 6 * 60 * 60 * 1000;
+    try {
+      const allConfig = await config.getAll();
+      if (allConfig && typeof allConfig['crossDayIdleThreshold'] === 'number') {
+        crossDayIdleThresholdMs = allConfig['crossDayIdleThreshold'] * 60 * 60 * 1000;
+      }
+    } catch {}
     if (!lastActiveTime || now - lastActiveTime > crossDayIdleThresholdMs) {
       lastActiveTime = now;
     }
@@ -339,8 +346,8 @@ export async function generateSimpleReport(dayId: string, force = false) {
  * 处理跨日清理和日报生成
  * 1. 删除昨日之前的访问数据及分析
  * 2. 删除昨日之前的日报（洞察）
- * 3. 对昨日数据进行分析，生成洞察日报
- * 4. 通知侧边栏刷新（如果已打开）  
+ * 3. 对昨日数据进行分析，生成洞察日报（仅当有访问数据时才生成）
+ * 4. 通知侧边栏刷新（如果已打开），并强制刷新标签日期
  */
 export async function handleCrossDayCleanup() {
   const now = new Date();
@@ -365,11 +372,16 @@ export async function handleCrossDayCleanup() {
       await storage.remove(key);
     }
   }
-  // 3. 对昨日数据进行分析，生成洞察日报
-  await queueGenerateSimpleReport(yesterdayId, true);
-  // 4. 通知侧边栏刷新（如果已打开）
+  // 3. 对昨日数据进行分析，生成洞察日报（仅当有访问数据时才生成）
+  const yesterdayVisits = await getVisitsByDay(yesterdayId);
+  if (yesterdayVisits && yesterdayVisits.length > 0) {
+    await queueGenerateSimpleReport(yesterdayId, true);
+  } else {
+    logger.info(`[跨日清理] 昨日无访问数据，不生成日报`, { yesterdayId });
+  }
+  // 4. 通知侧边栏刷新（如果已打开），并强制刷新标签日期
   if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
-    chrome.runtime.sendMessage({ type: 'SIDE_PANEL_UPDATE' });
+    chrome.runtime.sendMessage({ type: 'SIDE_PANEL_UPDATE', payload: { updateType: 'crossDay' } });
   }
 }
 

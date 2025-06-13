@@ -307,10 +307,6 @@
     "message": "Generating...",
     "description": "从TS提取 (_): sidebar/sidebar.ts"
   },
-  "sidebar_insight_empty": {
-    "message": "No yesterday's insights",
-    "description": "从TS提取 (_): sidebar/sidebar.ts"
-  },
   "sidebar_insight_stats_total": {
     "message": "Total visits",
     "description": "从TS提取 (_): sidebar/sidebar.ts"
@@ -347,10 +343,6 @@
     "message": "minute",
     "description": "从TS提取 (_): sidebar/sidebar.ts"
   },
-  "sidebar_insight_regenerate": {
-    "message": "Regenerate",
-    "description": "从TS提取 (_): sidebar/sidebar.ts"
-  },
   "sidebar_card_duration": {
     "message": "Time",
     "description": "从TS提取 (_): sidebar/sidebar.ts"
@@ -369,7 +361,8 @@
   },
   "sidebar_card_ai_empty": {
     "message": "No analysis results",
-    "description": "从TS提取 (_): sidebar/sidebar.ts"
+    "description": "从TS提取 (_): sidebar/sidebar.ts",
+    "_untranslated": true
   },
   "sidebar_card_seconds_short": {
     "message": "s",
@@ -667,5 +660,10 @@
   "popup_latest_important": {
     "message": "Latest important tips",
     "description": "从TS提取 (_): popup/popup.ts"
+  },
+  "sidebar_card_ai_pending": {
+    "message": "等待分析",
+    "description": "从TS提取 (_): sidebar/merged-view.ts",
+    "_untranslated": true
   }
 }
