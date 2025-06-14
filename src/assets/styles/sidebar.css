@@ -218,9 +218,10 @@ body {
 
 /* AI 标签样式 */
 .merged-card-ai-label, .insight-ai-label {
-  background: #008F00;
-  color: #fff;
+  background: #e6fbe6;
+  color: #008f00;
   border-radius: 4px;
+  border: 1px solid #b2e5b2;
   padding: 2px 10px;
   font-size: 12px;
   margin: 0 6px 0 0;

@@ -497,26 +497,10 @@ export async function analyzeVisitRecordById(msg: any) {
     let aiResult = '';
     let analyzeDuration = 0;
     let aiServiceLabel = 'AI';
-    let prompt = '';
     try {
       const aiService = await AIManager.instance.getAvailableService();
       if (!aiService) throw new Error('无可用AI服务');
       const allConfig = await config.getAll();
-      let lang = 'en';
-      if (allConfig && allConfig.language && allConfig.language !== 'auto') {
-        lang = allConfig.language;
-      }
-      // 获取系统提示词（如 insight_summary）
-      const sysPrompt = await PromptManager.getPromptById('insight_summary', lang);
-      if (sysPrompt && sysPrompt.content && sysPrompt.content[lang]) {
-        prompt = sysPrompt.content[lang];
-        logger.info('[AI分析] 使用系统提示词', { id: sysPrompt.id, lang, prompt });
-      } else {
-        logger.warn('[AI分析] 未找到指定语言的系统提示词，回退英文', { lang });
-        const fallbackPrompt = await PromptManager.getPromptById('insight_summary', 'en');
-        prompt = fallbackPrompt && fallbackPrompt.content && fallbackPrompt.content['en'] ? fallbackPrompt.content['en'] : '';
-      }
-      // 记录 AI 服务名
       if (allConfig && allConfig['aiServiceConfig']) {
         const labelMap: Record<string, string> = {
           'ollama': 'Ollama 本地',
@@ -527,12 +511,11 @@ export async function analyzeVisitRecordById(msg: any) {
         const aiConfig = allConfig['aiServiceConfig'];
         aiServiceLabel = labelMap[aiConfig.serviceId] || aiConfig.serviceId || 'AI';
       }
-      // 统一调用 summarizePage，prompt 通过上下文传递
+      // 只传 url, content，prompt 由 AI 服务内部处理
       if (typeof aiService.summarizePage === 'function') {
-        // 只传 url, content，prompt 通过服务内部读取
         const summary = await aiService.summarizePage(msg.url, msg.content);
         aiResult = typeof summary === 'string' ? summary : (summary.summary || JSON.stringify(summary));
-        logger.info('[AI分析完成]', { url: msg.url, id: msg.id, lang, aiServiceLabel });
+        logger.info('[AI分析完成]', { url: msg.url, id: msg.id, aiServiceLabel });
       } else {
         throw new Error('AI服务不支持 summarizePage 接口');
       }
@@ -542,7 +525,6 @@ export async function analyzeVisitRecordById(msg: any) {
       aiResult = '[AI分析失败] ' + (e && e.message ? e.message : String(e));
       analyzeDuration = Date.now() - t0;
     }
-    // ====== 你的原有分析逻辑结束 ======
     await updateVisitAiResult(msg.url, msg.visitStartTime, aiResult, analyzeDuration, msg.id, aiServiceLabel);
   } catch (err) {
     logger.error('[AI分析任务异常]', err);

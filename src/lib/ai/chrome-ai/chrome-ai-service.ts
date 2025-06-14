@@ -86,26 +86,12 @@ export class ChromeAIService extends AIBaseService {
   }
 
   async summarizePage(url: string, content: string): Promise<PageAISummary> {
-    // 新版：自动读取系统提示词
+    // 新版：自动读取系统提示词，直接返回字符串
     let prompt = '';
     try {
-      let lang = 'en';
-      if (typeof chrome !== 'undefined' && chrome.storage) {
-        const config = await import('../../config/index.js');
-        const allConfig = await config.config.getAll();
-        if (allConfig && allConfig.language && allConfig.language !== 'auto') {
-          lang = allConfig.language;
-        }
-      }
-      const sysPrompt = await PromptManager.getPromptById('insight_summary', lang);
-      if (sysPrompt && sysPrompt.content && sysPrompt.content[lang]) {
-        prompt = sysPrompt.content[lang];
-        this.logger.info('[ChromeAI] 使用系统提示词', { id: sysPrompt.id, lang, prompt });
-      } else {
-        this.logger.warn('[ChromeAI] 未找到指定语言的系统提示词，回退英文', { lang });
-        const fallbackPrompt = await PromptManager.getPromptById('insight_summary', 'en');
-        prompt = fallbackPrompt && fallbackPrompt.content && fallbackPrompt.content['en'] ? fallbackPrompt.content['en'] : '';
-      }
+      // 直接用 PromptManager.getPromptById，自动按全局语言和 fallback
+      prompt = await PromptManager.getPromptById('insight_summary') || '';
+      this.logger.info('[ChromeAI] 使用系统提示词', { id: 'insight_summary', prompt });
     } catch (e) {
       this.logger.error('[ChromeAI] 获取系统提示词失败', e);
     }

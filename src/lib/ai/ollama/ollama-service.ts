@@ -130,30 +130,23 @@ export class OllamaService extends AIBaseService {
   async summarizePage(url: string, content: string): Promise<PageAISummary> {
     this.logger.info(_('ai_ollama_summarize', 'Ollama 正在总结页面: {0}', url));
     try {
-      // 1. 获取系统提示词（自动语言）
-      let sysPrompt = await PromptManager.getPromptById('insight_summary');
-      // 2. 获取用户提示词（自动语言）
-      let userPrompt = await PromptManager.getPromptById('user_custom_insight_summary');
-      // 3. 组合提示词（system + user）
-      let prompt = '';
-      if (sysPrompt && sysPrompt.content) {
-        const lang = Object.keys(sysPrompt.content)[0];
-        prompt = sysPrompt.content[lang];
-      }
-      if (userPrompt && userPrompt.content) {
-        const lang = Object.keys(userPrompt.content)[0];
-        prompt += '\n\n' + userPrompt.content[lang];
-      }
-      this.logger.info('[Ollama] 使用系统+用户提示词', {
-        sysPromptId: sysPrompt?.id, sysPrompt,
-        userPromptId: userPrompt?.id, userPrompt,
-        finalPrompt: prompt
+      // 1. 获取系统提示词（自动语言，直接为字符串）
+      let sysPromptText = await PromptManager.getPromptById('insight_summary');
+      // 2. 获取用户提示词（自动语言，直接为字符串）
+      let userPromptText = await PromptManager.getPromptById('user_custom_insight_summary');
+      // 3. 记录日志
+      this.logger.info('[Ollama] 使用系统+用户提示词（详细）', {
+        sysPromptId: 'insight_summary',
+        sysPromptText,
+        userPromptId: 'user_custom_insight_summary',
+        userPromptText
       });
-      const finalPrompt = `${prompt}\n\n网页内容：\n${content}`;
+      // 4. 组装消息
+      const finalUserPrompt = `${userPromptText || ''}\n\n网页内容：\n${content}`;
       const resp = await chatWithOllama({
         messages: [
-          { role: 'system', content: '你是一个网页内容分析助手。' },
-          { role: 'user', content: finalPrompt }
+          { role: 'system', content: sysPromptText || '' },
+          { role: 'user', content: finalUserPrompt }
         ]
       });
       const text = resp.choices?.[0]?.message?.content || '';

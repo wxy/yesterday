@@ -63,35 +63,39 @@ export class PromptManager {
     }
   }
 
-  // 获取当前语言，确保 i18n 已初始化，保证全局一致
+  // 获取当前语言，直接读取全局 i18n 状态并记录日志
   static async getCurrentLang(): Promise<string> {
-    //await i18n.init(); // 保证 messages.json 已加载
-    //return i18n.getCurrentLanguage();
-    return 'en';
+    const lang = i18n.getCurrentLanguage();
+    logger.info('[PromptManager] 当前生效语言', { lang });
+    return lang;
   }
 
   // 获取指定类型和语言的提示词，lang 可选
   static async getPrompts(type: 'system' | 'user', lang?: string): Promise<PromptEntry[]> {
     if (!lang) lang = await PromptManager.getCurrentLang();
+    logger.info('[PromptManager] 获取提示词', { type, lang });
     let all = (await PromptManager.storage.get(PROMPT_DB_KEY)) as PromptEntry[] || [];
     if (!all.length) {
+      logger.warn('[PromptManager] Prompt DB 为空，尝试重新加载');
       await PromptManager.loadAllPrompts();
       all = (await PromptManager.storage.get(PROMPT_DB_KEY)) as PromptEntry[] || [];
       if (!all.length) {
         logger.error('FATAL: Prompt DB is still empty after loadAllPrompts!');
       }
     }
-    return all.filter(e => e.type === type).map(e => {
+    const filtered = all.filter(e => e.type === type).map(e => {
       const content = e.content[lang!] || e.content['en'];
       if (!content) {
         logger.warn('Prompt missing content for lang', { id: e.id, lang });
       }
       return { ...e, content: { ...e.content, [lang!]: content } };
     });
+    logger.info('[PromptManager] 返回提示词数量', { type, lang, count: filtered.length });
+    return filtered;
   }
 
-  // 获取单条提示词，lang 可选
-  static async getPromptById(id: string, lang?: string): Promise<PromptEntry | null> {
+  // 获取单条提示词，lang 可选，直接返回字符串内容
+  static async getPromptById(id: string, lang?: string): Promise<string | null> {
     if (!lang) lang = await PromptManager.getCurrentLang();
     let all = (await PromptManager.storage.get(PROMPT_DB_KEY)) as PromptEntry[] || [];
     if (!all.length) {
@@ -106,8 +110,9 @@ export class PromptManager {
     const content = entry.content[lang!] || entry.content['en'];
     if (!content) {
       logger.warn('Prompt missing content for lang', { id, lang });
+      return null;
     }
-    return { ...entry, content: { ...entry.content, [lang!]: content } };
+    return content;
   }
 
   // 后续可扩展：添加/编辑/删除用户自定义提示词

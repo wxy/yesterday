@@ -1,7 +1,7 @@
 {
-  "name": "chrome-extension-scaffold",
+  "name": "yesterday",
   "version": "1.0.0",
-  "description": "Chrome扩展开发脚手架",
+  "description": "昨日",
   "type": "module",
   "scripts": {
     "build": "webpack --config webpack/webpack.prod.cjs",
