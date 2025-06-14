@@ -72,6 +72,31 @@ function clearAllAnalyzingTimers() {
 //   analyzingTimers.set(key, timer);
 // }
 
+function robustParseAiResult(raw: any): { obj: any, plain: string } {
+  let obj = raw;
+  let plain = '';
+  let depth = 0;
+  while (obj && typeof obj === 'object' && typeof obj.text === 'string' && depth < 3) {
+    try {
+      plain = obj.text;
+      obj = JSON.parse(obj.text);
+      depth++;
+    } catch {
+      break;
+    }
+  }
+  if (typeof obj === 'string' && obj.trim().startsWith('{')) {
+    try {
+      plain = obj;
+      obj = JSON.parse(obj);
+    } catch {}
+  }
+  if (!obj || typeof obj !== 'object') {
+    return { obj: null, plain: plain || (typeof raw === 'string' ? raw : '') };
+  }
+  return { obj, plain: '' };
+}
+
 export async function renderMergedView(root: HTMLElement, dayId: string, tab: 'today' | 'yesterday') {
   clearAllAnalyzingTimers(); // 渲染前清理所有分析中计时器，防止泄漏
   root.innerHTML = '<div class="text-muted" style="padding:16px;">'+_('sidebar_card_loading', '加载中...')+'</div>';
@@ -96,20 +121,9 @@ export async function renderMergedView(root: HTMLElement, dayId: string, tab: 't
   }
   root.innerHTML = merged.map((item, idx) => {
     let aiContent = '';
-    let isStructured = false;
     let rawText = item.aiResult;
-    let jsonObj: any = null;
-    if (rawText && typeof rawText === 'string' && rawText.trim().startsWith('{')) {
-      try {
-        jsonObj = JSON.parse(rawText);
-        isStructured = true;
-      } catch (e) {
-        console.error('[AI内容解析] JSON.parse 失败', { rawText, error: e });
-      }
-    } else if (rawText && typeof rawText === 'object') {
-      jsonObj = rawText;
-      isStructured = true;
-    }
+    const { obj: jsonObj, plain: fallbackPlain } = robustParseAiResult(rawText);
+    const isStructured = !!jsonObj;
     const isImportant = (jsonObj && jsonObj.important === true) || (item.aiResult && typeof item.aiResult === 'object' && item.aiResult.important === true);
     const collapsed = idx > 0;
     const entryId = `merged-entry-${idx}`;
@@ -202,16 +216,27 @@ export async function renderMergedView(root: HTMLElement, dayId: string, tab: 't
     if (status === 'pending' || status === 'running') {
       aiContent = statusLabel;
     } else if (status === 'done' && isStructured && jsonObj) {
-      aiContent = `<div class='ai-summary'>${jsonObj.summary || ''}</div>`;
-      if (jsonObj.highlights && Array.isArray(jsonObj.highlights) && jsonObj.highlights.length) {
-        aiContent += `<ul class='ai-highlights'>${jsonObj.highlights.map((h: string) => `<li>${h}</li>`).join('')}</ul>`;
-      }
-      if (jsonObj.specialConcerns && Array.isArray(jsonObj.specialConcerns) && jsonObj.specialConcerns.length) {
-        aiContent += `<div class='ai-special_concerns'>${_('sidebar_insight_special', '特别关注')}：${jsonObj.specialConcerns.map((c: string) => c).join('，')}</div>`;
-      }
-      if (isImportant) {
+      
+      if (jsonObj.important === true) {
         aiContent += `<div class='ai-important-flag'>⚠️ 该内容被标记为重要</div>`;
       }
+      // summary 独立渲染，不影响其它字段
+      if (jsonObj.summary) {
+        aiContent += `<div class='ai-summary'>${jsonObj.summary}</div>`;
+      }
+      // highlights 独立渲染
+      if (Array.isArray(jsonObj.highlights) && jsonObj.highlights.length) {
+        aiContent += `<ul class='ai-highlights'>${jsonObj.highlights.map((h: string) => `<li>${h}</li>`).join('')}</ul>`;
+      }
+      // specialConcerns 独立渲染，过滤空字符串
+      if (Array.isArray(jsonObj.specialConcerns)) {
+        const filtered = jsonObj.specialConcerns.filter((c: string) => c && c.trim());
+        if (filtered.length) {
+          aiContent += `<div class='ai-special-concerns'>特别关注：${filtered.join('，')}</div>`;
+        }
+      }
+    } else if (status === 'done' && fallbackPlain) {
+      aiContent = `<div class='ai-plain'>${fallbackPlain.replace(/\n/g, '<br>')}</div>`;
     } else if (status === 'done' && typeof rawText === 'string') {
       if (rawText && rawText !== '' && !rawText.startsWith(_('sidebar_card_ai_failed', 'AI 分析失败'))) {
         aiContent = `<div class='ai-plain'>${rawText.replace(/\n/g, '<br>')}</div>`;

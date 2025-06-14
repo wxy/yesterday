@@ -513,8 +513,14 @@ export async function analyzeVisitRecordById(msg: any) {
       }
       // 只传 url, content，prompt 由 AI 服务内部处理
       if (typeof aiService.summarizePage === 'function') {
-        const summary = await aiService.summarizePage(msg.url, msg.content);
-        aiResult = typeof summary === 'string' ? summary : (summary.summary || JSON.stringify(summary));
+        const aiSummaryResult = await aiService.summarizePage(msg.url, msg.content);
+        let aiResultToSave: any;
+        if (typeof aiSummaryResult === 'object') {
+          aiResultToSave = JSON.stringify(aiSummaryResult);
+        } else {
+          aiResultToSave = aiSummaryResult;
+        }
+        aiResult = aiResultToSave;
         logger.info('[AI分析完成]', { url: msg.url, id: msg.id, aiServiceLabel });
       } else {
         throw new Error('AI服务不支持 summarizePage 接口');

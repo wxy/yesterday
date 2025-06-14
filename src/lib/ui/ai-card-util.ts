@@ -11,53 +11,62 @@ export interface AiCardData {
   analyzingStartTime?: number; // 新增，结构化分析中时间戳
 }
 
+function robustParseAiResult(raw: any): { obj: any, plain: string } {
+  let obj = raw;
+  let plain = '';
+  // 递归解析 text 字段和 JSON 字符串
+  let depth = 0;
+  while (obj && typeof obj === 'object' && typeof obj.text === 'string' && depth < 3) {
+    try {
+      plain = obj.text;
+      obj = JSON.parse(obj.text);
+      depth++;
+    } catch {
+      break;
+    }
+  }
+  if (typeof obj === 'string' && obj.trim().startsWith('{')) {
+    try {
+      plain = obj;
+      obj = JSON.parse(obj);
+    } catch {}
+  }
+  // 只要不是对象就返回 null
+  if (!obj || typeof obj !== 'object') {
+    return { obj: null, plain: plain || (typeof raw === 'string' ? raw : '') };
+  }
+  return { obj, plain: '' };
+}
+
 export function renderAiCard(item: AiCardData, idx = 0): string {
   let aiContent = '';
   let durationStr = '';
-  let isStructured = false;
   let rawText = item.aiResult;
-  let jsonObj: any = null;
-  // 支持 aiResult 为结构化 JSON 或字符串
-  if (rawText && typeof rawText === 'string' && rawText.trim().startsWith('{')) {
-    try {
-      jsonObj = JSON.parse(rawText);
-      isStructured = true;
-    } catch (e) {
-      console.error('[AI内容解析] JSON.parse 失败', { rawText, error: e });
-    }
-  } else if (rawText && typeof rawText === 'object') {
-    jsonObj = rawText;
-    isStructured = true;
-  }
+  let { obj: jsonObj, plain: fallbackPlain } = robustParseAiResult(rawText);
+  // 调试日志：结构化解析结果
+  console.log('[AI卡片] robustParseAiResult', { rawText, jsonObj, fallbackPlain });
+  const isStructured = !!jsonObj;
   // 判断是否重要
   const isImportant = (jsonObj && jsonObj.important === true) || (item.aiResult && typeof item.aiResult === 'object' && item.aiResult.important === true);
-  if (isStructured && jsonObj) {
-    aiContent = `<div class='ai-summary'>${jsonObj.summary || ''}</div>`;
-    if (jsonObj.highlights && Array.isArray(jsonObj.highlights) && jsonObj.highlights.length) {
-      aiContent += `<ul class='ai-highlights'>${jsonObj.highlights.map((h: string) => `<li>${h}</li>`).join('')}</ul>`;
-    }
-    if (jsonObj.specialConcerns && Array.isArray(jsonObj.specialConcerns) && jsonObj.specialConcerns.length) {
-      aiContent += `<div class='ai-special-concerns'>特别关注：${jsonObj.specialConcerns.map((c: string) => c).join('，')}</div>`;
-    }
-    if (isImportant) {
-      aiContent += `<div class='ai-important-flag'>⚠️ 该内容被标记为重要</div>`;
-    }
-  }
   // 判断分析中（不依赖字符串，仅依赖结构化字段）
   const isAnalyzing = (!item.analyzeDuration && (item.analyzingStartTime || item.visitStartTime));
   if (isAnalyzing) {
     aiContent = `<span class='ai-analyzing'>正在进行 AI 分析</span>`;
   } else if (isStructured && jsonObj) {
-    aiContent = `<div class='ai-summary'>${jsonObj.summary || ''}</div>`;
-    if (jsonObj.highlights && Array.isArray(jsonObj.highlights) && jsonObj.highlights.length) {
-      aiContent += `<ul class='ai-highlights'>${jsonObj.highlights.map((h: string) => `<li>${h}</li>`).join('')}</ul>`;
+    if (jsonObj.important === true) {
+      aiContent += `<div class='ai-important-flag'>⚠️ 该内容被标记为重要</div>`;
+    }
+    aiContent += `<div class='ai-summary'>${jsonObj.summary || ''}</div>`;
+    const highlightsArr = Array.isArray(jsonObj.highlights) && jsonObj.highlights.length ? jsonObj.highlights : (Array.isArray(jsonObj.suggestions) ? jsonObj.suggestions : []);
+    if (highlightsArr && highlightsArr.length) {
+      aiContent += `<ul class='ai-highlights'>${highlightsArr.map((h: string) => `<li>${h}</li>`).join('')}</ul>`;
     }
     if (jsonObj.specialConcerns && Array.isArray(jsonObj.specialConcerns) && jsonObj.specialConcerns.length) {
       aiContent += `<div class='ai-special-concerns'>特别关注：${jsonObj.specialConcerns.map((c: string) => c).join('，')}</div>`;
     }
-    if (isImportant) {
-      aiContent += `<div class='ai-important-flag'>⚠️ 该内容被标记为重要</div>`;
-    }
+  } else if (fallbackPlain) {
+    // 兜底展示原始内容，不再做正则匹配 summary/highlights
+    aiContent = `<div class='ai-plain'>${fallbackPlain.replace(/\n/g, '<br>')}</div>`;
   } else if (typeof rawText === 'string') {
     if (rawText && rawText !== '' && !rawText.startsWith('AI 分析失败')) {
       aiContent = `<div class='ai-plain'>${rawText.replace(/\n/g, '<br>')}</div>`;

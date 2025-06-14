@@ -66,14 +66,12 @@ export class PromptManager {
   // 获取当前语言，直接读取全局 i18n 状态并记录日志
   static async getCurrentLang(): Promise<string> {
     const lang = i18n.getCurrentLanguage();
-    logger.info('[PromptManager] 当前生效语言', { lang });
     return lang;
   }
 
   // 获取指定类型和语言的提示词，lang 可选
   static async getPrompts(type: 'system' | 'user', lang?: string): Promise<PromptEntry[]> {
     if (!lang) lang = await PromptManager.getCurrentLang();
-    logger.info('[PromptManager] 获取提示词', { type, lang });
     let all = (await PromptManager.storage.get(PROMPT_DB_KEY)) as PromptEntry[] || [];
     if (!all.length) {
       logger.warn('[PromptManager] Prompt DB 为空，尝试重新加载');

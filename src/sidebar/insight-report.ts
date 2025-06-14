@@ -105,7 +105,7 @@ export async function renderInsightReport(box: HTMLElement, dayId: string, tab: 
         if (contentArea) contentArea.innerHTML = '暂无洞察';
       } else {
         let html = '';
-        const { stats, summary, suggestions } = report;
+        const { stats, summary, suggestions, highlights, specialConcerns, important } = report || {};
         if (stats) {
           const statsTotalLabel = _('sidebar_insight_stats_total', '访问总数');
           const statsDurationLabel = _('sidebar_insight_stats_duration', '总时长');
@@ -119,11 +119,19 @@ export async function renderInsightReport(box: HTMLElement, dayId: string, tab: 
             <div class='insight-stats-row-label'>${statsKeywordsLabel}</div><div class='insight-stats-row-value'>${stats.keywords && stats.keywords.length ? stats.keywords.slice(0, 10).join('，') : '-'}</div>
           </div>`;
         }
-        if (summary) {
-          html += `<div>${summary}</div>`;
+        if (typeof important === 'boolean' && important) {
+          html += `<div class='insight-important-flag'>⚠️ ${_('sidebar_insight_important','该内容被标记为重要')}</div>`;
         }
-        if (suggestions && suggestions.length) {
-          html += `<ul class='insight-highlights'>${suggestions.map((s: string) => `<li>${s}</li>`).join('')}</ul>`;
+        if (summary) {
+          html += `<div class='insight-summary'>${summary}</div>`;
+        }
+        // 优先展示 highlights 字段，否则 fallback 到 suggestions
+        const highlightsArr = Array.isArray(highlights) && highlights.length ? highlights : (Array.isArray(suggestions) ? suggestions : []);
+        if (highlightsArr && highlightsArr.length) {
+          html += `<ul class='insight-highlights'>${highlightsArr.map((s: string) => `<li>${s}</li>`).join('')}</ul>`;
+        }
+        if (specialConcerns && Array.isArray(specialConcerns) && specialConcerns.length) {
+          html += `<div class='insight-special-concerns'>${_('sidebar_insight_special','特别关注')}：${specialConcerns.map((c: string) => c).join('，')}</div>`;
         }
         if (contentArea) contentArea.innerHTML = html;
       }
@@ -138,7 +146,7 @@ export async function renderInsightReport(box: HTMLElement, dayId: string, tab: 
       const report = resp && resp.report ? resp.report : null;
       if (report && (report.summary || (report.suggestions && report.suggestions.length > 0))) {
         let html = '';
-        const { stats, summary, suggestions } = report;
+        const { stats, summary, suggestions, highlights, specialConcerns, important } = report || {};
         if (stats) {
           const statsTotalLabel = _('sidebar_insight_stats_total', '访问总数');
           const statsDurationLabel = _('sidebar_insight_stats_duration', '总时长');
@@ -152,11 +160,19 @@ export async function renderInsightReport(box: HTMLElement, dayId: string, tab: 
             <div class='insight-stats-row-label'>${statsKeywordsLabel}</div><div class='insight-stats-row-value'>${stats.keywords && stats.keywords.length ? stats.keywords.slice(0, 10).join('，') : '-'}</div>
           </div>`;
         }
-        if (summary) {
-          html += `<div>${summary}</div>`;
+        if (typeof important === 'boolean' && important) {
+          html += `<div class='insight-important-flag'>⚠️ ${_('sidebar_insight_important','该内容被标记为重要')}</div>`;
         }
-        if (suggestions && suggestions.length) {
-          html += `<ul class='insight-highlights'>${suggestions.map((s: string) => `<li>${s}</li>`).join('')}</ul>`;
+        if (summary) {
+          html += `<div class='insight-summary'>${summary}</div>`;
+        }
+        // 优先展示 highlights 字段，否则 fallback 到 suggestions
+        const highlightsArr = Array.isArray(highlights) && highlights.length ? highlights : (Array.isArray(suggestions) ? suggestions : []);
+        if (highlightsArr && highlightsArr.length) {
+          html += `<ul class='insight-highlights'>${highlightsArr.map((s: string) => `<li>${s}</li>`).join('')}</ul>`;
+        }
+        if (specialConcerns && Array.isArray(specialConcerns) && specialConcerns.length) {
+          html += `<div class='insight-special-concerns'>${_('sidebar_insight_special','特别关注')}：${specialConcerns.map((c: string) => c).join('，')}</div>`;
         }
         if (contentArea) contentArea.innerHTML = html;
         if (generateBtn) { generateBtn.innerHTML = '重新生成'; generateBtn.disabled = false; }
