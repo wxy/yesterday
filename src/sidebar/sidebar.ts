@@ -6,6 +6,7 @@ import { shouldAnalyzeUrl } from '../lib/utils/url-utils.js';
 import { config } from '../lib/config/index.js';
 import { renderMergedView, updateOpenTabHighlight, mergeVisitsAndAnalysis } from './merged-view.js';
 import { renderInsightReport } from './insight-report.js'; 
+import { PromptManager } from '../lib/ai/prompt-manager.js';
 
 const logger = new Logger('Sidebar');
 
@@ -148,6 +149,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
       chrome.tabs.create({ url: helpUrl });
     });
+  }
+  // 初始化系统提示词（仅首次安装时）
+  // 已废弃 initSystemPrompts，改为自动初始化
+  try {
+    // 只需触发一次 getPrompts，PromptManager 会自动初始化数据库
+    await PromptManager.getPrompts('system', 'en');
+  } catch (e) {
+    logger.error('init_system_prompts_failed', '系统提示词初始化失败: {0}', e instanceof Error ? e.message : String(e));
   }
 });
 

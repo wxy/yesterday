@@ -1,6 +1,7 @@
 import { AIBaseService } from '../base/ai-base.js';
 import type { PageAISummary, DailyAIReport } from '../base/types.js';
 import { _ , _Error } from '../../i18n/i18n.js';
+import { PromptManager } from '../prompt-manager.js';
 
 // 迁移自 chrome-ai-client
 interface ChromeAiSummarizeOptions {
@@ -85,6 +86,29 @@ export class ChromeAIService extends AIBaseService {
   }
 
   async summarizePage(url: string, content: string): Promise<PageAISummary> {
+    // 新版：自动读取系统提示词
+    let prompt = '';
+    try {
+      let lang = 'en';
+      if (typeof chrome !== 'undefined' && chrome.storage) {
+        const config = await import('../../config/index.js');
+        const allConfig = await config.config.getAll();
+        if (allConfig && allConfig.language && allConfig.language !== 'auto') {
+          lang = allConfig.language;
+        }
+      }
+      const sysPrompt = await PromptManager.getPromptById('insight_summary', lang);
+      if (sysPrompt && sysPrompt.content && sysPrompt.content[lang]) {
+        prompt = sysPrompt.content[lang];
+        this.logger.info('[ChromeAI] 使用系统提示词', { id: sysPrompt.id, lang, prompt });
+      } else {
+        this.logger.warn('[ChromeAI] 未找到指定语言的系统提示词，回退英文', { lang });
+        const fallbackPrompt = await PromptManager.getPromptById('insight_summary', 'en');
+        prompt = fallbackPrompt && fallbackPrompt.content && fallbackPrompt.content['en'] ? fallbackPrompt.content['en'] : '';
+      }
+    } catch (e) {
+      this.logger.error('[ChromeAI] 获取系统提示词失败', e);
+    }
     let lang = 'zh-CN';
     try {
       lang = (chrome && chrome.i18n && typeof chrome.i18n.getUILanguage === 'function') ? chrome.i18n.getUILanguage() : 'zh-CN';
@@ -95,8 +119,8 @@ export class ChromeAIService extends AIBaseService {
       if (!summarizerGlobal || typeof summarizerGlobal.create !== 'function') {
         throw new _Error('ai_chrome_summarizer_not_found', '全局 Summarizer API 不存在');
       }
-      // 语言提示
-      const langHint = `请用${lang === 'zh-CN' ? '简体中文' : lang}回答。`;
+      // langHint 由 prompt 替换或补充
+      const langHint = prompt || `请用${lang === 'zh-CN' ? '简体中文' : lang}回答。`;
       // 1. 获取 key-points（要点）
       const keyPointsSummarizer = await summarizerGlobal.create({
         sharedContext: langHint,

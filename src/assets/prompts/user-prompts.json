@@ -1,0 +1,32 @@
+[
+  {
+    "id": "user_custom_insight_summary",
+    "type": "user",
+    "content": {
+      "en": "In addition to the standard analysis, please focus on the user's personal interests, learning points, or any custom requirements specified by the user for this browsing session. You may add extra fields to the JSON output as needed, but must not change the base format defined by the system prompt.",
+      "zh_CN": "在标准分析基础上，请额外关注用户的个性化兴趣、学习收获或用户指定的自定义需求。你可以在 JSON 输出中增加额外字段，但不得更改系统提示词定义的基础格式。"
+    },
+    "defaultLang": "en",
+    "meta": {
+      "tags": ["summary", "user", "custom"],
+      "source": "user",
+      "createdAt": 1718208000000,
+      "updatedAt": 1718208000000
+    }
+  },
+  {
+    "id": "user_custom_daily_report",
+    "type": "user",
+    "content": {
+      "en": "In addition to the standard daily report, please highlight any user-specified focus, questions, or custom aggregation rules for the day. You may add extra fields to the JSON output as needed, but must not change the base format defined by the system prompt.",
+      "zh_CN": "在标准日报分析基础上，额外突出用户指定的关注点、问题或自定义聚合规则。你可以在 JSON 输出中增加额外字段，但不得更改系统提示词定义的基础格式。"
+    },
+    "defaultLang": "en",
+    "meta": {
+      "tags": ["report", "user", "custom"],
+      "source": "user",
+      "createdAt": 1718208000000,
+      "updatedAt": 1718208000000
+    }
+  }
+]

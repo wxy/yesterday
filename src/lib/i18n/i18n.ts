@@ -79,8 +79,9 @@ export class I18n {
    */
   private async loadMessages(locale: string): Promise<LocaleMessages | null> {
     if (typeof fetch === "undefined") return null;
+    let url = `../_locales/${locale}/messages.json`;
     try {
-      const response = await fetch(`../_locales/${locale}/messages.json`).catch(
+      const response = await fetch(url).catch(
         (err) => {
           console.error("[i18n-utils] fetch error", err);
           return null;
@@ -88,7 +89,7 @@ export class I18n {
       );
       if (!response || !response.ok) {
         console.warn(
-          `[i18n-utils] Failed to fetch messages.json for locale: ${locale}, response:`,
+          `[i18n-utils] Failed to fetch messages.json for locale: ${locale}, url: ${url}, response:`,
           response
         );
         return null;
@@ -309,6 +310,13 @@ export class I18n {
         break;
     }
   }
+
+  /**
+   * 获取当前生效的语言（优先 forcedLocale，其次 currentLocale，最后 defaultLocale）
+   */
+  getCurrentLanguage(): string {
+    return this.forcedLocale || this.currentLocale || this.defaultLocale;
+  }
 }
 
 /**
@@ -367,6 +375,10 @@ export const i18n = {
    * 获取 auto 场景下应使用的语言
    */
   getAutoLanguage: () => I18n.detectBrowserLocale(),
+  /**
+   * 获取当前生效的语言
+   */
+  getCurrentLanguage: () => I18n.getInstance().getCurrentLanguage(),
 };
 
 /**

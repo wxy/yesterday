@@ -17,9 +17,6 @@ import { AIManager } from '../lib/ai/ai-manager.js';
 import { tryHandleCrossDayTask } from './cross-day.js';
 import { registerGlobalEventListeners } from './event-handlers.js';
 
-let aiServiceAvailable = true;
-let aiServiceStatus: Record<string, boolean> = {};
-
 /**
  * 初始化所有子系统
  */
@@ -69,7 +66,7 @@ async function updateGlobalConfig() {
       await i18n.changeLanguage(globalConfig.language);
     }
   } catch {
-    // 保持默认值
+    globalConfig.currentLang = 'en';
   }
 }
 
@@ -79,16 +76,12 @@ logger.info('后台脚本启动');
 
 // ====== 全局配置缓存及监听 ======
 export let globalConfig: any = {};
-// 移除 crossDayIdleThresholdMs 变量，跨日清理任务应直接读取 config
 
 // 启动时立即加载一次配置（含语言切换）
 updateGlobalConfig();
 
-// 监听配置变更，自动刷新全局配置和语言
-config.onConfigChanged?.(updateGlobalConfig);
-
 // 启动初始化流程
-initializeSubsystems().then(() => {
+initializeSubsystems().then(async () => {
   logger.info('后台脚本初始化完成，扩展已准备就绪');
   registerMessageHandlers();
   registerGlobalEventListeners();
@@ -97,4 +90,9 @@ initializeSubsystems().then(() => {
   tryHandleCrossDayTask();
 }).catch(error => {
   logger.error('扩展初始化失败:', error);
+});
+
+// 监听配置变更，自动刷新全局配置和语言
+config.onConfigChanged?.(async () => {
+  await updateGlobalConfig();
 });

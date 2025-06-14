@@ -2,6 +2,7 @@ import { AIBaseService } from '../base/ai-base.js';
 import type { PageAISummary, DailyAIReport } from '../base/types.js';
 import { _ , _Error } from '../../i18n/i18n.js';
 import JSON5 from 'json5';
+import { PromptManager } from '../prompt-manager.js';
 
 // 迁移自 ollama-client
 interface OllamaMessage {
@@ -129,27 +130,30 @@ export class OllamaService extends AIBaseService {
   async summarizePage(url: string, content: string): Promise<PageAISummary> {
     this.logger.info(_('ai_ollama_summarize', 'Ollama 正在总结页面: {0}', url));
     try {
-      // 新增：严格结构化 JSON 输出要求
-      const metaPrompt =
-        `你是一位专业的网页内容分析助手。请你认真分析下方网页内容，并以 JSON 格式返回结构化结果。务必严格遵循如下格式和要求：\n\n` +
-        `{"summary": "简明摘要，1-3句话，内容为纯文本",\n` +
-        ` "highlights": ["重点1", "重点2"], // 重点条目，数组，每项为完整的、通顺的中文句子，内容为纯文本\n` +
-        ` "important": ["高亮内容"], // 如有高亮，数组，每项为完整的、通顺的中文句子，内容为纯文本，无则为空数组\n` +
-        ` "specialConcerns": ["特殊关注点"] // 如有特殊关注点，数组，每项为完整的、通顺的中文句子，内容为纯文本，无则为空数组\n}` +
-        `\n\n要求：\n` +
-        `- summary 只做摘要，不要混入重点或高亮。\n` +
-        `- highlights 只做重点条目，且每项必须是完整的、通顺的中文句子，不要只给短语或词组。\n` +
-        `- important 只做高亮内容，且每项必须是完整的、通顺的中文句子，无则返回空数组。\n` +
-        `- specialConcerns 只做特殊关注点，且每项必须是完整的、通顺的中文句子，无则返回空数组。\n` +
-        `- 所有内容均为纯文本，不要 markdown。\n` +
-        `- 只返回上述 JSON，不要输出其它内容。\n` +
-        `- 如果理解无误，请直接返回符合上述格式的 JSON。\n` +
-        `- 注意要严格符合 JSON 语法，所有 key 必须加双引号，数组/对象结尾不能有逗号，正确使用 {} 包围，不要输出多余内容。`;
-      const prompt = `${metaPrompt}\n\n网页内容：\n${content}`;
+      // 1. 获取系统提示词（自动语言）
+      let sysPrompt = await PromptManager.getPromptById('insight_summary');
+      // 2. 获取用户提示词（自动语言）
+      let userPrompt = await PromptManager.getPromptById('user_custom_insight_summary');
+      // 3. 组合提示词（system + user）
+      let prompt = '';
+      if (sysPrompt && sysPrompt.content) {
+        const lang = Object.keys(sysPrompt.content)[0];
+        prompt = sysPrompt.content[lang];
+      }
+      if (userPrompt && userPrompt.content) {
+        const lang = Object.keys(userPrompt.content)[0];
+        prompt += '\n\n' + userPrompt.content[lang];
+      }
+      this.logger.info('[Ollama] 使用系统+用户提示词', {
+        sysPromptId: sysPrompt?.id, sysPrompt,
+        userPromptId: userPrompt?.id, userPrompt,
+        finalPrompt: prompt
+      });
+      const finalPrompt = `${prompt}\n\n网页内容：\n${content}`;
       const resp = await chatWithOllama({
         messages: [
           { role: 'system', content: '你是一个网页内容分析助手。' },
-          { role: 'user', content: prompt }
+          { role: 'user', content: finalPrompt }
         ]
       });
       const text = resp.choices?.[0]?.message?.content || '';
@@ -162,6 +166,8 @@ export class OllamaService extends AIBaseService {
           parsed = parseJsonWithPreprocess(aiFixed, this.logger);
         }
       }
+      this.logger.info('[Ollama] AI原始返回', { text });
+      this.logger.info('[Ollama] 结构化解析结果', { parsed });
       if (parsed && typeof parsed === 'object') {
         return {
           summary: parsed.summary || '',

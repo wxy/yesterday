@@ -7,6 +7,7 @@ import { config } from '../lib/config/index.js';
 import { messenger } from '../lib/messaging/messenger.js';
 import { AIManager } from '../lib/ai/ai-manager.js';
 import { taskQueue, AnalysisTaskStatus } from '../lib/ai/task-queue.js';
+import { PromptManager } from '../lib/ai/prompt-manager.js';
 const logger = new Logger('visit-ai');
 
 export const VISIT_KEEP_DAYS = 7;
@@ -491,15 +492,31 @@ async function persistVisitStatus(visit: any) {
  */
 export async function analyzeVisitRecordById(msg: any) {
   try {
-    // ====== 你的原有分析逻辑开始 ======
+    // ====== 新版提示词机制 ======
     const t0 = Date.now();
     let aiResult = '';
     let analyzeDuration = 0;
     let aiServiceLabel = 'AI';
+    let prompt = '';
     try {
       const aiService = await AIManager.instance.getAvailableService();
       if (!aiService) throw new Error('无可用AI服务');
       const allConfig = await config.getAll();
+      let lang = 'en';
+      if (allConfig && allConfig.language && allConfig.language !== 'auto') {
+        lang = allConfig.language;
+      }
+      // 获取系统提示词（如 insight_summary）
+      const sysPrompt = await PromptManager.getPromptById('insight_summary', lang);
+      if (sysPrompt && sysPrompt.content && sysPrompt.content[lang]) {
+        prompt = sysPrompt.content[lang];
+        logger.info('[AI分析] 使用系统提示词', { id: sysPrompt.id, lang, prompt });
+      } else {
+        logger.warn('[AI分析] 未找到指定语言的系统提示词，回退英文', { lang });
+        const fallbackPrompt = await PromptManager.getPromptById('insight_summary', 'en');
+        prompt = fallbackPrompt && fallbackPrompt.content && fallbackPrompt.content['en'] ? fallbackPrompt.content['en'] : '';
+      }
+      // 记录 AI 服务名
       if (allConfig && allConfig['aiServiceConfig']) {
         const labelMap: Record<string, string> = {
           'ollama': 'Ollama 本地',
@@ -510,10 +527,12 @@ export async function analyzeVisitRecordById(msg: any) {
         const aiConfig = allConfig['aiServiceConfig'];
         aiServiceLabel = labelMap[aiConfig.serviceId] || aiConfig.serviceId || 'AI';
       }
-      // 统一调用 summarizePage
+      // 统一调用 summarizePage，prompt 通过上下文传递
       if (typeof aiService.summarizePage === 'function') {
+        // 只传 url, content，prompt 通过服务内部读取
         const summary = await aiService.summarizePage(msg.url, msg.content);
         aiResult = typeof summary === 'string' ? summary : (summary.summary || JSON.stringify(summary));
+        logger.info('[AI分析完成]', { url: msg.url, id: msg.id, lang, aiServiceLabel });
       } else {
         throw new Error('AI服务不支持 summarizePage 接口');
       }
