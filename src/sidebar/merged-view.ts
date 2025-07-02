@@ -97,8 +97,40 @@ function robustParseAiResult(raw: any): { obj: any, plain: string } {
   return { obj, plain: '' };
 }
 
+// 显示/隐藏卡片 loading 蒙层
+function showCardLoading(cardEl: HTMLElement, text = '处理中...') {
+  if (!cardEl) return;
+  let mask = cardEl.querySelector('.merged-card-loading-mask') as HTMLElement;
+  if (!mask) {
+    mask = document.createElement('div');
+    mask.className = 'merged-card-loading-mask';
+    mask.innerHTML = `<span>${text}</span>`;
+    cardEl.appendChild(mask);
+  } else {
+    mask.innerHTML = `<span>${text}</span>`;
+    mask.style.display = 'flex';
+  }
+}
+function hideCardLoading(cardEl: HTMLElement) {
+  if (!cardEl) return;
+  const mask = cardEl.querySelector('.merged-card-loading-mask') as HTMLElement;
+  if (mask) mask.style.display = 'none';
+}
+// 全局 toast 提示
+function showToast(msg: string, duration = 1800) {
+  let toast = document.querySelector('.merged-card-toast') as HTMLElement;
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.className = 'merged-card-toast';
+    document.body.appendChild(toast);
+  }
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), duration);
+}
+
 export async function renderMergedView(root: HTMLElement, dayId: string, tab: 'today' | 'yesterday') {
-  clearAllAnalyzingTimers(); // 渲染前清理所有分析中计时器，防止泄漏
+  clearAllAnalyzingTimers();
   root.innerHTML = '<div class="text-muted" style="padding:16px;">'+_('sidebar_card_loading', '加载中...')+'</div>';
   const [visits, tabs] = await Promise.all([
     messenger.send('GET_VISITS', { dayId }).then(r => r?.visits || []).catch(() => []),
@@ -138,16 +170,19 @@ export async function renderMergedView(root: HTMLElement, dayId: string, tab: 't
       cardClass += ' ai-important-card';
     }
     const visitTime = item.visitStartTime ? new Date(item.visitStartTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+    // 关闭按钮
+    const closeBtnHtml = `<button class='merged-card-close-btn' data-id='${item.id || ''}' title='删除此条记录'>×</button>`;
     const titleLine = `<div class='merged-card-title-line'>
       <div class='merged-card-title'>${item.title || ''}</div>
       <div class='merged-card-time'>${visitTime}</div>
+      ${closeBtnHtml}
     </div>`;
     const urlLine = `<div class='merged-card-url-line'>
       <a href='${item.url || ''}' target='_blank' class='merged-card-url'>${item.url || ''}</a>
     </div>`;
     let aiLabelHtml = '';
     if (item.aiServiceLabel) {
-      aiLabelHtml = `<span class='merged-card-ai-label'>🤖 ${item.aiServiceLabel}</span>`;
+      aiLabelHtml = `<span class='merged-card-ai-label clickable' data-url='${item.url || ''}' data-id='${item.id || ''}' title='点击重新分析'>🤖 ${item.aiServiceLabel}</span>`;
     }
     let visitCountLabel = '';
     if (item.visitCount && item.visitCount > 1) {
@@ -267,21 +302,38 @@ export async function renderMergedView(root: HTMLElement, dayId: string, tab: 't
 
   root.onclick = function(e) {
     const target = e.target as HTMLElement;
-    if (target && target.classList.contains('merged-card-url')) {
-      e.preventDefault();
-      const url = target.getAttribute('href');
-      if (!url) return;
-      chrome.tabs.query({}, (tabs) => {
-        const found = tabs.find(tab => tab.url && tab.url.split('#')[0] === url.split('#')[0]);
-        if (found && typeof found.id === 'number' && typeof found.windowId === 'number') {
-          chrome.tabs.update(found.id, { active: true });
-          chrome.windows.update(found.windowId, { focused: true });
-        } else {
-          chrome.tabs.create({ url });
-        }
-      });
+    // AI标签点击：重新分析
+    if (target && target.classList.contains('merged-card-ai-label')) {
+      const url = target.getAttribute('data-url');
+      const id = target.getAttribute('data-id');
+      if (url && id) {
+        // 优先使用 item.payload?.id，如果有则用 payload.id，否则用 item.id
+        const idx = Array.from(root.querySelectorAll('.merged-card-ai-label')).indexOf(target);
+        const item = merged[idx];
+        const realId = (item && item.payload && item.payload.id) ? item.payload.id : id;
+        messenger.send('REANALYZE_VISIT', { url, id: realId });
+      }
       return;
     }
+    // 关闭按钮点击：删除
+    if (target && target.classList.contains('merged-card-close-btn')) {
+      const id = target.getAttribute('data-id');
+      const cardEl = target.closest('.merged-card') as HTMLElement;
+      if (id && cardEl) {
+        if (confirm('确定要删除此条访问记录吗？')) {
+          showCardLoading(cardEl, '正在删除...');
+          messenger.send('DELETE_VISIT', { id }).then(() => {
+            showToast('已删除');
+          }).catch(() => {
+            showToast('删除失败');
+          }).finally(() => {
+            setTimeout(() => hideCardLoading(cardEl), 1000);
+          });
+        }
+      }
+      return;
+    }
+    // 恢复：点击 header 区域任意位置都可折叠/展开
     const header = target.closest('.merged-card-header') as HTMLElement;
     if (header && header.dataset.entryId) {
       const entryId = header.dataset.entryId;

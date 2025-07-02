@@ -177,7 +177,8 @@
   },
   "appDescription": {
     "message": "A browser extension that provides a sidebar for viewing and analyzing yesterday's browsing history.",
-    "description": "用于manifest.json中"
+    "description": "用于manifest.json中",
+    "_untranslated": true
   },
   "storage_strategy_no_custom_adapter": {
     "message": "No custom storage adapter instance provided",

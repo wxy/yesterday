@@ -26,9 +26,11 @@ body {
   cursor: pointer;
 }
 .merged-card-title-line {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 12px;
+  justify-content: space-between;
 }
 .merged-card-title {
   font-weight: 600;
@@ -77,10 +79,35 @@ body {
   line-height: 1.5em;
 }
 .merged-card-time {
-  margin-left: auto;
+  margin-left: 12px;
+  margin-right: 32px; /* 向左偏移，为右上角按钮留空间 */
   color: #888;
   font-size: 12px;
   font-weight: 400;
+}
+
+/* 删除按钮右上角小按钮样式 */
+.merged-card-close-btn {
+  position: absolute;
+  top: 0px;
+  right: -5px;
+  width: 12px;
+  height: 12px;
+  font-size: 16px;
+  line-height: 10px;
+  background: transparent;
+  border: none;
+  color: #bbb;
+  border-radius: 50%;
+  cursor: pointer;
+  padding: 0;
+  z-index: 2;
+  margin: 4px;
+  transition: background 0.15s, color 0.15s;
+}
+.merged-card-close-btn:hover {
+  background: #ffeaea;
+  color: #e53935;
 }
 
 /* 洞察报告卡片样式 */
@@ -230,6 +257,7 @@ body {
   vertical-align: middle;
   letter-spacing: 0.01em;
   line-height: 1.5em;
+  cursor: pointer;
 }
 
 /* 容器与辅助样式 */

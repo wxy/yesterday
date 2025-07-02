@@ -2,7 +2,7 @@
 // 统一管理 background 的所有 messenger 消息监听
 import { messenger } from '../lib/messaging/messenger.js';
 import { storage } from '../lib/storage/index.js';
-import { getReportStatus, queueGenerateSimpleReport, getSimpleReport, handlePageVisitAndMaybeAnalyze } from './visit-ai.js';
+import { getReportStatus, queueGenerateSimpleReport, getSimpleReport, handlePageVisitAndMaybeAnalyze, reanalyzeVisitById } from './visit-ai.js';
 import { AIManager } from '../lib/ai/ai-manager.js';
 import { clearAllIconStatus } from './icon-state.js';
 
@@ -68,6 +68,11 @@ async function handlePageVisit(msg: any, sender?: any) {
   return result;
 }
 
+async function handleMessengerReanalyzeVisit(msg: any) {
+  if (!msg || typeof msg !== 'object' || !msg.payload || !msg.payload.id) return { status: 'invalid' };
+  return await reanalyzeVisitById(msg.payload.id);
+}
+
 export function registerMessageHandlers() {
   messenger.on('GET_VISITS', 
     handleMessengerGetVisits);
@@ -91,4 +96,6 @@ export function registerMessageHandlers() {
     handlePageVisit);
   messenger.on('UPDATE_PAGE_VISIT', 
     handleUpdatePageVisit);
+  messenger.on('REANALYZE_VISIT', 
+    handleMessengerReanalyzeVisit);
 }

@@ -173,12 +173,12 @@ if (typeof chrome !== 'undefined' && chrome.tabs) {
   chrome.tabs.onActivated && chrome.tabs.onActivated.addListener(() => updateOpenTabHighlight('today'));
 }
 
-// 消息监听：局部刷新
-messenger.on('SIDE_PANEL_UPDATE', (msg) => {
+// ================== 消息处理函数 ==================
+
+function handleSidePanelUpdate(msg: any) {
   clearAiConfigCache();
   const insightBox = document.getElementById('insight-report-box');
   const mergedBox = document.getElementById('merged-view-box');
-  // 根据当前tab刷新对应数据
   let dayId: string;
   if (currentTab === 'today') {
     dayId = new Date().toISOString().slice(0, 10);
@@ -193,18 +193,14 @@ messenger.on('SIDE_PANEL_UPDATE', (msg) => {
   } else if (updateType === 'visit' && mergedBox) {
     renderMergedView(mergedBox, dayId, currentTab);
   } else if (updateType === 'crossDay') {
-    // 跨日：强制刷新tab标签日期和内容
     renderSidebarTabs(document.getElementById('sidebar-root')!);
   } else {
     if (insightBox) renderInsightReport(insightBox, dayId, currentTab);
     if (mergedBox) renderMergedView(mergedBox, dayId, currentTab);
   }
-});
+}
 
-// 侧边栏只通过 GET_VISITS 获取数据，所有刷新只走 SIDE_PANEL_UPDATE
-// analysis/多表相关逻辑已彻底移除，所有访问/分析数据均由 merged-view 渲染
-
-messenger.on('SCROLL_TO_VISIT', (msg) => {
+function handleScrollToVisit(msg: any) {
   if (msg && msg.payload && msg.payload.url) {
     setTimeout(() => {
       const url = msg.payload.url.split('#')[0];
@@ -218,7 +214,6 @@ messenger.on('SCROLL_TO_VISIT', (msg) => {
               card.scrollIntoView({ behavior: 'smooth', block: 'center' });
               card.classList.add('merged-card-scroll-focus');
               setTimeout(() => card.classList.remove('merged-card-scroll-focus'), 1600);
-              // 展开卡片内容
               const header = card.querySelector('.merged-card-header') as HTMLElement;
               if (header && header.dataset.entryId) {
                 const contentBox = document.getElementById(header.dataset.entryId);
@@ -234,10 +229,9 @@ messenger.on('SCROLL_TO_VISIT', (msg) => {
       }
     }, 300);
   }
-});
+}
 
-// 监听 AI_SERVICE_UNAVAILABLE 消息
-messenger.on('AI_SERVICE_UNAVAILABLE', (msg) => {
+function handleAiServiceUnavailable(msg: any) {
   let text = _('ai_service_unavailable_msg', '未检测到可用的本地 AI 服务，AI 分析功能已禁用。');
   const details = msg.payload?.details as Record<string, boolean> | undefined;
   if (details) {
@@ -254,29 +248,13 @@ messenger.on('AI_SERVICE_UNAVAILABLE', (msg) => {
     document.body.prepend(aiWarn);
   }
   aiWarn.textContent = text;
-  // 可选：禁用相关按钮/入口
-});
-
-// 监听页面可见性变化，恢复时自动切换到“今日”tab并刷新卡片
-let sidebarInitialized = false;
-document.addEventListener('DOMContentLoaded', () => {
-  sidebarInitialized = true;
-});
-if (typeof document !== 'undefined' && typeof window !== 'undefined') {
-  let firstVisible = true;
-  document.addEventListener('visibilitychange', async () => {
-    if (document.visibilityState === 'visible') {
-      if (!sidebarInitialized) return; // 只在初始化后处理
-      if (firstVisible) {
-        firstVisible = false;
-        return; // 首次 visible 不处理，避免和 DOMContentLoaded 重复
-      }
-      // 切换到“今日”tab并刷新卡片（只切换tab和卡片，不刷新洞察报告）
-      const root = document.getElementById('sidebar-root');
-      if (root) {
-        const tabToday = document.getElementById('tab-today');
-        if (tabToday && currentTab !== 'today') tabToday.click();
-      }
-    }
-  });
 }
+
+// ================== 消息注册区 ==================
+
+messenger.on('SIDE_PANEL_UPDATE', handleSidePanelUpdate);
+messenger.on('SCROLL_TO_VISIT', handleScrollToVisit);
+messenger.on('AI_SERVICE_UNAVAILABLE', handleAiServiceUnavailable);
+
+// 侧边栏只通过 GET_VISITS 获取数据，所有刷新只走 SIDE_PANEL_UPDATE
+// analysis/多表相关逻辑已彻底移除，所有访问/分析数据均由 merged-view 渲染

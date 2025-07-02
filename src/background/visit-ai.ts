@@ -7,7 +7,6 @@ import { config } from '../lib/config/index.js';
 import { messenger } from '../lib/messaging/messenger.js';
 import { AIManager } from '../lib/ai/ai-manager.js';
 import { taskQueue, AnalysisTaskStatus } from '../lib/ai/task-queue.js';
-import { PromptManager } from '../lib/ai/prompt-manager.js';
 const logger = new Logger('visit-ai');
 
 export const VISIT_KEEP_DAYS = 7;
@@ -742,4 +741,49 @@ function parseSuggestions(suggestionsRaw: any): string[] {
   }
   if (!Array.isArray(suggestions)) return [];
   return suggestions.map(String);
+}
+
+/**
+ * 重新分析指定访问记录（通过 id 查找并重置分析状态，入队分析）
+ * @param id 访问记录唯一 id
+ * @returns {Promise<{status: string}>}
+ */
+export async function reanalyzeVisitById(id: string) {
+  if (!id) return { status: 'invalid' };
+  logger.info('[重新分析访问记录]', { id });
+  let found = null;
+  let dayId = '';
+  const allKeys = await storage.keys();
+  for (const key of allKeys) {
+    if (!key.includes('browsing_visits_')) continue;
+    const visits: any[] = (await storage.get<any[]>(key)) || [];
+    for (const v of visits) {
+      if (v.id === id) {
+        found = v;
+        const match = key.match(/browsing_visits_(\d{4}-\d{2}-\d{2})$/);
+        dayId = match ? match[1] : '';
+        break;
+      }
+    }
+    if (found) break;
+  }
+  if (!found) return { status: 'not_found' };
+  found.analysisStatus = 'none';
+  found.aiResult = '';
+  found.analyzeDuration = undefined;
+  found.analyzingStatus = undefined;
+  found.analyzingQueueTime = undefined;
+  found.analyzingStartTime = undefined;
+  const key = allKeys.find(k => k.includes('browsing_visits_') && (k.endsWith(dayId) || k.endsWith(':' + dayId)));
+  if (key) {
+    const visits: any[] = (await storage.get<any[]>(key)) || [];
+    const idx = visits.findIndex(v => v.id === found.id || (v.payload && v.payload.id === found.id));
+    if (idx >= 0) visits[idx] = found;
+    await storage.set(key, visits);
+    if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+      chrome.runtime.sendMessage({ type: 'SIDE_PANEL_UPDATE', payload: { updateType: 'ai' } });
+    }
+  }
+  await handlePageVisitAndMaybeAnalyze(found, { isAnalyze: true, sourceType: 'reanalyze' });
+  return { status: 'reanalyze_queued' };
 }
