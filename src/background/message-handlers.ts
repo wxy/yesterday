@@ -2,7 +2,7 @@
 // 统一管理 background 的所有 messenger 消息监听
 import { messenger } from '../lib/messaging/messenger.js';
 import { storage } from '../lib/storage/index.js';
-import { getReportStatus, queueGenerateSimpleReport, getSimpleReport, handlePageVisitAndMaybeAnalyze, reanalyzeVisitById } from './visit-ai.js';
+import { getReportStatus, queueGenerateSimpleReport, getSimpleReport, handlePageVisitAndMaybeAnalyze, reanalyzeVisitById, deleteVisitRecord } from './visit-ai.js';
 import { AIManager } from '../lib/ai/ai-manager.js';
 import { clearAllIconStatus } from './icon-state.js';
 
@@ -73,6 +73,15 @@ async function handleMessengerReanalyzeVisit(msg: any) {
   return await reanalyzeVisitById(msg.payload.id);
 }
 
+async function handleMessengerDeleteVisit(msg: any) {
+  const id = msg?.payload?.id;
+  return await deleteVisitRecord(id);
+}
+
+async function handleMessengerClearAllVisits() {
+  return await deleteVisitRecord();
+}
+
 export function registerMessageHandlers() {
   messenger.on('GET_VISITS', 
     handleMessengerGetVisits);
@@ -98,4 +107,6 @@ export function registerMessageHandlers() {
     handleUpdatePageVisit);
   messenger.on('REANALYZE_VISIT', 
     handleMessengerReanalyzeVisit);
+  messenger.on('DELETE_VISIT', handleMessengerDeleteVisit);
+  messenger.on('CLEAR_ALL_VISITS', handleMessengerClearAllVisits);
 }

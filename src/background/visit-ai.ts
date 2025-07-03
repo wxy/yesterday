@@ -787,3 +787,52 @@ export async function reanalyzeVisitById(id: string) {
   await handlePageVisitAndMaybeAnalyze(found, { isAnalyze: true, sourceType: 'reanalyze' });
   return { status: 'reanalyze_queued' };
 }
+
+/**
+ * 删除访问记录
+ * @param id 可选，指定 id 则删除单条，否则删除全部
+ * @returns 删除数量
+ */
+export async function deleteVisitRecord(id?: string): Promise<{ deleted: number, reportsDeleted?: number }> {
+  let deleted = 0;
+  let reportsDeleted = 0;
+  const allKeys = await storage.keys();
+  const visitKeys = allKeys.filter(k => k.startsWith('browsing_visits_'));
+  const reportKeys = allKeys.filter(k => k.startsWith('browsing_summary_'));
+  if (!id) {
+    // 删除全部访问记录
+    for (const key of visitKeys) {
+      const visits: any[] = (await storage.get<any[]>(key)) || [];
+      if (visits.length > 0) {
+        await storage.remove(key);
+        deleted += visits.length;
+      }
+    }
+    // 删除全部每日报告
+    for (const key of reportKeys) {
+      await storage.remove(key);
+      reportsDeleted++;
+    }
+  } else {
+    // 删除单条访问记录
+    for (const key of visitKeys) {
+      const visits: any[] = (await storage.get<any[]>(key)) || [];
+      const before = visits.length;
+      const afterArr = visits.filter(v => v.id !== id);
+      if (afterArr.length < before) {
+        if (afterArr.length === 0) {
+          await storage.remove(key);
+        } else {
+          await storage.set(key, afterArr);
+        }
+        deleted += before - afterArr.length;
+      }
+    }
+    // 单条删除不处理每日报告
+  }
+  // 删除后通知侧边栏刷新
+  if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+    chrome.runtime.sendMessage({ type: 'SIDE_PANEL_UPDATE', payload: { updateType: 'visit' } });
+  }
+  return { deleted, reportsDeleted };
+}

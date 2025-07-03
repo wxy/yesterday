@@ -108,7 +108,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       const clearDataConfirm = _('sidebar_clear_data_confirm', '确定要清除所有本地数据吗？此操作无法撤销。');
       clearBtn.onclick = async () => {
         if (confirm(clearDataConfirm)) {
-          // 清理 sidebar.ts 中的 clearMergedViewData 调用，相关逻辑如需保留可迁移至 merged-view.ts 或重构为工具函数
+          // 调用后台清除全部访问记录和每日报告
+          try {
+            const res = await messenger.send('CLEAR_ALL_VISITS');
+            // 可选：根据返回结果提示
+            window.location.reload(); // 简单粗暴刷新，确保所有视图同步
+          } catch (e) {
+            alert(_('sidebar_clear_data_failed', '清除数据失败，请重试。'));
+          }
         }
       };
     }
